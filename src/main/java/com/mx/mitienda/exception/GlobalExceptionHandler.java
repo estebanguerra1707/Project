@@ -1,53 +1,88 @@
 package com.mx.mitienda.exception;
 
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.security.SignatureException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
+@ControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleNotFoundException(NotFoundException ex){
-       Map<String, Object> respuesta = new HashMap<>();
-        respuesta.put("error", ex.getMessage());
-        respuesta.put("timestamp", LocalDateTime.now());
-        respuesta.put("status", HttpStatus.NOT_FOUND.value());
-        return new ResponseEntity<>(respuesta, HttpStatus.NOT_FOUND);
+
+    private ResponseEntity<Object> buildResponse(HttpStatus status, String message, HttpServletRequest request) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", status.value());
+        body.put("error", status.getReasonPhrase());
+        body.put("message", message);
+        body.put("path", request.getRequestURI());
+        return new ResponseEntity<>(body, status);
     }
-    @ExceptionHandler(Exception.class)
-     public ResponseEntity<Map<String, Object>> handlerExcepcionesGenerales(Exception ex){
-        Map<String, Object> respuesta = new HashMap<>();
-        respuesta.put("error", "Error interno del servidor");
-        respuesta.put("mensaje", ex.getMessage());
-        respuesta.put("timestamp", LocalDateTime.now());
-        respuesta.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
-        return new ResponseEntity<>(respuesta, HttpStatus.INTERNAL_SERVER_ERROR);
+
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<Object> handleNotFoundException(NotFoundException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleIlegalArgumentException(IllegalArgumentException ex){
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "Datos invalidos");
-        response.put("mensaje", ex.getMessage());
-        response.put("timestamp", new Date());
-        return ResponseEntity.badRequest().body(response);
+    public ResponseEntity<Object> handleIllegalArgumentException(IllegalArgumentException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex){
-        Map<String, Object> errors = new HashMap<>();
+    public ResponseEntity<Object> handleValidationException(MethodArgumentNotValidException ex, HttpServletRequest request) {
+        Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getFieldErrors().forEach(error ->
-                errors.put(error.getField(),error.getDefaultMessage()));
+                errors.put(error.getField(), error.getDefaultMessage()));
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "Datos invalidos");
-        response.put("errores", errors);
-        response.put("timestamp", new Date());
-        return ResponseEntity.badRequest().body(response);
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Bad Request");
+        body.put("message", "Error de validación");
+        body.put("fields", errors);
+        body.put("path", request.getRequestURI());
+
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler({
+            ExpiredJwtException.class,
+            MalformedJwtException.class,
+            SignatureException.class,
+            BadCredentialsException.class,
+            UsernameNotFoundException.class
+    })
+    public ResponseEntity<Object> handleJwtAndAuthExceptions(Exception ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Acceso denegado", request);
+    }
+
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<Object> handleNotFound(NoHandlerFoundException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Ruta no encontrada", request);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Object> handleAll(Exception ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Error inesperado: " + ex.getMessage(), request);
     }
 }
