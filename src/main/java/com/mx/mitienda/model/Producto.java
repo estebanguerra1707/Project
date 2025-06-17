@@ -11,24 +11,24 @@ import java.time.LocalDate;
 @Data
 public class Producto {
 	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE)
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	private String nombre;
+	private String name;
 
 	private String sku;
 
-	private String categoria;
+	private String category;
 
-	private String descripcion;
+	private String description;
 
-	private Double precio;
+	private Double price;
 
-	private Integer stock;
+	private Integer stock_quantity;
 
-	private Boolean activo;
+	private Boolean active;
 
-	private LocalDate fechaCreacion;
+	private LocalDate creation_date;
 
 
 }

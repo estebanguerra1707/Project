@@ -12,7 +12,7 @@ import java.util.Optional;
 
 @Repository
 public interface VentaRepositorty extends JpaRepository<Venta, Long> {
-    List<Venta> findByActivoTrue();
-    Optional<Venta> findByIdAndActivoTrue(Long id);
+    List<Venta> findByActiveTrue();
+    Optional<Venta> findByIdAndActiveTrue(Long id);
     List<Venta> findAll(Specification<Venta> spec);
 }

@@ -17,5 +17,5 @@ public class RegisterRequestDTO {
     private String password;
 
     @NotNull(message = "El rol es obligatorio")
-    private Rol rol;
+    private Rol role;
 }

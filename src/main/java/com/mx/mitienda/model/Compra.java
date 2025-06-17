@@ -10,17 +10,17 @@ import java.time.LocalDate;
 public class Compra {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
     @JoinColumn(name = "proveedor_id", foreignKey = @ForeignKey(name = "fk_compra_proveedor"))
     private Proveedor proveedor;
 
-    private LocalDate fechaCompra;
+    private LocalDate purchase_date;
 
-    private Double totalCompra;
+    private Double total_amount;
 
-    private Boolean activo;
+    private Boolean active;
 
 }

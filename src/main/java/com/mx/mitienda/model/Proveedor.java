@@ -11,14 +11,14 @@ import lombok.Data;
 public class Proveedor {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String nombre;
+    private String name;
 
-    private String contacto;
+    private String contact;
 
-    private Boolean activo;
+    private Boolean active;
 
 
 }

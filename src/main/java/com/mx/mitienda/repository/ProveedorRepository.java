@@ -10,8 +10,8 @@ import java.util.Optional;
 @Repository
 public interface ProveedorRepository extends JpaRepository<Proveedor, Long> {
     //Esto crea CRUD automático (findAll, save, deleteById, etc.) para la entidad Proveedor.
-    List<Proveedor> findByActivoTrue();
-    Optional<Proveedor> findByIdAndActivoTrue(Long id);
+    List<Proveedor> findByActiveTrue();
+    Optional<Proveedor> findByIdAndActiveTrue(Long id);
 
 
 }

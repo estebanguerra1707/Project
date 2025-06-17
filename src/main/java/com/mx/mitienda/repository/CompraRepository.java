@@ -13,7 +13,7 @@ import java.util.Optional;
 @Repository
 public interface CompraRepository extends JpaRepository<Compra, JpaSpecificationExecutor<Compra>> {
     //Esto crea CRUD automático (findAll, save, deleteById, etc.) para la entidad Compra.
-    List<Compra> findByActivoTrue();
-    Optional<Compra> findByIdAndActivoTrue(Long id);
+    List<Compra> findByActiveTrue();
+    Optional<Compra> findByIdAndActiveTrue(Long id);
     List<Compra> findAll(Specification spec);
 }

@@ -26,24 +26,24 @@ public class CompraService {
 
 
     public Compra getById(Long id){
-        return compraRepository.findByIdAndActivoTrue(id).orElseThrow(()->(new NotFoundException("La compra con el id:: " +id+"no se ha encontrado")));
+        return compraRepository.findByIdAndActiveTrue(id).orElseThrow(()->(new NotFoundException("La compra con el id:: " +id+"no se ha encontrado")));
     }
 
     public Compra save(Compra compra){
-            compra.setActivo(true);
+            compra.setActive(true);
         return compraRepository.save(compra);
     }
 
     public void inactiveBuy(Long id) {
         Compra compra = getById(id);
-        compra.setActivo(false);
+        compra.setActive(false);
         compraRepository.save(compra);
     }
 
-    public Compra updateBuy(Compra updatedBuy){
+    public Compra updateSale(Compra updatedBuy){
         Compra oldBuy = getById(updatedBuy.getId());
-        oldBuy.setFechaCompra(updatedBuy.getFechaCompra());
-        oldBuy.setTotalCompra(updatedBuy.getTotalCompra());
+        oldBuy.setPurchase_date(updatedBuy.getPurchase_date());
+        oldBuy.setTotal_amount(updatedBuy.getTotal_amount());
         oldBuy.setProveedor(updatedBuy.getProveedor());
         return compraRepository.save(oldBuy);
     }

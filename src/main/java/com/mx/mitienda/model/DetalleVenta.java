@@ -9,21 +9,21 @@ import lombok.Data;
 public class DetalleVenta {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
 
     @ManyToOne
     @JoinColumn(name = "venta_id", foreignKey = @ForeignKey(name ="fk_detalle_venta"))
-    private Venta venta;
+    private Venta sale_id;
 
     @ManyToOne
     @JoinColumn(name = "producto_id", foreignKey = @ForeignKey(name ="fk_detalle_producto"))
-    private Producto producto;
+    private Producto product_id;
 
-    private Integer cantidad;
+    private Integer quantity;
 
-    private Double precioUnitario;
+    private Double unit_price;
 
     private Double subtotal;
 

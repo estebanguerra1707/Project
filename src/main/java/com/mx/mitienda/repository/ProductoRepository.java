@@ -11,7 +11,7 @@ import java.util.Optional;
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
     //Esto crea CRUD automático (findAll, save, deleteById, etc.) para la entidad Producto.
-    List<Producto> findByActivoTrue();
-    Optional<Producto> findByIdAndActivoTrue(Long id);
+    List<Producto> findByActiveTrue();
+    Optional<Producto> findByIdAndActiveTrue(Long id);
     List<Producto> findAll(Specification<Producto> spec);
 }

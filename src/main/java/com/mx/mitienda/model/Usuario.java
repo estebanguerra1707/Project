@@ -14,7 +14,7 @@ import java.util.List;
 public class Usuario  implements UserDetails {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String username;
@@ -24,7 +24,7 @@ public class Usuario  implements UserDetails {
     private String password;
 
     @Enumerated(EnumType.STRING)
-    private Rol rol;
+    private Rol role;
 
     private Boolean active;
 
@@ -39,7 +39,7 @@ public class Usuario  implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + this.rol.name()));
+        return List.of(new SimpleGrantedAuthority("ROLE_" + this.role.name()));
     }
 
     @Override

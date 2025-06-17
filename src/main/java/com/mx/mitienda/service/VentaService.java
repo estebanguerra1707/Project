@@ -27,25 +27,25 @@ public class VentaService {
     }
 
     public Venta getById(Long id){
-        return ventaRepositorty.findByIdAndActivoTrue(id).orElseThrow(()->(new NotFoundException("la venta no ha sido encontrada con el id:::"+ id)));
+        return ventaRepositorty.findByIdAndActiveTrue(id).orElseThrow(()->(new NotFoundException("la venta no ha sido encontrada con el id:::"+ id)));
     }
 
     public Venta save(Venta venta){
-            venta.setActivo(true);
+            venta.setActive(true);
         return ventaRepositorty.save(venta);
     }
 
     public void inactive(Long id) {
         Venta venta = getById(id);
-        venta.setActivo(false);
+        venta.setActive(false);
         ventaRepositorty.save(venta);
     }
 
     public Venta updateSell(Long id, Venta sellUpdated){
         Venta existSell = getById(id);
-        existSell.setCliente(sellUpdated.getCliente());
-        existSell.setFechaVenta(sellUpdated.getFechaVenta());
-        existSell.setTotalVenta(sellUpdated.getTotalVenta());
+        existSell.setCustomer_id(sellUpdated.getCustomer_id());
+        existSell.setSale_date(sellUpdated.getSale_date());
+        existSell.setTotal_amount(sellUpdated.getTotal_amount());
         return ventaRepositorty.save(existSell);
     }
 

@@ -77,7 +77,7 @@ public class UsuarioService implements UserDetailsService {
         Usuario oldUser = usuarioRepository.findById(updatedUser.getId()).orElseThrow(()-> new UsernameNotFoundException("El usuario no se ha encontrado::" + updatedUser.getUsername()));
         oldUser.setUsername(updatedUser.getUsername());
         oldUser.setEmail(updatedUser.getEmail());
-        oldUser.setRol(updatedUser.getRol());
+        oldUser.setRole(updatedUser.getRole());
         if(updatedUser.getPassword()!=null || !updatedUser.getPassword().isBlank()){
             oldUser.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
         }

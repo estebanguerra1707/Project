@@ -15,17 +15,17 @@ public class ProveedorService {
     private ProveedorRepository proveedorRepository;
 
     public List<Proveedor> getAll(){
-        return proveedorRepository.findByActivoTrue();
+        return proveedorRepository.findByActiveTrue();
     }
 
     public Proveedor getById(Long id){
-        return proveedorRepository.findByIdAndActivoTrue(id).orElseThrow(()-> new NotFoundException("Proveedor con id :::" +id + " no encontrado"));
+        return proveedorRepository.findByIdAndActiveTrue(id).orElseThrow(()-> new NotFoundException("Proveedor con id :::" +id + " no encontrado"));
     }
 
     public Proveedor save(Proveedor proveedor){
 
-        if(proveedor.getActivo()==null){
-            proveedor.setActivo(true);
+        if(proveedor.getActive()==null){
+            proveedor.setActive(true);
         }
         return proveedorRepository.save(proveedor);
     }

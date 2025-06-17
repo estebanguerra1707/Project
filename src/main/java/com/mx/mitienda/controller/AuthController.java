@@ -42,7 +42,7 @@ public class AuthController {
         Usuario usuario = usuarioService.findByEmailUser(userDetails.getUsername());
 
         Map<String, Object> claims = new HashMap<>();
-        claims.put("rol", usuario.getRol().name());
+        claims.put("rol", usuario.getRole().name());
         claims.put("email", usuario.getEmail());
         claims.put("id", usuario.getId());
 
@@ -52,7 +52,7 @@ public class AuthController {
         response.put("token", token);
         response.put("username", usuario.getUsername());
         response.put("email", usuario.getEmail());
-        response.put("rol", usuario.getRol());
+        response.put("rol", usuario.getRole());
         response.put("id", usuario.getId());
         return response;
     }
@@ -64,13 +64,12 @@ public class AuthController {
         newUser.setEmail(request.getEmail());
         newUser.setPassword(request.getPassword()); // NO encodear aquí
         newUser.setActive(true);
-        newUser.setRol(request.getRol());
-
+        newUser.setRole(request.getRole());
 
         Usuario register = usuarioService.registerUser(newUser);
 
         Map<String, Object> claims = new HashMap<>();
-        claims.put("rol", register.getRol().name());
+        claims.put("rol", register.getRole().name());
         claims.put("email", register.getEmail());
         claims.put("id", register.getId());
 
@@ -80,7 +79,7 @@ public class AuthController {
         Map<String, Object> response = new HashMap<>();
         response.put("token", token);
         response.put("username", register.getUsername());
-        response.put("rol", register.getRol());
+        response.put("rol", register.getRole());
         response.put("id", register.getId());
 
         return response;

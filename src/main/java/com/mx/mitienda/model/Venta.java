@@ -10,18 +10,18 @@ import java.time.LocalDate;
 public class Venta {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
 
     @ManyToOne
     @JoinColumn(name = "cliente_id", foreignKey = @ForeignKey(name ="fk_venta_cliente"))
-    private Cliente cliente;
+    private Cliente customer_id;
 
-    private LocalDate fechaVenta;
+    private LocalDate sale_date;
 
-    private Double totalVenta;
+    private Double total_amount;
 
-    private Boolean activo;
+    private Boolean active;
 
 }
