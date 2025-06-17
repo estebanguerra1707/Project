@@ -51,7 +51,7 @@ public class UsuarioService implements UserDetailsService {
         return usuarioRepository.save(usuario);
     }
 
-    public Usuario findByUsernameActive(String username){
+    public Usuario getByUsernameActive(String username){
         return usuarioRepository.findByUsernameAndActiveTrue(username).orElseThrow(()-> new UsernameNotFoundException("Usuario no encontrado::" + username));
     }
 
@@ -89,6 +89,10 @@ public class UsuarioService implements UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         return usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+    }
+
+    public Optional<Usuario> getByUsername(String username) {
+        return usuarioRepository.findByUsername(username);
     }
 
 }

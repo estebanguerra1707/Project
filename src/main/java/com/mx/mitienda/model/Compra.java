@@ -22,5 +22,7 @@ public class Compra {
     private Double total_amount;
 
     private Boolean active;
-
+    @ManyToOne
+    @JoinColumn(name = "usuario_id")
+    private Usuario username;
 }

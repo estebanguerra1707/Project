@@ -2,6 +2,8 @@ package com.mx.mitienda.service;
 
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.model.Compra;
+import com.mx.mitienda.model.Rol;
+import com.mx.mitienda.model.Usuario;
 import com.mx.mitienda.model.dto.CompraFiltroDTO;
 import com.mx.mitienda.repository.CompraRepository;
 import com.mx.mitienda.util.CompraSpecBuilder;
@@ -16,9 +18,15 @@ public class CompraService {
     @Autowired
     public CompraRepository compraRepository;
 
+    @Autowired
+    public UsuarioService usuarioService;
 
-    public List<Compra> getAll(){
-        return compraRepository.findAll();
+    public List<Compra> getAll(String username, String role){
+        if(role.equals(Rol.ADMIN)){
+            return compraRepository.findByActiveTrue();
+        }else{
+            return compraRepository.findByUsernameAndActiveTrue(username);
+        }
     }
 
     //que traiga datos por fecha o por cliente
@@ -29,8 +37,10 @@ public class CompraService {
         return compraRepository.findByIdAndActiveTrue(id).orElseThrow(()->(new NotFoundException("La compra con el id:: " +id+"no se ha encontrado")));
     }
 
-    public Compra save(Compra compra){
+    public Compra save(Compra compra, String username){
+        Usuario usuario  = usuarioService.getByUsername(username).orElseThrow(() ->new NotFoundException("Usuario no encontrado::"+ username));
             compra.setActive(true);
+            compra.setUsername(usuario);
         return compraRepository.save(compra);
     }
 

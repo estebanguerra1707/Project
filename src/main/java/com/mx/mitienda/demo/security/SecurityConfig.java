@@ -1,4 +1,5 @@
 package com.mx.mitienda.demo.security;
+import com.mx.mitienda.model.Rol;
 import com.mx.mitienda.service.JwtService;
 import com.mx.mitienda.service.UsuarioService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -31,7 +32,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/login", "/auth/register").permitAll()
+                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/compras/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
+                        .requestMatchers("/ventas/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
