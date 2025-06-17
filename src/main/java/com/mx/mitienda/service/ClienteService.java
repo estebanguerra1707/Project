@@ -17,11 +17,11 @@ public class ClienteService {
     public ClienteRepository clienteRepository;
 
     public List<Cliente> getAll(){
-        return clienteRepository.findByActivoTrue();
+        return clienteRepository.findByActiveTrue();
     }
 
     public Cliente getById(Long id){
-        return clienteRepository.findByIdAndActivoTrue(id).orElseThrow(()-> new NotFoundException("Cliente con id:::" + id + " no encontrado"));
+        return clienteRepository.findByIdAndActiveTrue(id).orElseThrow(()-> new NotFoundException("Cliente con id:::" + id + " no encontrado"));
     }
 
     public Cliente save(Cliente cliente){

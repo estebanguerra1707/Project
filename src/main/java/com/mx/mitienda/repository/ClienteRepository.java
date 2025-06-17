@@ -11,8 +11,8 @@ import java.util.Optional;
 @Repository
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     //Esto crea CRUD automático (findAll, save, deleteById, etc.) para la entidad Cliente.
-    Optional<Cliente> findByIdAndActivoTrue(Long id);
-    List<Cliente> findByActivoTrue();
+    Optional<Cliente> findByIdAndActiveTrue(Long id);
+    List<Cliente> findByActiveTrue();
 
     List<Cliente> findAll(Specification clienteDTO);
 }

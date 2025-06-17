@@ -66,6 +66,7 @@ public class AuthController {
         newUser.setActive(true);
         newUser.setRol(request.getRol());
 
+
         Usuario register = usuarioService.registerUser(newUser);
 
         Map<String, Object> claims = new HashMap<>();
