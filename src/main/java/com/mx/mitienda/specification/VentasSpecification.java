@@ -49,7 +49,7 @@ public class VentasSpecification {
     public static Specification<Venta> sellPerDay(Integer day){
         return(root, query, criteriaBuilder) -> {
             if(day ==null) return null;
-            LocalDate since = LocalDate.now().minusDays(day);|
+            LocalDate since = LocalDate.now().minusDays(day);
             return criteriaBuilder.greaterThanOrEqualTo(root.get("fechaVenta"),day);
         };
     }
