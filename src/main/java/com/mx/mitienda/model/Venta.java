@@ -3,6 +3,7 @@ package com.mx.mitienda.model;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -20,7 +21,11 @@ public class Venta {
 
     private LocalDate sale_date;
 
-    private Double total_amount;
+    private BigDecimal total_amount;
+
+    @ManyToOne
+    @JoinColumn(name = "usuario_id")
+    private Usuario usuario;
 
     private Boolean active;
 

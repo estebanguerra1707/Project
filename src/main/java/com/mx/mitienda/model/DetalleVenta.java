@@ -12,7 +12,6 @@ public class DetalleVenta {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-
     @ManyToOne
     @JoinColumn(name = "venta_id", foreignKey = @ForeignKey(name ="fk_detalle_venta"))
     private Venta sale_id;
@@ -27,7 +26,7 @@ public class DetalleVenta {
 
     private Double subtotal;
 
-    private Boolean activo;
+    private Boolean active;
 
 
 

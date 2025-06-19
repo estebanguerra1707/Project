@@ -1,69 +1,130 @@
 package com.mx.mitienda.service;
 
 import com.mx.mitienda.exception.NotFoundException;
-import com.mx.mitienda.model.Venta;
+import com.mx.mitienda.model.*;
+import com.mx.mitienda.model.dto.DetalleVentaRequest;
 import com.mx.mitienda.model.dto.VentaFiltroDTO;
-import com.mx.mitienda.repository.VentaRepositorty;
-import com.mx.mitienda.specification.VentasSpecification;
-import com.mx.mitienda.util.SpecificationBuilder;
+import com.mx.mitienda.model.dto.VentaRequest;
+import com.mx.mitienda.repository.ClienteRepository;
+import com.mx.mitienda.repository.DetalleVentaRepository;
+import com.mx.mitienda.repository.ProductoRepository;
+import com.mx.mitienda.repository.VentaRepository;
 import com.mx.mitienda.util.VentaSpecBuilder;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class VentaService {
 
-    @Autowired
-    public VentaRepositorty ventaRepositorty;
+    private final VentaRepository ventaRepository;
+    private final DetalleVentaRepository detalleVentaRepository;
+    private final ClienteRepository clienteRepository;
+    private final ProductoRepository productoRepository;
+    private final UsuarioService usuarioService;
 
 
-    public List<Venta> getAll(){
-        return ventaRepositorty.findAll();
+    @Transactional //si falla o hay unea excepcion en cualquier lugar del metodo, se hace rollback de todo
+    public Venta registerSell(VentaRequest request, String username) {
+        // Obtener cliente
+        Cliente cliente = clienteRepository.findById(request.getClientId())
+                .orElseThrow(() -> new NotFoundException("Cliente no encontrado"));
+
+        // Obtener usuario desde el username
+        Usuario usuario = usuarioService.getByUsername(username)
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
+
+        Venta venta = new Venta();
+        venta.setSale_date(LocalDate.now());
+        venta.setCustomer_id(cliente);
+        venta.setUsuario(usuario);
+        venta.setActive(true);
+        venta.setTotal_amount(BigDecimal.ZERO); // se recalcula abajo
+
+        venta = ventaRepository.save(venta); // guardar primero para asignar en detalles
+
+        BigDecimal total = BigDecimal.ZERO;
+
+        for (DetalleVentaRequest d : request.getDetatails()) {
+            Producto producto = productoRepository.findById(d.getProductId())
+                    .orElseThrow(() -> new NotFoundException("Producto no encontrado"));
+
+            if (producto.getStock_quantity() < d.getQuantity()) {
+                throw new RuntimeException("Stock insuficiente para el producto: " + producto.getName());
+            }
+
+            // Descontar stock
+            producto.setStock_quantity(producto.getStock_quantity() - d.getQuantity());
+            productoRepository.save(producto);
+
+            DetalleVenta detalle = new DetalleVenta();
+            detalle.setSale_id(venta);
+            detalle.setProduct_id(producto);
+            detalle.setQuantity(d.getQuantity());
+            detalle.setUnit_price(d.getPrice().doubleValue());
+            detalle.setActive(true);
+            detalleVentaRepository.save(detalle);
+
+            total = total.add(d.getPrice().multiply(BigDecimal.valueOf(d.getQuantity())));
+        }
+
+        venta.setTotal_amount(total);
+        return ventaRepository.save(venta);
     }
 
-    public Venta getById(Long id){
-        return ventaRepositorty.findByIdAndActiveTrue(id).orElseThrow(()->(new NotFoundException("la venta no ha sido encontrada con el id:::"+ id)));
+    public List<Venta> getAll(String username, String rol) {
+        if (rol.equals(Rol.ADMIN)) {
+            return ventaRepository.findByActiveTrue();
+        } else {
+            return ventaRepository.findByUsernameAndActiveTrue(username);
+        }
     }
 
-    public Venta save(Venta venta){
-            venta.setActive(true);
-        return ventaRepositorty.save(venta);
+    public List<Venta> findByFilter(VentaFiltroDTO filterDTO, String username, String role) {
+        VentaSpecBuilder builder = new VentaSpecBuilder()
+                .client(filterDTO.getClient())
+                .dateBetween(filterDTO.getStart(), filterDTO.getEnd())
+                .totalMajorTo(filterDTO.getMin())
+                .totalMinorTo(filterDTO.getMax())
+                .exactTotal(filterDTO.getTotal())
+                .active(filterDTO.getActive())
+                .sellPerDay(filterDTO.getDay())
+                .sellPerMonth(filterDTO.getMonth())
+                .sellPerYear(filterDTO.getYear())
+                .withId(filterDTO.getId());
+        if (!role.equals(Rol.ADMIN)) {
+            builder.userName(username);
+        }
+        Specification<Venta> spec = builder.build();
+        return ventaRepository.findAll(spec);
+
     }
 
-    public void inactive(Long id) {
+    public List<DetalleVenta> getDetailsPerSale(Long id) {
+        return detalleVentaRepository.findBySellIdAndActiveTrue(id);
+    }
+
+    public Venta getById(Long id) {
+        return ventaRepository.findByIdAndActiveTrue(id)
+                .orElseThrow(() -> new NotFoundException("Venta no encontrada"));
+    }
+
+    public void deleteSell(Long id) {
         Venta venta = getById(id);
         venta.setActive(false);
-        ventaRepositorty.save(venta);
-    }
+        ventaRepository.save(venta);
 
-    public Venta updateSell(Long id, Venta sellUpdated){
-        Venta existSell = getById(id);
-        existSell.setCustomer_id(sellUpdated.getCustomer_id());
-        existSell.setSale_date(sellUpdated.getSale_date());
-        existSell.setTotal_amount(sellUpdated.getTotal_amount());
-        return ventaRepositorty.save(existSell);
-    }
-
-    public List<Venta> advancedSearch(VentaFiltroDTO ventaFiltroDTO) {
-
-        Specification<Venta> spec = new VentaSpecBuilder()
-                .active(ventaFiltroDTO.getActive())
-                .client(ventaFiltroDTO.getClient())
-                .dateBetween(ventaFiltroDTO.getStart(), ventaFiltroDTO.getEnd())
-                .sellPerDay(ventaFiltroDTO.getDay())
-                .sellPerMonth(ventaFiltroDTO.getMonth())
-                .sellPerYear(ventaFiltroDTO.getYear())
-                .totalMajorTo(ventaFiltroDTO.getMin())
-                .totalMinorTo(ventaFiltroDTO.getMax())
-                .exactTotal(ventaFiltroDTO.getTotal())
-                .withId(ventaFiltroDTO.getId())
-                .build();
-        return ventaRepositorty.findAll(spec);
+        List<DetalleVenta> detalles = detalleVentaRepository.findBySellIdAndActiveTrue(id);
+        for (DetalleVenta d : detalles) {
+            d.setActive(false);
+            detalleVentaRepository.save(d);
+        }
     }
 
 }

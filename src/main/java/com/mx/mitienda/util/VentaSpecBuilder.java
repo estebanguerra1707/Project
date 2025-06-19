@@ -58,6 +58,13 @@ public class VentaSpecBuilder {
         builder.and(VentasSpecification.hasId(id));
         return this;//al regresarlo se pueden seguir llamando metodos sobre VentaSpecBuilder
     }
+    public VentaSpecBuilder userName(String username) {
+        if (username != null && !username.isBlank()) {
+            builder.and((root, query, cb) ->
+                    cb.equal(root.get("usuario").get("username"), username));
+        }
+        return this;
+    }
 
     public Specification<Venta> build() {
         return builder.build();

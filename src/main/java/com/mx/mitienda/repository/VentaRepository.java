@@ -1,7 +1,5 @@
 package com.mx.mitienda.repository;
 
-import com.mx.mitienda.model.DetalleCompra;
-import com.mx.mitienda.model.Proveedor;
 import com.mx.mitienda.model.Venta;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,8 +9,9 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface VentaRepositorty extends JpaRepository<Venta, Long> {
+public interface VentaRepository extends JpaRepository<Venta, Long> {
     List<Venta> findByActiveTrue();
     Optional<Venta> findByIdAndActiveTrue(Long id);
+    List<Venta> findByUsernameAndActiveTrue(String username);
     List<Venta> findAll(Specification<Venta> spec);
 }
