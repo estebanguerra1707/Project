@@ -1,10 +1,12 @@
 package com.mx.mitienda.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Entity
 @Data
@@ -17,7 +19,7 @@ public class Venta {
 
     @ManyToOne
     @JoinColumn(name = "cliente_id", foreignKey = @ForeignKey(name ="fk_venta_cliente"))
-    private Cliente customer_id;
+    private Cliente customer;
 
     private LocalDate sale_date;
 
@@ -26,6 +28,10 @@ public class Venta {
     @ManyToOne
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;
+
+    @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<DetalleVenta> detailsList;
 
     private Boolean active;
 

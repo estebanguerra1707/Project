@@ -14,4 +14,6 @@ public class ProductoFiltroDTO {
     private Boolean availabe;
     private Boolean withoutCategory;
     private Long id;
+    private Long categoryId; // <- necesario para relacionar
+
 }

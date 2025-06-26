@@ -12,6 +12,6 @@ import java.util.Optional;
 public interface VentaRepository extends JpaRepository<Venta, Long> {
     List<Venta> findByActiveTrue();
     Optional<Venta> findByIdAndActiveTrue(Long id);
-    List<Venta> findByUsernameAndActiveTrue(String username);
+    List<Venta> findByUsuario_UsernameAndActiveTrue(String username);
     List<Venta> findAll(Specification<Venta> spec);
 }

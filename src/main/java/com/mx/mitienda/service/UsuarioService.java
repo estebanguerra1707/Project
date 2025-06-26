@@ -3,6 +3,7 @@ package com.mx.mitienda.service;
 
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.model.Usuario;
+import com.mx.mitienda.model.dto.UsuarioDTO;
 import com.mx.mitienda.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,13 +74,12 @@ public class UsuarioService implements UserDetailsService {
         return usuarioRepository.findByEmailAndActiveTrue(email);
     }
 
-    public Usuario updateUser(Usuario updatedUser){
-        Usuario oldUser = usuarioRepository.findById(updatedUser.getId()).orElseThrow(()-> new UsernameNotFoundException("El usuario no se ha encontrado::" + updatedUser.getUsername()));
-        oldUser.setUsername(updatedUser.getUsername());
-        oldUser.setEmail(updatedUser.getEmail());
-        oldUser.setRole(updatedUser.getRole());
-        if(updatedUser.getPassword()!=null || !updatedUser.getPassword().isBlank()){
-            oldUser.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
+    public Usuario updateUser(Long id, UsuarioDTO usuarioDTO){
+        Usuario oldUser = usuarioRepository.findById(id).orElseThrow(()-> new UsernameNotFoundException("El usuario no se ha encontrado::" + usuarioDTO.getUsername()));
+        oldUser.setUsername(usuarioDTO.getUsername());
+        oldUser.setEmail(usuarioDTO.getEmail());
+        if(usuarioDTO.getPassword()!=null){
+            oldUser.setPassword(passwordEncoder.encode(usuarioDTO.getPassword()));
         }
         return usuarioRepository.save(oldUser);
     }

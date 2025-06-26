@@ -1,10 +1,10 @@
 package com.mx.mitienda.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -18,17 +18,28 @@ public class Producto {
 
 	private String sku;
 
-	private String category;
-
 	private String description;
 
-	private Double price;
+	private BigDecimal price;
 
 	private Integer stock_quantity;
 
 	private Boolean active;
 
 	private LocalDate creation_date;
+	@ManyToOne
+	@JoinColumn(name = "business_type_id"
+	)
+	private BusinessType businessType;
 
+	@ManyToOne
+	@JsonBackReference
+	@JoinColumn(name = "category_id", foreignKey = @ForeignKey(name = "fk_product_category"))
+	private ProductCategory productCategory;
+
+	@ManyToOne
+	@JsonBackReference
+	@JoinColumn(name = "provider_id", foreignKey = @ForeignKey(name = "fk_product_provider"))
+	private Proveedor provider;
 
 }

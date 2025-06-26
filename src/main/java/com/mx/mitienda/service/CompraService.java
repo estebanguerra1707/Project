@@ -2,7 +2,7 @@ package com.mx.mitienda.service;
 
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.model.Compra;
-import com.mx.mitienda.model.Rol;
+import com.mx.mitienda.util.enums.Rol;
 import com.mx.mitienda.model.Usuario;
 import com.mx.mitienda.model.dto.CompraFiltroDTO;
 import com.mx.mitienda.repository.CompraRepository;
@@ -25,7 +25,7 @@ public class CompraService {
         if(role.equals(Rol.ADMIN)){
             return compraRepository.findByActiveTrue();
         }else{
-            return compraRepository.findByUsernameAndActiveTrue(username);
+            return compraRepository.findByUsuario_UsernameAndActiveTrue(username);
         }
     }
 
@@ -40,22 +40,22 @@ public class CompraService {
     public Compra save(Compra compra, String username){
         Usuario usuario  = usuarioService.getByUsername(username).orElseThrow(() ->new NotFoundException("Usuario no encontrado::"+ username));
             compra.setActive(true);
-            compra.setUsername(usuario);
+            compra.setUsuario(usuario);
         return compraRepository.save(compra);
     }
 
-    public void inactiveBuy(Long id) {
+    public void inactivePurchase(Long id) {
         Compra compra = getById(id);
         compra.setActive(false);
         compraRepository.save(compra);
     }
 
-    public Compra updateSale(Compra updatedBuy){
-        Compra oldBuy = getById(updatedBuy.getId());
-        oldBuy.setPurchase_date(updatedBuy.getPurchase_date());
-        oldBuy.setTotal_amount(updatedBuy.getTotal_amount());
-        oldBuy.setProveedor(updatedBuy.getProveedor());
-        return compraRepository.save(oldBuy);
+    public Compra updatePurchase(Compra updatedBuy){
+        Compra oldPurchase = getById(updatedBuy.getId());
+        oldPurchase.setPurchaseDate(updatedBuy.getPurchaseDate());
+        oldPurchase.setTotalAmount(updatedBuy.getTotalAmount());
+        oldPurchase.setProveedor(updatedBuy.getProveedor());
+        return compraRepository.save(oldPurchase);
     }
 
     public List<Compra> advancedSearch(CompraFiltroDTO compraDTO){

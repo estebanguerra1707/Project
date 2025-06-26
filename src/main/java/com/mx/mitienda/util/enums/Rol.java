@@ -1,4 +1,4 @@
-package com.mx.mitienda.model;
+package com.mx.mitienda.util.enums;
 
 public enum Rol {
     ADMIN,

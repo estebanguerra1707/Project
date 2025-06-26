@@ -1,9 +1,12 @@
 package com.mx.mitienda.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Entity
 @Data
@@ -14,15 +17,20 @@ public class Compra {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "proveedor_id", foreignKey = @ForeignKey(name = "fk_compra_proveedor"))
+    @JoinColumn(name = "supplier_id", foreignKey = @ForeignKey(name = "fk_compra_proveedor"))
     private Proveedor proveedor;
 
-    private LocalDate purchase_date;
+    private LocalDate purchaseDate;
 
-    private Double total_amount;
+    private BigDecimal totalAmount;
 
     private Boolean active;
+
+    @JsonManagedReference
+    @OneToMany(mappedBy = "compra", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DetalleCompra> details;
+
     @ManyToOne
     @JoinColumn(name = "usuario_id")
-    private Usuario username;
+    private Usuario usuario;
 }

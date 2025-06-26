@@ -4,13 +4,15 @@ import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.model.*;
 import com.mx.mitienda.model.dto.DetalleVentaRequest;
 import com.mx.mitienda.model.dto.VentaFiltroDTO;
-import com.mx.mitienda.model.dto.VentaRequest;
+import com.mx.mitienda.model.dto.VentaRequestDTO;
 import com.mx.mitienda.repository.ClienteRepository;
 import com.mx.mitienda.repository.DetalleVentaRepository;
 import com.mx.mitienda.repository.ProductoRepository;
 import com.mx.mitienda.repository.VentaRepository;
 import com.mx.mitienda.util.VentaSpecBuilder;
+import com.mx.mitienda.util.enums.Rol;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class VentaService {
@@ -31,7 +34,7 @@ public class VentaService {
 
 
     @Transactional //si falla o hay unea excepcion en cualquier lugar del metodo, se hace rollback de todo
-    public Venta registerSell(VentaRequest request, String username) {
+    public Venta registerSell(VentaRequestDTO request, String username) {
         // Obtener cliente
         Cliente cliente = clienteRepository.findById(request.getClientId())
                 .orElseThrow(() -> new NotFoundException("Cliente no encontrado"));
@@ -42,8 +45,10 @@ public class VentaService {
 
         Venta venta = new Venta();
         venta.setSale_date(LocalDate.now());
-        venta.setCustomer_id(cliente);
+        log.info("ID del cliente recibido: {}", venta.getCustomer() != null ? venta.getCustomer().getId() : "null");
+        venta.setCustomer(cliente);
         venta.setUsuario(usuario);
+        log.info("ID del usuario recibido: {}", venta.getUsuario() != null ? venta.getUsuario().getId() : "null");
         venta.setActive(true);
         venta.setTotal_amount(BigDecimal.ZERO); // se recalcula abajo
 
@@ -64,10 +69,10 @@ public class VentaService {
             productoRepository.save(producto);
 
             DetalleVenta detalle = new DetalleVenta();
-            detalle.setSale_id(venta);
-            detalle.setProduct_id(producto);
+            detalle.setVenta(venta);
+            detalle.setProduct(producto);
             detalle.setQuantity(d.getQuantity());
-            detalle.setUnit_price(d.getPrice().doubleValue());
+            detalle.setUnit_price(d.getPrice());
             detalle.setActive(true);
             detalleVentaRepository.save(detalle);
 
@@ -82,7 +87,7 @@ public class VentaService {
         if (rol.equals(Rol.ADMIN)) {
             return ventaRepository.findByActiveTrue();
         } else {
-            return ventaRepository.findByUsernameAndActiveTrue(username);
+            return ventaRepository.findByUsuario_UsernameAndActiveTrue(username);
         }
     }
 
@@ -107,7 +112,7 @@ public class VentaService {
     }
 
     public List<DetalleVenta> getDetailsPerSale(Long id) {
-        return detalleVentaRepository.findBySellIdAndActiveTrue(id);
+        return detalleVentaRepository.findByVenta_IdAndActiveTrue(id);
     }
 
     public Venta getById(Long id) {
@@ -120,7 +125,7 @@ public class VentaService {
         venta.setActive(false);
         ventaRepository.save(venta);
 
-        List<DetalleVenta> detalles = detalleVentaRepository.findBySellIdAndActiveTrue(id);
+        List<DetalleVenta> detalles = detalleVentaRepository.findByVenta_IdAndActiveTrue(id);
         for (DetalleVenta d : detalles) {
             d.setActive(false);
             detalleVentaRepository.save(d);

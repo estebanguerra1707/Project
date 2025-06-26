@@ -1,6 +1,6 @@
 package com.mx.mitienda.model.dto;
 
-import com.mx.mitienda.model.Rol;
+import com.mx.mitienda.util.enums.Rol;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

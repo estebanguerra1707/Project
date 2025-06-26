@@ -1,16 +1,13 @@
 package com.mx.mitienda.controller;
 
-import com.mx.mitienda.model.Rol;
 import com.mx.mitienda.model.Usuario;
-import com.mx.mitienda.model.dto.JwtResponse;
 import com.mx.mitienda.model.dto.LoginRequest;
 import com.mx.mitienda.model.dto.RegisterRequestDTO;
 import com.mx.mitienda.service.JwtService;
 import com.mx.mitienda.service.UsuarioService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -20,7 +17,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -32,6 +28,8 @@ public class AuthController {
     private final JwtService jwtService;
     private final UsuarioService usuarioService;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
+
+    @Tag(name = "LOGIN", description = "Operaciones relacionadas con login a la app")
 
     @PostMapping("/login")
     public Map<String, Object> login(@RequestBody @Valid LoginRequest loginRequest){
@@ -57,6 +55,7 @@ public class AuthController {
         return response;
     }
 
+    @Tag(name = "REGISTER", description = "Operaciones relacionadas con registrar usuarioa en la app")
     @PostMapping("/register")
     public Map<String, Object> register(@RequestBody @Valid RegisterRequestDTO request){
         Usuario newUser = new Usuario();
@@ -85,6 +84,7 @@ public class AuthController {
         return response;
     }
 
+    @Tag(name = "TEST", description = "Operaciones relacionadas con test a la app")
     @GetMapping("/test")
     public String test(org.springframework.security.core.Authentication authentication) {
         return "Autenticado como: " + authentication.getName();

@@ -16,6 +16,6 @@ public interface CompraRepository extends JpaRepository<Compra, JpaSpecification
     List<Compra> findByActiveTrue();
     Optional<Compra> findByIdAndActiveTrue(Long id);
     List<Compra> findAll(Specification spec);
-    List<Compra> findByUsernameAndActiveTrue(String username);
+    List<Compra> findByUsuario_UsernameAndActiveTrue(String username);
 
 }

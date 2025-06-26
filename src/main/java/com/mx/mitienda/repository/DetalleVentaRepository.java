@@ -8,6 +8,9 @@ import java.util.List;
 
 @Repository
 public interface DetalleVentaRepository extends JpaRepository<DetalleVenta, Long> {
-    List<DetalleVenta> findBySellIdAndActiveTrue(Long ventaId);
+    List<DetalleVenta> findByVenta_IdAndActiveTrue(Long ventaId);
+    /*SELECT * FROM detalle_venta
+WHERE venta_id = ? AND activo = true
+*/
 }
 

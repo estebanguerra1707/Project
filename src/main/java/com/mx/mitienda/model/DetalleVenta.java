@@ -1,8 +1,11 @@
 package com.mx.mitienda.model;
 
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
+
+import java.math.BigDecimal;
 
 @Entity
 @Data
@@ -13,18 +16,19 @@ public class DetalleVenta {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "venta_id", foreignKey = @ForeignKey(name ="fk_detalle_venta"))
-    private Venta sale_id;
+    @JsonBackReference
+    @JoinColumn(name = "sale_id", foreignKey = @ForeignKey(name ="fk_detalle_venta"))
+    private Venta venta;
 
     @ManyToOne
-    @JoinColumn(name = "producto_id", foreignKey = @ForeignKey(name ="fk_detalle_producto"))
-    private Producto product_id;
+    @JoinColumn(name = "product_id", foreignKey = @ForeignKey(name ="fk_detalle_producto"))
+    private Producto product;
 
     private Integer quantity;
 
-    private Double unit_price;
+    private BigDecimal unit_price;
 
-    private Double subtotal;
+    private BigDecimal subtotal;
 
     private Boolean active;
 
