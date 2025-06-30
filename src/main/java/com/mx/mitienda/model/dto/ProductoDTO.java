@@ -3,7 +3,7 @@ package com.mx.mitienda.model.dto;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 public class ProductoDTO {
@@ -15,5 +15,5 @@ public class ProductoDTO {
     private Integer stock;
     private Long businessTypeId;
     private Long providerId;
-    private LocalDate updatedDate;
+    private LocalDateTime updatedDate;
 }

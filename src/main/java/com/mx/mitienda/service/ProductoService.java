@@ -95,8 +95,8 @@ public class ProductoService {
         if (updatedProduct.getDescription() != null) existProduct.setDescription(updatedProduct.getDescription());
         if (updatedProduct.getPrice() != null) existProduct.setPrice(updatedProduct.getPrice());
         if (updatedProduct.getSku() != null) existProduct.setSku(updatedProduct.getSku());
-        if (updatedProduct.getStock() != null) existProduct.setStock_quantity(updatedProduct.getStock());
-        if (updatedProduct.getUpdatedDate()!=null) existProduct.setCreation_date(updatedProduct.getUpdatedDate());
+        if (updatedProduct.getStock() != null) existProduct.setStockQuantity(updatedProduct.getStock());
+        if (updatedProduct.getUpdatedDate()!=null) existProduct.setCreationDate(updatedProduct.getUpdatedDate());
        Producto producto = productoRepository.save(existProduct);
         return productoMapper.toResponse(producto);
     }

@@ -1,13 +1,19 @@
 package com.mx.mitienda.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import java.util.List;
 
-@Entity
+
 @Data
+@ToString(exclude = {"products"})
+@EqualsAndHashCode(exclude = {"products"})
+@Entity
 public class Proveedor {
 
     @Id
@@ -25,7 +31,7 @@ public class Proveedor {
     private String email;
 
     @OneToMany(mappedBy = "provider")
-    @JsonManagedReference
+    @JsonBackReference
     private List<Producto> products;
 
 

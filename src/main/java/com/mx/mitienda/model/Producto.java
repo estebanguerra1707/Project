@@ -3,12 +3,15 @@ package com.mx.mitienda.model;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-
-@Entity
+import java.time.LocalDateTime;
 @Data
+@ToString(exclude = {"provider"})
+@EqualsAndHashCode(exclude = {"provider"})
+@Entity
 public class Producto {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,11 +25,13 @@ public class Producto {
 
 	private BigDecimal price;
 
-	private Integer stock_quantity;
+	@Column(name = "stock_quantity")
+	private Integer stockQuantity;
 
 	private Boolean active;
 
-	private LocalDate creation_date;
+	@Column(name = "creation_date")
+	private LocalDateTime creationDate;
 	@ManyToOne
 	@JoinColumn(name = "business_type_id"
 	)

@@ -1,6 +1,7 @@
 package com.mx.mitienda.repository;
 
 import com.mx.mitienda.model.Venta;
+import com.mx.mitienda.model.dto.VentaResponseDTO;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

@@ -8,7 +8,7 @@ import com.mx.mitienda.model.dto.ProductoDTO;
 import com.mx.mitienda.model.dto.ProductoResponseDTO;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Component
 public class ProductoMapper {
@@ -18,9 +18,9 @@ public class ProductoMapper {
         producto.setSku(dto.getSku());
         producto.setDescription(dto.getDescription());
         producto.setPrice(dto.getPrice());
-        producto.setStock_quantity(dto.getStock());
+        producto.setStockQuantity(dto.getStock());
         producto.setActive(true);
-        producto.setCreation_date(LocalDate.now());
+        producto.setCreationDate(LocalDateTime.now());
 
         producto.setProductCategory(category);
         producto.setProvider(proveedor);
@@ -36,7 +36,7 @@ public class ProductoMapper {
         dto.setSku(producto.getSku());
         dto.setDescription(producto.getDescription());
         dto.setPrice(producto.getPrice());
-        dto.setStock_quantity(producto.getStock_quantity());
+        dto.setStock_quantity(producto.getStockQuantity());
 
         if (producto.getProductCategory() != null)
             dto.setCategoryName(producto.getProductCategory().getName());

@@ -5,7 +5,7 @@ import com.mx.mitienda.specification.VentasSpecification;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public class VentaSpecBuilder {
     private final SpecificationBuilder<Venta> builder =  new SpecificationBuilder<>();
@@ -20,7 +20,7 @@ public class VentaSpecBuilder {
         return this;//al regresarlo se pueden seguir llamando metodos sobre VentaSpecBuilder
     }
 
-    public VentaSpecBuilder dateBetween(LocalDate start, LocalDate end){
+    public VentaSpecBuilder dateBetween(LocalDateTime start, LocalDateTime end){
         builder.and(VentasSpecification.dateBetween(start, end));
         return this;//al regresarlo se pueden seguir llamando metodos sobre VentaSpecBuilder
     }

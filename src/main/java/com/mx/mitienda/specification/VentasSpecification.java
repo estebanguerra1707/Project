@@ -4,7 +4,7 @@ import com.mx.mitienda.model.Venta;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public class VentasSpecification {
 
@@ -14,14 +14,14 @@ public class VentasSpecification {
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("cliente").get("nombre")), "%" + nombreCliente.toLowerCase() + "%"));
     }
 
-    public static Specification<Venta> dateBetween(LocalDate start, LocalDate end ){
+    public static Specification<Venta> dateBetween(LocalDateTime start, LocalDateTime end ){
         return ((root, query, criteriaBuilder) -> {
             if(start !=null && end != null) {
-                return criteriaBuilder.between(root.get("fechaVenta"), start, end);
+                return criteriaBuilder.between(root.get("saleDate"), start, end);
             }else if(start!=null){
-                return criteriaBuilder.greaterThanOrEqualTo(root.get("fechaVenta"),start);
+                return criteriaBuilder.greaterThanOrEqualTo(root.get("saleDate"),start);
             }else if(end !=null){
-                return criteriaBuilder.lessThanOrEqualTo(root.get("fechaVenta"), end);
+                return criteriaBuilder.lessThanOrEqualTo(root.get("saleDate"), end);
             }else{
                 return null;
             }
@@ -49,7 +49,7 @@ public class VentasSpecification {
     public static Specification<Venta> sellPerDay(Integer day){
         return(root, query, criteriaBuilder) -> {
             if(day ==null) return null;
-            LocalDate since = LocalDate.now().minusDays(day);
+            LocalDateTime since = LocalDateTime.now().minusDays(day);
             return criteriaBuilder.greaterThanOrEqualTo(root.get("fechaVenta"),day);
         };
     }

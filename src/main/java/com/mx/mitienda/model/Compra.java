@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -20,8 +20,10 @@ public class Compra {
     @JoinColumn(name = "supplier_id", foreignKey = @ForeignKey(name = "fk_compra_proveedor"))
     private Proveedor proveedor;
 
-    private LocalDate purchaseDate;
+    @Column(name = "purchase_date")
+    private LocalDateTime purchaseDate;
 
+    @Column(name = "total_amount")
     private BigDecimal totalAmount;
 
     private Boolean active;

@@ -27,9 +27,11 @@ public class DetalleCompra {
 
     private Integer quantity;
 
+    @Column(name = "unit_cost")
     private BigDecimal unitCost;
 
-    private BigDecimal subtotal;
+    @Column(name = "subtotal")
+    private BigDecimal subTotal;
 
     private Boolean active;
 

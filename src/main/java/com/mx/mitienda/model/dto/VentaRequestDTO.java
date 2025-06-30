@@ -2,11 +2,12 @@ package com.mx.mitienda.model.dto;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
 public class VentaRequestDTO {
-    private Long clientId;
-    private List<DetalleVentaRequest> detatails;
-
+    Long customerId;
+    LocalDateTime saleDate;
+    List<DetalleVentaRequestDTO> details;
 }

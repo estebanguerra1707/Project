@@ -5,7 +5,7 @@ import com.mx.mitienda.specification.CompraSpecification;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public class CompraSpecBuilder {
 
@@ -22,7 +22,7 @@ public class CompraSpecBuilder {
         return this;
     }
 
-    public CompraSpecBuilder dateBetween(LocalDate start, LocalDate end){
+    public CompraSpecBuilder dateBetween(LocalDateTime start, LocalDateTime end){
         builder.and(CompraSpecification.dateBetween(start, end));
         return this;
     }

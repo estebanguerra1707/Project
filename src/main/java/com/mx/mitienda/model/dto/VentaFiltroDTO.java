@@ -3,14 +3,14 @@ package com.mx.mitienda.model.dto;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 public class VentaFiltroDTO {
     private Boolean active;
     private String client;
-    private LocalDate start;
-    private LocalDate end;
+    private LocalDateTime start;
+    private LocalDateTime end;
     private BigDecimal min;
     private BigDecimal max;
     private BigDecimal total;

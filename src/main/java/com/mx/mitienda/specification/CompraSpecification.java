@@ -4,7 +4,7 @@ import com.mx.mitienda.model.Compra;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public class CompraSpecification {
 
@@ -18,7 +18,7 @@ public class CompraSpecification {
         return (root, query, criteriaBuilder) -> criteriaBuilder.like(criteriaBuilder.lower(root.get("proveedor")),"%" + supplier.toLowerCase() + "%");
     }
 
-    public static Specification<Compra> dateBetween(LocalDate start, LocalDate end){
+    public static Specification<Compra> dateBetween(LocalDateTime start, LocalDateTime end){
         if(start == null && end == null) return null;
         if(start!=null && end!=null)
                 return (root, query, criteriaBuilder) -> criteriaBuilder.between(root.get("fecha"), start, end);
