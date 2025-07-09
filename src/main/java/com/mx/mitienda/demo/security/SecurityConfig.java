@@ -44,6 +44,7 @@ public class SecurityConfig {
                         .requestMatchers("/producto-detalle/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
                         .requestMatchers("/pdf/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
                         .requestMatchers("/pdf-sender/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
+                        .requestMatchers("/reportes/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
 
                         .anyRequest().authenticated()
                 )
