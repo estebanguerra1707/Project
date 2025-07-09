@@ -18,4 +18,7 @@ public class RegisterRequestDTO {
 
     @NotNull(message = "El rol es obligatorio")
     private Rol role;
+
+    @NotBlank(message = "El usuario debe ser obligatorio")
+    private String userName;
 }

@@ -42,30 +42,13 @@ public class ProductoService {
     }
 
     public ProductoResponseDTO getById(Long id){
-        Producto producto = productoRepository.findByIdAndActiveTrue(id).orElseThrow(()->new NotFoundException("Producto con el ID:::" +id + " no encontrado"));
+        Producto producto = productoRepository.findAllActiveWithDetailOrderByIdAsc(id).orElseThrow(()->new NotFoundException("Producto no encontrado"));
         return productoMapper.toResponse(producto);
     }
 
     public ProductoResponseDTO save(ProductoDTO productoDTO){
-        // Cargar la categoría con su businessType
-        ProductCategory category = categoryRepository.findWithBusinessTypeById(productoDTO.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada"));
 
-        Proveedor proveedor = proveedorRepository.findById(productoDTO.getProviderId()).orElseThrow(()->new NotFoundException("Proveedor no encontrado"));
-
-        BusinessType businessType = businessTypeRepository.findById(productoDTO.getBusinessTypeId())
-                .orElseThrow(() -> new RuntimeException("Tipo de negocio no encontrado"));
-
-        Long categoryBusinessId = category.getBusinessType() != null
-                ? category.getBusinessType().getId()
-                : null;
-
-        // Validar que la categoría pertenezca al tipo de negocio
-        if (!Objects.equals(categoryBusinessId, businessType.getId())){
-            throw new IllegalArgumentException("La categoría no pertenece al tipo de negocio proporcionado");
-        }
-
-      Producto producto = productoMapper.toEntity(productoDTO, category, proveedor, businessType);
+      Producto producto = productoMapper.toEntity(productoDTO);
       Producto saved = productoRepository.save(producto);
       return productoMapper.toResponse(saved);
 
@@ -79,24 +62,7 @@ public class ProductoService {
 
     @Transactional
     public ProductoResponseDTO updateProduct(ProductoDTO updatedProduct, Long id){
-        Producto existProduct = productoRepository.findById(id).orElseThrow(()-> new NotFoundException("Producto no encontrado"));
-
-        if (updatedProduct.getName() != null) existProduct.setName(updatedProduct.getName());
-        if (updatedProduct.getCategoryId() != null) {
-            ProductCategory category = categoryRepository.findById(updatedProduct.getCategoryId())
-                    .orElseThrow(() -> new NotFoundException("Category not found with ID: " + updatedProduct.getCategoryId()));
-            existProduct.setProductCategory(category);
-        }
-        if (updatedProduct.getProviderId()!=null){
-            Proveedor proveedor = proveedorRepository.findById(updatedProduct.getProviderId())
-                    .orElseThrow(()-> new NotFoundException( "El proveedor a actualizar no existe::" + updatedProduct.getProviderId()));
-            existProduct.setProvider(proveedor);
-        }
-        if (updatedProduct.getDescription() != null) existProduct.setDescription(updatedProduct.getDescription());
-        if (updatedProduct.getPrice() != null) existProduct.setPrice(updatedProduct.getPrice());
-        if (updatedProduct.getSku() != null) existProduct.setSku(updatedProduct.getSku());
-        if (updatedProduct.getStock() != null) existProduct.setStockQuantity(updatedProduct.getStock());
-        if (updatedProduct.getUpdatedDate()!=null) existProduct.setCreationDate(updatedProduct.getUpdatedDate());
+       Producto existProduct = productoMapper.toUpdate(updatedProduct, id);
        Producto producto = productoRepository.save(existProduct);
         return productoMapper.toResponse(producto);
     }

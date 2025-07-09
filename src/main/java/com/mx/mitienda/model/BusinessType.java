@@ -12,5 +12,10 @@ public class BusinessType {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String name;
+
+    private Boolean active = true;
+
+    private String code;
 }

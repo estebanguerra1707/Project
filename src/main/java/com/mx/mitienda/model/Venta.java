@@ -27,9 +27,19 @@ public class Venta {
     private BigDecimal totalAmount;
     private Boolean active;
 
+    @Column(name = "amount_paid")
+    private BigDecimal amountPaid;
+
+    @Column(name = "change_amount")
+    private BigDecimal changeAmount;
+
+    @ManyToOne
+    @JoinColumn(name = "payment_method_id")
+    private MetodoPago paymentMethod;
+
     @ManyToOne
     @JoinColumn(name = "cliente_id", foreignKey = @ForeignKey(name ="fk_venta_cliente"))
-    private Cliente customer;
+    private Cliente client;
 
     @ManyToOne
     @JoinColumn(name = "usuario_id", foreignKey = @ForeignKey(name = "fk_venta_usuario"))
@@ -38,5 +48,9 @@ public class Venta {
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<DetalleVenta> detailsList;
+
+    @ManyToOne
+    @JoinColumn(name = "branch_id", foreignKey = @ForeignKey(name = "fk_venta_sucursal"))
+    private Sucursal branch;
 
 }

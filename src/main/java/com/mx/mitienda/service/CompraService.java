@@ -3,13 +3,16 @@ package com.mx.mitienda.service;
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.mapper.CompraMapper;
 import com.mx.mitienda.model.Compra;
+import com.mx.mitienda.model.Sucursal;
 import com.mx.mitienda.model.dto.CompraRequestDTO;
 import com.mx.mitienda.model.dto.CompraResponseDTO;
+import com.mx.mitienda.repository.SucursalRepository;
 import com.mx.mitienda.util.enums.Rol;
 import com.mx.mitienda.model.dto.CompraFiltroDTO;
 import com.mx.mitienda.repository.CompraRepository;
 import com.mx.mitienda.util.CompraSpecBuilder;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -23,7 +26,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CompraService {
     public final CompraRepository compraRepository;
-    public final UsuarioService usuarioService;
     public final CompraMapper compraMapper;
 
     public List<CompraResponseDTO> getAll(String username, String role){
@@ -38,9 +40,6 @@ public class CompraService {
                     .collect(Collectors.toList());
         }
     }
-
-    //que traiga datos por fecha o por cliente
-    //falta el delete logico de la tienda
 
 
     public CompraResponseDTO getById(Long id){
@@ -62,8 +61,7 @@ public class CompraService {
             }
         }
         Compra compra = compraMapper.toEntity(compraRequestDTO, username);
-        Compra saved = compraRepository.save(compra);
-        return compraMapper.toResponse(saved);
+        return compraMapper.toResponse(compraRepository.save(compra));
     }
 
     public void inactivePurchase(Long id) {
@@ -79,8 +77,13 @@ public class CompraService {
                 .dateBetween(compraDTO.getStart(), compraDTO.getEnd())
                 .totalMajorTo(compraDTO.getMin())
                 .totalMinorTo(compraDTO.getMax())
+                .searchPerDayMonthYear(compraDTO.getDay(), compraDTO.getMonth(), compraDTO.getYear())
                 .build();
-        return compraRepository.findAll(spec).stream()
+
+        Sort sort = Sort.by(Sort.Direction.ASC, "totalAmount");
+
+
+        return compraRepository.findAll(spec, sort).stream()
                 .map(compraMapper::toResponse)
                 .collect(Collectors.toList());
     }

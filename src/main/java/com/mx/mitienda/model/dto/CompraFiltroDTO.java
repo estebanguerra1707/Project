@@ -13,4 +13,7 @@ public class CompraFiltroDTO {
     private LocalDateTime end;
     private BigDecimal min;
     private BigDecimal max;
+    private Integer day;
+    private Integer month;
+    private Integer year;
 }

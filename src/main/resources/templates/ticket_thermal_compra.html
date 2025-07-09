@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Ticket de Compra</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .ticket {
+            width: 220px; /* 58mm aprox */
+            padding: 5px;
+        }
+
+        .logo {
+            width: 80px;
+            display: block;
+            margin: 0 auto 5px auto;
+        }
+
+        h1 {
+            font-size: 12px;
+            text-align: center;
+            margin: 5px 0;
+        }
+
+        h2 {
+            font-size: 10px;
+            text-align: center;
+            margin: 5px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+        }
+
+        th {
+            text-align: left;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 2px;
+        }
+
+        td {
+            padding: 2px 0;
+        }
+
+        .total, .footer, .payment-details {
+            font-size: 9px;
+            text-align: left;
+            margin-top: 5px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .highlight {
+            font-weight: bold;
+        }
+
+        .line {
+            border-top: 1px dashed #000;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+<div class="ticket">
+
+    <img class="logo" src="img/logo.png" alt="Mi Tienda Logo"/>
+
+    <h1 th:text="${storeName}"></h1>
+    <h2>Ticket de Compra</h2>
+
+    <div class="line"></div>
+
+    <table>
+        <thead>
+        <tr>
+            <th>Producto</th>
+            <th>Cant</th>
+            <th>Precio</th>
+            <th>Subt.</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="detalle : ${compra.details}">
+            <td th:text="${detalle.productName}"></td>
+            <td th:text="${detalle.quantity}"></td>
+            <td th:text="${detalle.unitPrice}"></td>
+            <td th:text="${detalle.subTotal}"></td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="line"></div>
+
+    <div class="total">
+        <p><span class="highlight">TOTAL:</span> <span th:text="${#numbers.formatDecimal(compra.totalAmount, 1, 'POINT', 2, 'POINT')}"></span></p>
+        <p th:text="${compra.amountInWords}"></p>
+    </div>
+
+    <div class="payment-details">
+        <p><span class="highlight">Pago:</span> <span th:text="${compra.paymentName}"></span></p>
+
+        <p th:if="${compra.amountPaid != null and compra.amountPaid > 0}">
+            <span class="highlight">Recibido:</span>
+            <span th:text="${compra.amountPaid}"></span>
+        </p>
+
+        <p><span class="highlight">Cambio:</span> <span th:text="${compra.changeAmount}"></span></p>
+    </div>
+
+    <div class="line"></div>
+
+    <div class="footer">
+        <p th:text="${branch.name}"></p>
+        <p th:text="${branch.address}"></p>
+        <p th:text="${fechaFormateada}"></p>
+        <p>#<span th:text="${compra.id}"></span></p>
+        <p>Atendió: <span th:text="${compra.userName}"></span></p>
+        <p><strong>¡Gracias por su compra!</strong></p>
+    </div>
+
+</div>
+</body>
+</html>

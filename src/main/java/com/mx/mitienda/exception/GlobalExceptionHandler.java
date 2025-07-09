@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -35,7 +34,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<Object> handleNotFoundException(NotFoundException ex, HttpServletRequest request) {
+    public ResponseEntity<Object> handleNotFoundException(NotFoundException ex,  HttpServletRequest request) {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
 
@@ -86,5 +85,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleGenericException(Exception ex) {
         log.error("Error inesperado: ", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error inesperado: " + ex.getMessage());
+    }
+
+    @ExceptionHandler(PdfGenerationException.class)
+    public ResponseEntity<String> handlePdfGenerationException(PdfGenerationException ex) {
+        // Log opcional
+        log.error("Error inesperado: ",ex);
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error generando PDF: " + ex.getMessage());
     }
 }

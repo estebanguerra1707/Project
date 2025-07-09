@@ -33,18 +33,21 @@ public class ProductController {
     public List<ProductoResponseDTO> getAll() {
         return productService.getAll();
     }
+
     @Tag(name = "PRODUCT GET BY ID", description = "Operaciones relacionadas con GET BY ID PRODUCT")
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
     public ProductoResponseDTO getById(@PathVariable Long id) {
         return productService.getById(id);
     }
+
     @Tag(name = "PRODUCT UPDATE", description = "Operaciones relacionadas con UPDATE PRODUCT")
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
     public ProductoResponseDTO update(@PathVariable Long id, @RequestBody ProductoDTO productoDTO) {
         return productService.updateProduct(productoDTO, id);
     }
+
     @Tag(name = "PRODUCT DELETE", description = "Operaciones relacionadas con DELETE PRODUCT")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")

@@ -8,14 +8,15 @@ import java.time.LocalDateTime;
 @Data
 public class VentaFiltroDTO {
     private Boolean active;
-    private String client;
-    private LocalDateTime start;
-    private LocalDateTime end;
+    private String clientName;
+    private LocalDateTime startDate;
+    private LocalDateTime endDate;
     private BigDecimal min;
     private BigDecimal max;
-    private BigDecimal total;
+    private BigDecimal totalAmount;
     private Integer month;
     private Integer year;
     private Integer day;
     private Long id;
+    private Long paymentMethodId;
 }

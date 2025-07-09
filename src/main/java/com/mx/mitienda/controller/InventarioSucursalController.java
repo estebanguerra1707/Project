@@ -1,0 +1,48 @@
+package com.mx.mitienda.controller;
+
+import com.mx.mitienda.model.dto.CompraResponseDTO;
+import com.mx.mitienda.model.dto.InventarioSucursalRequestDTO;
+import com.mx.mitienda.model.dto.InventarioSucursalResponseDTO;
+import com.mx.mitienda.service.IInventarioSucursalService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+@SecurityRequirement(name = "bearerAuth")
+@RestController
+@RequestMapping("/inventario")
+@Tag(name = "INVENTARIO EN SUCURSALES", description = "Operaciones sobre inventario en sucursales")
+@RequiredArgsConstructor
+public class InventarioSucursalController {
+
+    private final IInventarioSucursalService inventarioSucursalService;
+
+    @GetMapping("/sucursal/{sucursalId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public  ResponseEntity<List<InventarioSucursalResponseDTO>> getInventarioSucursal(@PathVariable Long sucursalId) {
+        return ResponseEntity.ok(inventarioSucursalService.getProductosEnSucursal(sucursalId));
+    }
+
+    @GetMapping("/producto/{productoId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public  ResponseEntity<List<InventarioSucursalResponseDTO>> getInventarioProducto(@PathVariable Long productoId) {
+        return ResponseEntity.ok(inventarioSucursalService.getProducto(productoId));
+    }
+
+    @GetMapping("/sucursal/{sucursalId}/producto/{productId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public  ResponseEntity<List<InventarioSucursalResponseDTO>> getInventarioProductoSucursal(@PathVariable Long sucursalId, @PathVariable Long productId) {
+        return ResponseEntity.ok(inventarioSucursalService.getProductoEnSucursal(sucursalId, productId));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<InventarioSucursalResponseDTO> createInventario(@RequestBody InventarioSucursalRequestDTO inventarioSucursalRequestDTO) {
+        return ResponseEntity.ok(inventarioSucursalService.create(inventarioSucursalRequestDTO));
+    }
+
+}

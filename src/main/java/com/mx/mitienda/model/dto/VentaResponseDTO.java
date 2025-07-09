@@ -9,9 +9,15 @@ import java.util.List;
 @Data
 public class VentaResponseDTO {
     private Long id;
-    private String customerName;
+    private String clientName;
     private LocalDateTime saleDate;
     private BigDecimal totalAmount;
     List<DetalleVentaResponseDTO> details;
+    private Long paymentMethodId;
+    private String paymentName;
+    private BigDecimal amountPaid;
+    private BigDecimal changeAmount;
+    private String amountInWords;
+    private String userName;
 
 }

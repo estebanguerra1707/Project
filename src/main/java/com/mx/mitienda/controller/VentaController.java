@@ -10,7 +10,9 @@ import com.mx.mitienda.service.VentaService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -69,6 +71,20 @@ public class VentaController {
         return ResponseEntity.ok(ventaService.getDetailsPerSale(id));
     }
 
+    @GetMapping(
+            value = "/{ventaId}/ticket",
+            produces = MediaType.APPLICATION_PDF_VALUE
+    )
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    public ResponseEntity<byte[]> getTicketVenta(@PathVariable Long ventaId) {
+
+        byte[] pdf = ventaService.generateTicketPdf(ventaId);
+
+        return ResponseEntity.ok()
+                .header("Content-Type", "application/pdf")
+                .header("Content-Disposition", "inline; filename=ticket.pdf")
+                .body(pdf);
+    }
 
 
 }

@@ -10,6 +10,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -26,7 +27,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -36,6 +37,14 @@ public class SecurityConfig {
                         .requestMatchers("/proveedores/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
                         .requestMatchers("/clientes/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
                         .requestMatchers("/productos/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
+                        .requestMatchers("/sucursales/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
+                        .requestMatchers("/inventario/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
+                        .requestMatchers("/business-types/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
+                        .requestMatchers("/categorias/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
+                        .requestMatchers("/producto-detalle/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
+                        .requestMatchers("/pdf/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
+                        .requestMatchers("/pdf-sender/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
+
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

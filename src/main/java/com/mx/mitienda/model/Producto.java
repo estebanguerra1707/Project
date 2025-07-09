@@ -23,10 +23,8 @@ public class Producto {
 
 	private String description;
 
-	private BigDecimal price;
-
-	@Column(name = "stock_quantity")
-	private Integer stockQuantity;
+	@Column(name = "price")
+	private BigDecimal purchasePrice;
 
 	private Boolean active;
 
@@ -46,5 +44,8 @@ public class Producto {
 	@JsonBackReference
 	@JoinColumn(name = "provider_id", foreignKey = @ForeignKey(name = "fk_product_provider"))
 	private Proveedor provider;
+
+	@OneToOne(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+	private ProductDetail productDetail;
 
 }

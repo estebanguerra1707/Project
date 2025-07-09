@@ -11,7 +11,7 @@ public class ProductoDTO {
     private String sku;
     private Long categoryId; // ← ahora usamos ID
     private String description;
-    private BigDecimal price;
+    private BigDecimal purchasePrice;
     private Integer stock;
     private Long businessTypeId;
     private Long providerId;

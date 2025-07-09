@@ -1,18 +1,23 @@
 package com.mx.mitienda.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
 import java.math.BigDecimal;
 
 @Data
+@JsonInclude(JsonInclude.Include.NON_NULL)//Solo muestra campos NO nulos
 public class ProductoResponseDTO {
     private Long id;
     private String name;
     private String sku;
     private String description;
-    private BigDecimal price;
-    private Integer stock_quantity;
+    private BigDecimal purchasePrice;
+    private Long categoryId;
     private String categoryName;
+    private Long providerId;
     private String providerName;
+    private Long businessTypeId;
     private String bussinessTypeName;
+    private ProductoDetailResponseDTO productDetail;
 }

@@ -2,11 +2,14 @@ package com.mx.mitienda.service;
 
 
 import com.mx.mitienda.exception.NotFoundException;
+import com.mx.mitienda.mapper.UserMapper;
 import com.mx.mitienda.model.Usuario;
 import com.mx.mitienda.model.dto.UsuarioDTO;
+import com.mx.mitienda.model.dto.UsuarioResponseDTO;
 import com.mx.mitienda.repository.UsuarioRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -15,84 +18,99 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class UsuarioService implements UserDetailsService {
 
     private final UsuarioRepository usuarioRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final UserMapper usuarioMapper;
+    private final EntityManager entityManager;
 
-    public List<Usuario> getAll(){
-        return usuarioRepository.findAll();
+
+
+    public List<UsuarioResponseDTO> getAll() {
+        return usuarioRepository.findAll()
+                .stream()
+                .map(usuarioMapper::toResponse)
+                .collect(Collectors.toList());
     }
 
-    Optional<Usuario> findByEmail(String email) {
-        return usuarioRepository.findByEmail(email);
+    public UsuarioResponseDTO getById(Long id) {
+        Usuario usuario = usuarioRepository.findByIdAndActiveTrue(id)
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado con id: " + id));
+        return usuarioMapper.toResponse(usuario);
     }
 
-    public Usuario getById(Long id){
-        return usuarioRepository.findByIdAndActiveTrue(id).orElseThrow(()->new NotFoundException("Usuario no encontrado con id::: "+ id +" no encontrado"));
-    }
-
-    public Usuario save(Usuario usuario){
-            usuario.setActive(true);
-        return usuarioRepository.save(usuario);
-    }
-    public Usuario registerUser(Usuario usuario){
-        if(usuarioRepository.findByEmail(usuario.getEmail()).isPresent()){
-            throw new IllegalArgumentException("Email de usuario ya existe");
-        }
-        if(usuarioRepository.findByUsername(usuario.getUsername()).isPresent()){
-            throw new IllegalArgumentException("Nombre usuario ya existe");
-        }
-
-        usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
+    public UsuarioResponseDTO registerUser(UsuarioDTO dto) {
+        Usuario usuario = usuarioMapper.toEntity(dto);
         usuario.setActive(true);
-        return usuarioRepository.save(usuario);
+
+        Usuario saved = usuarioRepository.save(usuario);
+        return usuarioMapper.toResponse(saved);
+
+    }
+    @Transactional
+    public UsuarioResponseDTO updateUser(Long id, UsuarioDTO usuarioDTO) {
+        Usuario usuario = usuarioRepository.findById(id)
+            .orElseThrow(() -> new NotFoundException("Usuario no encontrado con id: " + id));
+
+        usuarioMapper.updateEntity(usuario, usuarioDTO);
+
+        usuarioRepository.save(usuario);
+
+        // 🚩 NO confíes en `refresh`. RECARGA explícito:
+        Usuario fresh = usuarioRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado después de actualizar"));
+
+        return usuarioMapper.toResponse(fresh);
     }
 
-    public Usuario getByUsernameActive(String username){
-        return usuarioRepository.findByUsernameAndActiveTrue(username).orElseThrow(()-> new UsernameNotFoundException("Usuario no encontrado::" + username));
-    }
-
-    public List<Usuario> listActive(String username){
-        return usuarioRepository.findByActiveTrue();
-    }
-
-    public List<Usuario> listInactive(String username){
-        return usuarioRepository.findByActiveFalse();
-    }
-
-    public void logicUserErase(Long id){
-        Usuario usuario = usuarioRepository.findById(id).orElseThrow(()-> new UsernameNotFoundException("Usuario con id no encontrado::" + id));
+    public void logicUserErase(Long id) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado con id: " + id));
         usuario.setActive(false);
         usuarioRepository.save(usuario);
     }
 
-    public Usuario findByEmailUser(String email){
-        return usuarioRepository.findByEmailAndActiveTrue(email);
+    public List<UsuarioResponseDTO> listActive() {
+        return usuarioRepository.findByActiveTrue()
+                .stream()
+                .map(usuarioMapper::toResponse)
+                .collect(Collectors.toList());
     }
 
-    public Usuario updateUser(Long id, UsuarioDTO usuarioDTO){
-        Usuario oldUser = usuarioRepository.findById(id).orElseThrow(()-> new UsernameNotFoundException("El usuario no se ha encontrado::" + usuarioDTO.getUsername()));
-        oldUser.setUsername(usuarioDTO.getUsername());
-        oldUser.setEmail(usuarioDTO.getEmail());
-        if(usuarioDTO.getPassword()!=null){
-            oldUser.setPassword(passwordEncoder.encode(usuarioDTO.getPassword()));
-        }
-        return usuarioRepository.save(oldUser);
+    public List<UsuarioResponseDTO> listInactive() {
+        return usuarioRepository.findByActiveFalse()
+                .stream()
+                .map(usuarioMapper::toResponse)
+                .collect(Collectors.toList());
     }
 
+    public UsuarioResponseDTO findByEmailUser(String email) {
+        Usuario usuario = usuarioRepository.findByEmailAndActiveTrue(email);
+        return usuarioMapper.toResponse(usuario);
+    }
 
-    @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+    public Optional<Usuario> findByEmail(String email) {
+        return usuarioRepository.findByEmail(email);
+    }
+
+    public UsuarioResponseDTO getByUsernameActive(String username) {
+        Usuario usuario = usuarioRepository.findByUsernameAndActiveTrue(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
+        return usuarioMapper.toResponse(usuario);
     }
 
     public Optional<Usuario> getByUsername(String username) {
         return usuarioRepository.findByUsername(username);
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        return usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + email));
     }
 
 }

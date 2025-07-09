@@ -36,7 +36,13 @@ public class CompraSpecBuilder {
         return this;
     }
 
+    public CompraSpecBuilder searchPerDayMonthYear(Integer day, Integer month, Integer year){
+        builder.and(CompraSpecification.searchByDayMonthYear(day, month, year));
+        return this;
+    }
+
     public Specification<Compra> build(){
         return builder.build();
     }
+
 }

@@ -2,9 +2,13 @@ package com.mx.mitienda.controller;
 
 import com.mx.mitienda.model.Usuario;
 import com.mx.mitienda.model.dto.UsuarioDTO;
+import com.mx.mitienda.model.dto.UsuarioResponseDTO;
 import com.mx.mitienda.service.UsuarioService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -15,26 +19,23 @@ import java.util.List;
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/usuarios")
+@RequiredArgsConstructor
 @Tag(name = "USUARIOS", description = "Operaciones relacionadas con usuarios")
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
 
-    public UsuarioController(UsuarioService usuarioService) {
-        this.usuarioService = usuarioService;
-    }
-
     @Tag(name = "USUARIOS GET ALL", description = "Obtener todos los usuarios")
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<Usuario>> getAll() {
+    public ResponseEntity<List<UsuarioResponseDTO>> getAll() {
         return ResponseEntity.ok(usuarioService.getAll());
     }
 
     @Tag(name = "USUARIOS GET BY ID", description = "Obtener un usuario por ID")
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Usuario> getById(@PathVariable Long id) {
+    public ResponseEntity<UsuarioResponseDTO> getById(@PathVariable Long id) {
         return ResponseEntity.ok(usuarioService.getById(id));
     }
 
@@ -49,7 +50,15 @@ public class UsuarioController {
     @Tag(name = "USUARIOS UPDATE", description = "Actualizar usuario con DTO limpio")
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Usuario> update(@PathVariable Long id, @RequestBody UsuarioDTO dto) {
-        return ResponseEntity.ok(usuarioService.updateUser(id, dto));
+    public ResponseEntity<UsuarioResponseDTO> update(@PathVariable Long id, @RequestBody UsuarioDTO usuarioDTO) {
+        return ResponseEntity.ok(usuarioService.updateUser(id, usuarioDTO));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
+        // Si usaras sesión tradicional:
+        request.getSession().invalidate();
+        // Con JWT, no hay nada que invalidar en servidor (a menos que guardes blacklist).
+        return ResponseEntity.ok("Logout successful");
     }
 }

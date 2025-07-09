@@ -5,6 +5,8 @@ import com.mx.mitienda.model.Producto;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
@@ -18,4 +20,11 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     Optional<Producto> findByIdAndActiveTrue(Long id);
     List<Producto> findAll(Specification<Producto> spec);
     List<Producto> findByActiveTrue(Sort sort);
+    @Query("""
+    SELECT DISTINCT p FROM Producto p
+    LEFT JOIN FETCH p.productDetail
+    WHERE p.id = :id AND p.active = true
+    ORDER BY p.id ASC
+""")
+    Optional<Producto> findAllActiveWithDetailOrderByIdAsc(@Param("id") Long id);
 }

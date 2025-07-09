@@ -23,4 +23,9 @@ public class Utils {
         return PUBLIC_PATHS.stream().anyMatch(path::startsWith);
     }
 
+    public static final String REFACCIONARIA_CODE = "REFACCIONARIA";
+    public static final String VENTA_CODE ="venta";
+    public static final String COMPRA_CODE = "compra";
+
+
 }

@@ -39,18 +39,13 @@ public class VentaSpecBuilder {
         return this;//al regresarlo se pueden seguir llamando metodos sobre VentaSpecBuilder
     }
 
-    public VentaSpecBuilder sellPerDay(Integer day){
-        builder.and(VentasSpecification.sellPerDay(day));
+    public VentaSpecBuilder sellPerDayMonthYear(Integer day, Integer month, Integer year){
+        builder.and(VentasSpecification.sellPerDayMonthYear(day, month, year));
         return this;//al regresarlo se pueden seguir llamando metodos sobre VentaSpecBuilder
     }
 
-    public VentaSpecBuilder sellPerMonth(Integer month){
-        builder.and(VentasSpecification.sellPerMoth(month));
-        return this;//al regresarlo se pueden seguir llamando metodos sobre VentaSpecBuilder
-    }
-
-    public VentaSpecBuilder sellPerYear(Integer year){
-        builder.and(VentasSpecification.sellPerYear(year));
+    public VentaSpecBuilder sellPerMonthYear(Integer month, Integer year){
+        builder.and(VentasSpecification.sellBetweenMonthAndYear(month, year));
         return this;//al regresarlo se pueden seguir llamando metodos sobre VentaSpecBuilder
     }
 
@@ -58,10 +53,16 @@ public class VentaSpecBuilder {
         builder.and(VentasSpecification.hasId(id));
         return this;//al regresarlo se pueden seguir llamando metodos sobre VentaSpecBuilder
     }
-    public VentaSpecBuilder userName(String username) {
+    public VentaSpecBuilder username(String username) {
         if (username != null && !username.isBlank()) {
             builder.and((root, query, cb) ->
-                    cb.equal(root.get("usuario").get("username"), username));
+                    cb.equal(root.get("username").get("username"), username));
+        }
+        return this;
+    }
+    public VentaSpecBuilder byPaymentMethod(Long methodId){
+        if(methodId!= null){
+            builder.and(VentasSpecification.byPaymentMethod(methodId));
         }
         return this;
     }
