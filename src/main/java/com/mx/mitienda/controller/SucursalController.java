@@ -58,4 +58,14 @@ public class SucursalController {
         return ResponseEntity.ok(iSucursal.findById(id));
     }
 
+    @GetMapping("/tipo-negocio/{businessTypeId}")
+    public ResponseEntity<List<SucursalResponseDTO>> getByBusinessType(@PathVariable Long businessTypeId) {
+        return ResponseEntity.ok(iSucursal.getByBusinessType(businessTypeId));
+    }
+
+    @PutMapping("/isCriticAlert/{sucursalId}")
+    public ResponseEntity<SucursalResponseDTO> isCriticAlert(@PathVariable Long sucursalId,  @RequestParam(required =false) Boolean isEnable) {
+        return ResponseEntity.ok(iSucursal.isStockCriticAlert(sucursalId, isEnable));
+    }
+
 }

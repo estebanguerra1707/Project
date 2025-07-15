@@ -3,12 +3,16 @@ package com.mx.mitienda.model;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 import java.math.BigDecimal;
 
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
-@Data
 public class DetalleCompra {
 
     @Id
@@ -18,10 +22,14 @@ public class DetalleCompra {
     @ManyToOne
     @JsonBackReference
     @JoinColumn(name = "purchase_id", foreignKey = @ForeignKey(name ="fk_detalle_compra"))
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     private Compra compra;
 
     @ManyToOne
     @JsonManagedReference
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     @JoinColumn(name = "product_id", foreignKey = @ForeignKey(name = "fk_detalle_producto"))
     private Producto product;
 

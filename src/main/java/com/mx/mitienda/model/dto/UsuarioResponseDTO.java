@@ -15,4 +15,6 @@ public class UsuarioResponseDTO {
     private Rol role;
     private String email;
     private boolean active;
+    private Long branchId;
+    private String branchName;
 }

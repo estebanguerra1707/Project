@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <title>Alerta de Stock Crítico</title>
+</head>
+<body>
+<p><strong>¡Atención!</strong></p>
+<p>El siguiente producto está por debajo del stock mínimo en la sucursal <strong th:text="${sucursal.name}">Sucursal</strong>:</p>
+
+        <p>Producto: <strong th:text="${producto.name}"></strong></p> —
+        <p>Stock actual: <strong th:text="${inventarioSucursal.stock}"></strong> </p>—
+        <p>Mínimo permitido: <strong th:text="${inventarioSucursal.minStock}"></strong></p>
+
+<p>Por favor, considere generar una nueva orden de compra para reabastecer este producto.</p>
+
+<p style="margin-top:20px;">Saludos,<br><strong>Mi Tienda</strong></p>
+</body>
+</html>

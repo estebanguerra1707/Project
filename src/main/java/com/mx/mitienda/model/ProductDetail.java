@@ -2,10 +2,13 @@ package com.mx.mitienda.model;
 
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
-@Data
 public class ProductDetail {
 
     @Id
@@ -15,6 +18,8 @@ public class ProductDetail {
     // Relación: cada detalle pertenece a UN producto
     @OneToOne
     @JoinColumn(name = "product_id", foreignKey = @ForeignKey(name = "fk_product_detail_product"))
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     private Producto product;
 
     private String partNumber;   // Número de parte

@@ -11,4 +11,7 @@ public interface ISucursalService {
     void disable(Long id);
     List<SucursalResponseDTO> findAll();
     SucursalResponseDTO findById(Long id);
+    List<SucursalResponseDTO> getByBusinessType(Long businessTypeId);
+    public SucursalResponseDTO isStockCriticAlert(Long sucursalId, Boolean estado);
+
 }

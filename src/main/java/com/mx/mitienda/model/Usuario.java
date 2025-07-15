@@ -2,21 +2,19 @@ package com.mx.mitienda.model;
 
 import com.mx.mitienda.util.enums.Rol;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.List;
-@Entity
-@Data
-@Builder
-@AllArgsConstructor
+@Getter
+@Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Builder
 public class Usuario  implements UserDetails {
 
     @Id
@@ -66,4 +64,10 @@ public class Usuario  implements UserDetails {
     public boolean isEnabled() {
         return this.active!=null && this.active;
     }
+
+    @ManyToOne
+    @JoinColumn(name = "branch_id", foreignKey = @ForeignKey(name = "fk_usuario_branch"))
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Sucursal branch;
 }

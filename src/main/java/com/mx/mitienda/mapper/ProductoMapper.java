@@ -48,7 +48,6 @@ public class ProductoMapper {
         producto.setDescription(productoDTO.getDescription());
         producto.setPurchasePrice(productoDTO.getPurchasePrice());
         producto.setActive(true);
-        producto.setBusinessType(businessType);
         producto.setProductCategory(category);
         producto.setProvider(proveedor);
 
@@ -62,12 +61,20 @@ public class ProductoMapper {
         response.setSku(producto.getSku());
         response.setDescription(producto.getDescription());
         response.setPurchasePrice(producto.getPurchasePrice());
-        response.setBusinessTypeId(producto.getBusinessType().getId());
-        response.setBussinessTypeName(producto.getBusinessType().getName());
         response.setCategoryId(producto.getProductCategory().getId());
         response.setCategoryName(producto.getProductCategory().getName());
         response.setProviderId(producto.getProvider().getId());
         response.setProviderName(producto.getProvider().getName());
+        response.setBusinessTypeId(
+                producto.getProductCategory() != null && producto.getProductCategory().getBusinessType() != null
+                        ? producto.getProductCategory().getBusinessType().getId()
+                        : null
+        );
+        response.setBussinessTypeName(
+                producto.getProductCategory() != null && producto.getProductCategory().getBusinessType() != null
+                        ? producto.getProductCategory().getBusinessType().getName()
+                        : null
+        );
         if (producto.getProductDetail() != null) {
             response.setProductDetail(productDetailMapper.toResponse(producto.getProductDetail()));
         }
@@ -86,11 +93,6 @@ public class ProductoMapper {
         }
         if (productoDTO.getPurchasePrice() != null) {
             existing.setPurchasePrice(productoDTO.getPurchasePrice());
-        }
-        if (productoDTO.getBusinessTypeId() != null) {
-            BusinessType bt = businessTypeRepository.findById(productoDTO.getBusinessTypeId())
-                    .orElseThrow(() -> new RuntimeException("BusinessType no encontrado"));
-            existing.setBusinessType(bt);
         }
         if (productoDTO.getCategoryId() != null) {
             ProductCategory cat = productCategoryRepository.findById(productoDTO.getCategoryId())

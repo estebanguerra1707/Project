@@ -27,4 +27,11 @@ public interface CompraRepository extends JpaRepository<Compra, JpaSpecification
     WHERE c.id = :id AND c.active = true
 """)
     Optional<Compra> findByIdWithDetails(Long id);
+
+    @Query("""
+        SELECT c FROM Compra c
+        JOIN c.branch b
+        WHERE b.id = :branchId AND b.businessType.id = :businessTypeId
+    """)
+    List<Compra> findByBranchAndBusinessType(Long branchId, Long businessTypeId);
 }

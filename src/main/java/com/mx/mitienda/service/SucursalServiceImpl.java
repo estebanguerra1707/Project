@@ -60,7 +60,21 @@ public class SucursalServiceImpl implements ISucursalService {
 
     @Override
     public SucursalResponseDTO findById(Long id) {
-        return sucursalMapper.toResponse(sucursalRepository.findById(id)
+        return sucursalMapper.toResponse(sucursalRepository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new NotFoundException("Sucursal no encontrada")));
+    }
+    @Override
+    public List<SucursalResponseDTO> getByBusinessType(Long businessTypeId) {
+        return sucursalRepository.findByBusinessType_Id(businessTypeId)
+                .stream()
+                .map(sucursalMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+    @Override
+    public SucursalResponseDTO isStockCriticAlert(Long sucursalId, Boolean estado) {
+        Sucursal sucursal = sucursalRepository.findById(sucursalId)
+                .orElseThrow(() -> new RuntimeException("Sucursal no encontrada"));
+        sucursal.setAlertaStockCritico(estado);
+       return sucursalMapper.toResponse(sucursalRepository.save(sucursal));
     }
 }

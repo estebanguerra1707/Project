@@ -35,6 +35,8 @@ public class UserMapper {
         usuarioResponseDTO.setUsername(usuario.getUsername());
         usuarioResponseDTO.setEmail(usuario.getEmail());
         usuarioResponseDTO.setActive(usuario.getActive());
+        usuarioResponseDTO.setBranchId(usuario.getBranch().getId());
+        usuarioResponseDTO.setBranchName(usuario.getBranch().getName());
         return usuarioResponseDTO;
     }
 

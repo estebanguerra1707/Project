@@ -4,6 +4,7 @@ import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.model.InventarioSucursal;
 import com.mx.mitienda.model.Producto;
 import com.mx.mitienda.model.Sucursal;
+import com.mx.mitienda.model.dto.InventarioAlertasDTO;
 import com.mx.mitienda.model.dto.InventarioSucursalRequestDTO;
 import com.mx.mitienda.model.dto.InventarioSucursalResponseDTO;
 import com.mx.mitienda.repository.ProductoRepository;
@@ -21,9 +22,16 @@ public class InventarioSucursalMapper {
     public InventarioSucursalResponseDTO toResponse(InventarioSucursal inventarioSucursal){
         InventarioSucursalResponseDTO inventarioSucursalResponseDTO = new InventarioSucursalResponseDTO();
         inventarioSucursalResponseDTO.setId(inventarioSucursal.getId());
+        inventarioSucursalResponseDTO.setBranchId(inventarioSucursal.getBranch().getId());
         inventarioSucursalResponseDTO.setBranchName(inventarioSucursal.getBranch().getName());
+        inventarioSucursalResponseDTO.setProductId(inventarioSucursal.getProduct().getId());
         inventarioSucursalResponseDTO.setProductName(inventarioSucursal.getProduct().getName());
-        inventarioSucursalResponseDTO.setQuantity(inventarioSucursal.getQuantity());
+        inventarioSucursalResponseDTO.setStock(inventarioSucursal.getStock());
+        inventarioSucursalResponseDTO.setMinStock(inventarioSucursal.getMinStock());
+        inventarioSucursalResponseDTO.setMaxStock(inventarioSucursal.getMaxStock());
+        inventarioSucursalResponseDTO.setSku(inventarioSucursal.getProduct().getSku());
+        inventarioSucursalResponseDTO.setLastUpdated(inventarioSucursal.getLastUpdatedDate());
+        inventarioSucursalResponseDTO.setUpdatedBy(inventarioSucursal.getLastUpdatedBy());
         return inventarioSucursalResponseDTO;
     }
 
@@ -38,7 +46,19 @@ public class InventarioSucursalMapper {
         InventarioSucursal inv = new InventarioSucursal();
         inv.setProduct(producto);
         inv.setBranch(sucursal);
-        inv.setQuantity(inventarioSucursalRequestDTO.getQuantity());
+        inv.setStock(inventarioSucursalRequestDTO.getQuantity());
         return inv;
+    }
+
+    public InventarioAlertasDTO toAlertDTO(InventarioSucursal inventarioSucursal){
+        InventarioAlertasDTO inventarioAlertasDTO = new InventarioAlertasDTO();
+        inventarioAlertasDTO.setId(inventarioSucursal.getId());
+        inventarioAlertasDTO.setProductName(inventarioSucursal.getProduct().getName());
+        inventarioAlertasDTO.setStock(inventarioSucursal.getStock());
+        inventarioAlertasDTO.setMinStock(inventarioSucursal.getMinStock());
+        inventarioAlertasDTO.setMaxStock(inventarioSucursal.getMaxStock());
+        inventarioAlertasDTO.setStockCritico(inventarioSucursal.getStockCritico());
+        inventarioAlertasDTO.setBranchName(inventarioSucursal.getBranch().getName());
+        return inventarioAlertasDTO;
     }
 }

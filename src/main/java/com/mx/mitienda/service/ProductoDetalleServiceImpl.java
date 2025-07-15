@@ -32,7 +32,7 @@ public class ProductoDetalleServiceImpl implements IProductDetailService{
             throw new IllegalArgumentException("Este producto ya tiene detalle técnico asignado.");
         }
 
-        String businessTypeCode = producto.getBusinessType().getCode();
+        String businessTypeCode = producto.getProductCategory().getBusinessType().getCode();
         if (!REFACCIONARIA_CODE.equalsIgnoreCase(businessTypeCode)) {
             throw new IllegalArgumentException("Solo los productos del tipo Refaccionaria pueden tener detalles técnicos.");
         }

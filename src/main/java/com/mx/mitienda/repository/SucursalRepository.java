@@ -11,4 +11,6 @@ public interface SucursalRepository extends JpaRepository<Sucursal, Long> {
     Optional<Sucursal> findByIdAndActiveTrue(Long id);
     List<Sucursal> findByActiveTrueOrderByIdAsc();
     boolean existsByNameIgnoreCaseAndAddressIgnoreCaseAndActiveTrue(String nombre, String direccion);
+    List<Sucursal> findByBusinessType_Id(Long businessTypeId);
+
 }

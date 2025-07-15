@@ -2,18 +2,17 @@ package com.mx.mitienda.model;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
-@Data
-@ToString(exclude = {"detailsList"})
-@EqualsAndHashCode(exclude = {"detailsList"})
 public class Venta {
 
     @Id
@@ -47,6 +46,8 @@ public class Venta {
 
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private List<DetalleVenta> detailsList;
 
     @ManyToOne

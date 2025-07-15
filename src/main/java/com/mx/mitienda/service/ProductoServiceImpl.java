@@ -2,39 +2,29 @@ package com.mx.mitienda.service;
 
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.mapper.ProductoMapper;
-import com.mx.mitienda.model.BusinessType;
-import com.mx.mitienda.model.ProductCategory;
 import com.mx.mitienda.model.Producto;
-import com.mx.mitienda.model.Proveedor;
 import com.mx.mitienda.model.dto.ProductoDTO;
 import com.mx.mitienda.model.dto.ProductoFiltroDTO;
 import com.mx.mitienda.model.dto.ProductoResponseDTO;
-import com.mx.mitienda.repository.BusinessTypeRepository;
-import com.mx.mitienda.repository.ProductCategoryRepository;
 import com.mx.mitienda.repository.ProductoRepository;
-import com.mx.mitienda.repository.ProveedorRepository;
 import com.mx.mitienda.util.ProductoSpecBuilder;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
-public class ProductoService {
+public class ProductoServiceImpl implements IProductoService {
 
     private final ProductoRepository productoRepository;
     private final ProductoMapper productoMapper;
-    private final ProductCategoryRepository categoryRepository;
-    private final BusinessTypeRepository businessTypeRepository;
-    private final ProveedorRepository proveedorRepository;
+    private final IAuthenticatedUserService authenticatedUserService;
 
     public List<ProductoResponseDTO> getAll() {
         Stream<Producto> stream = productoRepository.findByActiveTrue(Sort.by(Sort.Direction.ASC,"id")).stream();
@@ -80,6 +70,22 @@ public class ProductoService {
         return productoRepository.findAll(spec);
     }
 
+    @Override
+    public List<ProductoResponseDTO> findByBranchAndBusinessType(Long branchId, Long businessTypeId) {
+        return productoRepository.findByBranchAndBusinessType(branchId, businessTypeId)
+                .stream()
+                .map(productoMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+    @Override
+    public List<ProductoResponseDTO> findCurrentUserProductos() {
+        Long branchId = authenticatedUserService.getCurrentBranchId();
+        Long businessTypeId = authenticatedUserService.getCurrentBusinessTypeId();
 
+        return productoRepository.findByBranchAndBusinessType(branchId, businessTypeId)
+                .stream()
+                .map(productoMapper::toResponse)
+                .collect(Collectors.toList());
+    }
 
 }

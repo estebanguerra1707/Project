@@ -53,6 +53,11 @@ public class UsuarioController {
     public ResponseEntity<UsuarioResponseDTO> update(@PathVariable Long id, @RequestBody UsuarioDTO usuarioDTO) {
         return ResponseEntity.ok(usuarioService.updateUser(id, usuarioDTO));
     }
+    @GetMapping("/sucursal/{branchId}")
+    public ResponseEntity<List<UsuarioResponseDTO>> getBySucursal(@PathVariable Long branchId) {
+        return ResponseEntity.ok(usuarioService.getUsuariosBySucursal(branchId));
+    }
+
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {

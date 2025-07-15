@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @SecurityRequirement(name = "bearerAuth")
 @RestController
-@RequestMapping("pdf-sender/")
+@RequestMapping("/pdf-sender/")
 @RequiredArgsConstructor
 public class EnvioCorreoPdfController {
 
@@ -33,6 +33,7 @@ public class EnvioCorreoPdfController {
                 "<p>Adjunto encontrarás tu ticket de "+transactionType+".</p>",
                 pdfBytes,
                 transactionType + "_ticket.pdf");
+
         return ResponseEntity.ok("Correo enviado con PDF adjunto");
     }
 }

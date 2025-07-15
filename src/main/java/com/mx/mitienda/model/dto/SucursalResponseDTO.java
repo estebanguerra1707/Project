@@ -9,4 +9,6 @@ public class SucursalResponseDTO {
     private String address;
     private String phone;
     private Boolean active;
+    private Long businessTypeId;
+    private String businessTypeName;
 }

@@ -45,7 +45,8 @@ public class SecurityConfig {
                         .requestMatchers("/pdf/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
                         .requestMatchers("/pdf-sender/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
                         .requestMatchers("/reportes/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
-
+                        .requestMatchers("/historial/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
+                        .requestMatchers("/dashboard/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name())
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

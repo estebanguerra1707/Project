@@ -1,6 +1,5 @@
 package com.mx.mitienda.service;
 
-import com.lowagie.text.DocumentException;
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.exception.PdfGenerationException;
 import com.mx.mitienda.mapper.DetalleVentaMapper;
@@ -13,6 +12,7 @@ import com.mx.mitienda.model.dto.VentaResponseDTO;
 import com.mx.mitienda.repository.*;
 import com.mx.mitienda.util.VentaSpecBuilder;
 import com.mx.mitienda.util.enums.Rol;
+import com.mx.mitienda.util.enums.TipoMovimiento;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
@@ -24,29 +24,70 @@ import org.thymeleaf.context.Context;
 import org.xhtmlrenderer.pdf.ITextRenderer;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class VentaService {
+public class VentaServiceImpl implements IVentaService {
 
     private final VentaRepository ventaRepository;
     private final DetalleVentaRepository detalleVentaRepository;
     private final VentasMapper ventaMapper;
     private final DetalleVentaMapper detalleVentaMapper;
-    private final SucursalRepository sucursalRepository;
     private final TemplateEngine templateEngine;
-
+    private final IAuthenticatedUserService authenticatedUserService;
+    private final InventarioSucursalRepository inventarioSucursalRepository;
+    private final IHistorialMovimientosService historialMovimientosService;
+    private final IAlertaCorreoService alertaCorreoService;
 
     @Transactional //si falla o hay unea excepcion en cualquier lugar del metodo, se hace rollback de todo
     public VentaResponseDTO registerSell(VentaRequestDTO request, String username) {
         Venta venta = ventaMapper.toEntity(request, username);
+
+        Venta ventaGuardada = ventaRepository.save(venta);
+
+        for (DetalleVenta detalle : ventaGuardada.getDetailsList()) {
+            InventarioSucursal inventarioSucursal = inventarioSucursalRepository
+                    .findByProduct_IdAndBranch_Id(detalle.getProduct().getId(), ventaGuardada.getBranch().getId())
+                    .orElseThrow();
+
+            int stockAnterior = inventarioSucursal.getStock();
+            int stockNuevo = stockAnterior - detalle.getQuantity(); // fue salida
+            if (stockNuevo < 0) {
+                throw new IllegalArgumentException("No hay suficiente stock para vender: " + detalle.getProduct().getName());
+            }
+
+           if(stockNuevo <= inventarioSucursal.getMinStock()){
+               inventarioSucursal.setStockCritico(true);
+               if(inventarioSucursal.getBranch().getAlertaStockCritico()){
+                   alertaCorreoService.notificarStockCritico(inventarioSucursal);
+               }else{
+                   log.info(":::La sucursal no cuenta con notificaciones de stock critico enviadas por correo:::");
+               }
+           } else {
+               inventarioSucursal.setStockCritico(false);
+           }
+
+            inventarioSucursal.setStock(stockNuevo);
+            inventarioSucursalRepository.save(inventarioSucursal);
+
+            historialMovimientosService.registrarMovimiento(
+                    inventarioSucursal,
+                    TipoMovimiento.valueOf(TipoMovimiento.SALIDA.name()),
+                    detalle.getQuantity(),
+                    stockAnterior,
+                    stockNuevo,
+                    "Venta #" + ventaGuardada.getId()
+            );
+        }
+
+
         return ventaMapper.toResponse(ventaRepository.save(venta));
     }
 
@@ -122,6 +163,15 @@ public class VentaService {
         } catch (Exception e) {
             throw new PdfGenerationException("Error generando PDF de la venta", e);
         }
+    }
+    public List<VentaResponseDTO> findCurrentUserVentas() {
+        Long branchId = authenticatedUserService.getCurrentBranchId();
+        Long businessTypeId = authenticatedUserService.getCurrentBusinessTypeId();
+
+        return ventaRepository.findByBranchAndBusinessType(branchId, businessTypeId)
+                .stream()
+                .map(ventaMapper::toResponse)
+                .collect(Collectors.toList());
     }
 
 }

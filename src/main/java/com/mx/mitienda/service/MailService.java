@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import com.mailjet.client.MailjetClient;
@@ -68,4 +69,34 @@ public class MailService {
         }
     }
 
+    public void sendSimpleEmail(String from, String to, String subject, String body) {
+        try {
+            MailjetClient client = new MailjetClient(publicKey, privateKey);
+
+            JSONArray messages = new JSONArray();
+            JSONObject message = new JSONObject()
+                    .put(Emailv31.Message.FROM, new JSONObject()
+                            .put("Email", from)
+                            .put("Name", "Mi Tienda"))
+                    .put(Emailv31.Message.TO, new JSONArray()
+                            .put(new JSONObject()
+                                    .put("Email", to)))
+                    .put(Emailv31.Message.SUBJECT, subject)
+                    .put(Emailv31.Message.HTMLPART, body);
+
+            messages.put(message);
+
+
+            MailjetRequest request = new MailjetRequest(Emailv31.resource)
+                    .property(Emailv31.MESSAGES, messages);
+
+            MailjetResponse response = client.post(request);
+            System.out.println("Status: " + response.getStatus());
+            System.out.println("Data: " + response.getData());
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error enviando correo con Mailjet", e);
+        }
+
+    }
 }

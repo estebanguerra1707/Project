@@ -3,6 +3,7 @@ package com.mx.mitienda.controller;
 import com.mx.mitienda.model.dto.CompraResponseDTO;
 import com.mx.mitienda.model.dto.InventarioSucursalRequestDTO;
 import com.mx.mitienda.model.dto.InventarioSucursalResponseDTO;
+import com.mx.mitienda.model.dto.MovimientoStockDTO;
 import com.mx.mitienda.service.IInventarioSucursalService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,4 +46,18 @@ public class InventarioSucursalController {
         return ResponseEntity.ok(inventarioSucursalService.create(inventarioSucursalRequestDTO));
     }
 
+    @PostMapping("/aumentar")
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    public ResponseEntity<Void> aumentarStock(@RequestBody MovimientoStockDTO movimientoStockDTO){
+        inventarioSucursalService.aumentarStock(movimientoStockDTO.getProductId(), movimientoStockDTO.getCantidad());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/disminuir")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    public ResponseEntity<Void> disminuirStock(@RequestBody MovimientoStockDTO movimiento) {
+        inventarioSucursalService.disminuirStock(movimiento.getProductId(), movimiento.getCantidad());
+        return ResponseEntity.ok().build();
+    }
 }

@@ -26,9 +26,6 @@ public class UsuarioService implements UserDetailsService {
 
     private final UsuarioRepository usuarioRepository;
     private final UserMapper usuarioMapper;
-    private final EntityManager entityManager;
-
-
 
     public List<UsuarioResponseDTO> getAll() {
         return usuarioRepository.findAll()
@@ -111,6 +108,14 @@ public class UsuarioService implements UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         return usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + email));
+    }
+
+
+    public List<UsuarioResponseDTO> getUsuariosBySucursal(Long branchId) {
+        return usuarioRepository.findByBranchId(branchId)
+                .stream()
+                .map(usuarioMapper::toResponse)
+                .collect(Collectors.toList());
     }
 
 }

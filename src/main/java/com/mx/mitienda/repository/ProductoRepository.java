@@ -27,4 +27,11 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     ORDER BY p.id ASC
 """)
     Optional<Producto> findAllActiveWithDetailOrderByIdAsc(@Param("id") Long id);
+    @Query("""
+        SELECT p FROM Producto p
+        JOIN p.productCategory c
+        JOIN c.businessType bt
+        WHERE p.branch.id = :branchId AND bt.id = :businessTypeId
+    """)
+    List<Producto> findByBranchAndBusinessType(Long branchId, Long businessTypeId);
 }

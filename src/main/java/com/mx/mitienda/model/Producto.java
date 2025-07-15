@@ -2,15 +2,14 @@ package com.mx.mitienda.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-@Data
-@ToString(exclude = {"provider"})
-@EqualsAndHashCode(exclude = {"provider"})
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 public class Producto {
 	@Id
@@ -30,22 +29,30 @@ public class Producto {
 
 	@Column(name = "creation_date")
 	private LocalDateTime creationDate;
-	@ManyToOne
-	@JoinColumn(name = "business_type_id"
-	)
-	private BusinessType businessType;
 
 	@ManyToOne
 	@JsonBackReference
 	@JoinColumn(name = "category_id", foreignKey = @ForeignKey(name = "fk_product_category"))
+	@EqualsAndHashCode.Exclude
+	@ToString.Exclude
 	private ProductCategory productCategory;
 
 	@ManyToOne
 	@JsonBackReference
+
 	@JoinColumn(name = "provider_id", foreignKey = @ForeignKey(name = "fk_product_provider"))
+	@ToString.Exclude
+	@EqualsAndHashCode.Exclude
 	private Proveedor provider;
 
+	@ManyToOne
+	@JoinColumn(name = "branch_id")
+	private Sucursal branch;
+
+
 	@OneToOne(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+	@EqualsAndHashCode.Exclude
+	@ToString.Exclude
 	private ProductDetail productDetail;
 
 }
