@@ -1,6 +1,6 @@
 package com.mx.mitienda.controller;
 
-import com.mx.mitienda.model.dto.HistorialMovimientoResponseDTO;
+import com.mx.mitienda.model.dto.HistorialMovimientosResponseDTO;
 import com.mx.mitienda.service.IHistorialMovimientosService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +15,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(HistorialDeMovimientosController.class)
+@WebMvcTest(HistorialMovimientoController.class)
 class HistorialDeMovimientosControllerTest {
 
     @Autowired
@@ -27,7 +27,7 @@ class HistorialDeMovimientosControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void shouldReturnMovimientos() throws Exception {
-        HistorialMovimientoResponseDTO movimiento = new HistorialMovimientoResponseDTO();
+        HistorialMovimientosResponseDTO movimiento = new HistorialMovimientosResponseDTO();
         movimiento.setProductName("Producto 1");
 
         when(historialMovimientosService.findAllByBranch()).thenReturn(List.of(movimiento));

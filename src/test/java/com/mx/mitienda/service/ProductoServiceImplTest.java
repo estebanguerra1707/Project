@@ -4,7 +4,7 @@ import com.mx.mitienda.model.Producto;
 import com.mx.mitienda.repository.ProductoRepository;
 import com.mx.mitienda.mapper.ProductoMapper;
 import com.mx.mitienda.model.dto.ProductoResponseDTO;
-import com.mx.mitienda.service.impl.ProductoServiceImpl;
+import com.mx.mitienda.service.ProductoServiceImpl;
 import com.mx.mitienda.service.IAuthenticatedUserService;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +29,7 @@ class ProductoServiceImplTest {
         productoRepository = mock(ProductoRepository.class);
         productoMapper = mock(ProductoMapper.class);
         authenticatedUserService = mock(IAuthenticatedUserService.class);
-        productoService = new ProductoServiceImpl(productoRepository, productoMapper, authenticatedUserService, null);
+        productoService = new ProductoServiceImpl(productoRepository, productoMapper, authenticatedUserService, null,null, null);
     }
 
     @Test

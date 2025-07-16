@@ -13,6 +13,5 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     //Esto crea CRUD automático (findAll, save, deleteById, etc.) para la entidad Cliente.
     Optional<Cliente> findByIdAndActiveTrue(Long id);
     List<Cliente> findByActiveTrue();
-
     List<Cliente> findAll(Specification clienteDTO);
 }

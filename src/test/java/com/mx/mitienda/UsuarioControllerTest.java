@@ -1,11 +1,13 @@
-package com.mx.mitienda.controller;
+package com.mx.mitienda;
 
+import com.mx.mitienda.controller.UsuarioController;
 import com.mx.mitienda.model.dto.UsuarioResponseDTO;
-import com.mx.mitienda.service.IUsuarioService;
+import com.mx.mitienda.service.UsuarioService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -22,7 +24,7 @@ class UsuarioControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private IUsuarioService usuarioService;
+    private UsuarioService usuarioService;
 
     @Test
     @WithMockUser(roles = "ADMIN")

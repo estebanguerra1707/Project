@@ -1,6 +1,8 @@
-package com.mx.mitienda.controller;
+package com.mx.mitienda;
 
+import com.mx.mitienda.controller.DashBoardController;
 import com.mx.mitienda.model.dto.InventarioAlertasDTO;
+import com.mx.mitienda.model.dto.TopProductoDTO;
 import com.mx.mitienda.service.IDashboardService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +17,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(DashboardController.class)
+@WebMvcTest(DashBoardController.class)
 class DashboardControllerTest {
 
     @Autowired
@@ -30,7 +32,7 @@ class DashboardControllerTest {
         InventarioAlertasDTO alerta = new InventarioAlertasDTO();
         alerta.setProductName("Lápiz");
 
-        when(dashboardService.findCriticalStockItems()).thenReturn(List.of(alerta));
+        when(dashboardService.getTopProductos(null, null, null)).thenReturn((List<TopProductoDTO>) alerta);
 
         mockMvc.perform(get("/dashboard/stock-critico"))
                 .andExpect(status().isOk())

@@ -1,6 +1,6 @@
 package com.mx.mitienda;
 
-import com.mx.mitienda.service.PasswordResetService;
+import com.mx.mitienda.service.PasswordResetServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,10 +13,10 @@ import static org.junit.jupiter.api.Assertions.*;
 public class PasswordRecoveryIntegrationTest {
 
     @Autowired
-    private PasswordResetService passwordResetService;
+    private PasswordResetServiceImpl passwordResetService;
 
     @Test
     void shouldSendResetTokenEmail() {
-        assertDoesNotThrow(() -> passwordResetService.initiatePasswordReset("admin@example.com"));
+        assertDoesNotThrow(() -> passwordResetService.createToken("admin@example.com"));
     }
 }

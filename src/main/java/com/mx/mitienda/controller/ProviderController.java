@@ -1,9 +1,8 @@
 package com.mx.mitienda.controller;
 
-import com.mx.mitienda.model.Proveedor;
 import com.mx.mitienda.model.dto.ProveedorDTO;
 import com.mx.mitienda.model.dto.ProveedorResponseDTO;
-import com.mx.mitienda.service.ProveedorService;
+import com.mx.mitienda.service.ProveedorServiceImpl;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,9 +15,9 @@ import java.util.List;
 @RequestMapping("/proveedores")
 public class ProviderController {
 
-    private final ProveedorService proveedorService;
+    private final ProveedorServiceImpl proveedorService;
 
-    public ProviderController(ProveedorService ProveedorService) {
+    public ProviderController(ProveedorServiceImpl ProveedorService) {
         this.proveedorService = ProveedorService;
     }
     @Tag(name = "PROVIDER SAVE", description = "Operaciones relacionadas con SAVE PROVIDER")

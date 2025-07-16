@@ -35,7 +35,7 @@ class VentaServiceImplTest {
         VentaResponseDTO responseDTO = new VentaResponseDTO();
         responseDTO.setId(1L);
 
-        when(ventaRepository.findByIdWithDetails(1L)).thenReturn(Optional.of(venta));
+        when(ventaRepository.findByIdAndActiveTrue(1L)).thenReturn(Optional.of(venta));
         when(ventasMapper.toResponse(venta)).thenReturn(responseDTO);
 
         VentaResponseDTO result = ventaService.getById(1L);
@@ -45,7 +45,7 @@ class VentaServiceImplTest {
 
     @Test
     void shouldThrowExceptionWhenVentaNotFound() {
-        when(ventaRepository.findByIdWithDetails(99L)).thenReturn(Optional.empty());
+        when(ventaRepository.findByIdAndActiveTrue(99L)).thenReturn(Optional.empty());
         assertThrows(RuntimeException.class, () -> ventaService.getById(99L));
     }
 }

@@ -1,9 +1,10 @@
-package com.mx.mitienda.service;
+package com.mx.mitienda;
 
 import com.mx.mitienda.mapper.CompraMapper;
 import com.mx.mitienda.model.Compra;
 import com.mx.mitienda.model.dto.CompraResponseDTO;
 import com.mx.mitienda.repository.CompraRepository;
+import com.mx.mitienda.service.CompraServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;

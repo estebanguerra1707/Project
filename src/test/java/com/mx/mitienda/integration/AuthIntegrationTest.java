@@ -1,7 +1,7 @@
 package com.mx.mitienda.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mx.mitienda.model.dto.LoginDTO;
+import com.mx.mitienda.model.dto.LoginRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,14 +21,14 @@ public class AuthIntegrationTest {
 
     @Test
     void loginEndpointShouldReturnToken() {
-        LoginDTO login = new LoginDTO();
+        LoginRequest login = new LoginRequest();
         login.setEmail("admin@example.com");
         login.setPassword("1234");
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        HttpEntity<LoginDTO> request = new HttpEntity<>(login, headers);
+        HttpEntity<LoginRequest> request = new HttpEntity<>(login, headers);
 
         ResponseEntity<String> response = restTemplate.postForEntity("/auth/login", request, String.class);
         assertEquals(HttpStatus.OK, response.getStatusCode());

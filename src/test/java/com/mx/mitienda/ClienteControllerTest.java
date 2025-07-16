@@ -1,8 +1,9 @@
-package com.mx.mitienda.controller;
+package com.mx.mitienda;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mx.mitienda.controller.ClienteController;
 import com.mx.mitienda.model.dto.ClienteResponseDTO;
-import com.mx.mitienda.service.IClienteService;
+import com.mx.mitienda.service.ClienteServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -24,7 +25,7 @@ class ClienteControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private IClienteService clienteService;
+    private ClienteServiceImpl clienteService;
 
     @Autowired
     private ObjectMapper objectMapper;

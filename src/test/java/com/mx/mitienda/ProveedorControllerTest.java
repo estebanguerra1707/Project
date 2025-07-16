@@ -1,6 +1,7 @@
-package com.mx.mitienda.controller;
+package com.mx.mitienda;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mx.mitienda.controller.ProviderController;
 import com.mx.mitienda.model.dto.ProveedorResponseDTO;
 import com.mx.mitienda.service.IProveedorService;
 import org.junit.jupiter.api.Test;
@@ -17,7 +18,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(ProveedorController.class)
+@WebMvcTest(ProviderController.class)
 class ProveedorControllerTest {
 
     @Autowired

@@ -1,19 +1,21 @@
-package com.mx.mitienda.controller;
+package com.mx.mitienda;
 
+import com.mx.mitienda.controller.SucursalController;
 import com.mx.mitienda.model.dto.SucursalResponseDTO;
 import com.mx.mitienda.service.ISucursalService;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 import java.util.List;
 
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(SucursalController.class)
 class SucursalControllerTest {
@@ -31,10 +33,10 @@ class SucursalControllerTest {
         sucursal.setId(1L);
         sucursal.setName("Sucursal Centro");
 
-        when(sucursalService.getAll()).thenReturn(List.of(sucursal));
+        Mockito.when(sucursalService.getByBusinessType(1l)).thenReturn(List.of(sucursal));
 
-        mockMvc.perform(get("/sucursales"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Sucursal Centro"));
+        mockMvc.perform(MockMvcRequestBuilders.get("/sucursales"))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].name").value("Sucursal Centro"));
     }
 }

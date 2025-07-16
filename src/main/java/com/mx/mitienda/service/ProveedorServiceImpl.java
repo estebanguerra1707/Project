@@ -8,7 +8,6 @@ import com.mx.mitienda.model.dto.ProveedorDTO;
 import com.mx.mitienda.model.dto.ProveedorResponseDTO;
 import com.mx.mitienda.repository.ProveedorRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
@@ -18,23 +17,25 @@ import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
-public class ProveedorService {
+public class ProveedorServiceImpl implements IProveedorService{
 
 
     private final ProveedorRepository proveedorRepository;
     private final ProveedorMapper proveedorMapper;
 
-
+   @Override
     public List<ProveedorResponseDTO> getAll(){
         Stream<Proveedor> stream = proveedorRepository.findByActiveTrue(Sort.by(Sort.Direction.ASC,"id")).stream();
         return stream.map(proveedorMapper::toResponse).collect(Collectors.toList());
     }
 
+    @Override
     public ProveedorResponseDTO getById(Long id){
         Proveedor proveedor= proveedorRepository.findByIdAndActiveTrue(id).orElseThrow(()-> new NotFoundException("Proveedor con id :::" +id + " no encontrado"));
         return proveedorMapper.toResponse(proveedor);
     }
 
+    @Override
     public ProveedorResponseDTO save(ProveedorDTO proveedorDTO){
         proveedorRepository.findByEmailAndNameAndActiveTrue(proveedorDTO.getEmail(), proveedorDTO.getName())
                 .ifPresent(p-> {throw new DuplicateProveedorException("Proveedor ya existe con ese correo y nombre, intenta con otro");
@@ -44,6 +45,7 @@ public class ProveedorService {
         return proveedorMapper.toResponse(saved);
     }
 
+    @Override
     public ProveedorResponseDTO update(Long id, ProveedorDTO proveedorDTO) {
 
         Proveedor existing = proveedorRepository.findByIdAndActiveTrue(id).orElseThrow(()-> new NotFoundException("Proveedor con Id no encontrado"));
@@ -61,12 +63,11 @@ public class ProveedorService {
         return proveedorMapper.toResponse(saved);
     }
 
+    @Override
     public void disable(Long id) {
         Proveedor proveedor = proveedorRepository.findByIdAndActiveTrue(id).orElseThrow(()-> new NotFoundException("Proveedor con Id no encontrado"));
         proveedor.setActive(false);
         proveedorRepository.save(proveedor);
     }
-
-
 
 }

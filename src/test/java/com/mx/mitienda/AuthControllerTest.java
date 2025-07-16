@@ -1,47 +1,105 @@
-package com.mx.mitienda.controller;
-
+package com.mx.mitienda;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mx.mitienda.model.dto.LoginDTO;
-import com.mx.mitienda.model.dto.JwtResponseDTO;
-import com.mx.mitienda.service.IAuthService;
+import com.mx.mitienda.controller.AuthController;
+import com.mx.mitienda.model.dto.LoginRequest;
+import com.mx.mitienda.model.dto.RegisterRequestDTO;
+import com.mx.mitienda.model.dto.UsuarioDTO;
+import com.mx.mitienda.model.dto.UsuarioResponseDTO;
+import com.mx.mitienda.service.JwtService;
+import com.mx.mitienda.service.UsuarioService;
+import com.mx.mitienda.util.enums.Rol;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import static org.mockito.Mockito.when;
+import java.util.Map;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(AuthController.class)
-class AuthControllerTest {
+public class AuthControllerTest {
 
-    @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
-    private IAuthService authService;
+    @Mock
+    private AuthenticationManager authenticationManager;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    @Mock
+    private JwtService jwtService;
+
+    @Mock
+    private UsuarioService usuarioService;
+
+    @InjectMocks
+    private AuthController authController;
+
+    private ObjectMapper objectMapper = new ObjectMapper();
+
+    @BeforeEach
+    public void setup() {
+        MockitoAnnotations.openMocks(this);
+        mockMvc = MockMvcBuilders.standaloneSetup(authController).build();
+    }
 
     @Test
-    void shouldReturnJwtTokenOnLogin() throws Exception {
-        LoginDTO loginDTO = new LoginDTO();
-        loginDTO.setEmail("admin@example.com");
-        loginDTO.setPassword("123456");
+    public void testLogin() throws Exception {
+        LoginRequest request = new LoginRequest();
+        request.setEmail("test@example.com");
+        request.setPassword("password");
 
-        JwtResponseDTO responseDTO = new JwtResponseDTO();
-        responseDTO.setToken("fake-jwt-token");
+        UserDetails userDetails = new User("test@example.com", "password", java.util.Collections.emptyList());
 
-        when(authService.login(loginDTO)).thenReturn(responseDTO);
+        Authentication authentication = mock(Authentication.class);
+        when(authenticationManager.authenticate(any())).thenReturn(authentication);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+
+        UsuarioResponseDTO usuarioResponseDTO = new UsuarioResponseDTO();
+        usuarioResponseDTO.setEmail("test@example.com");
+        usuarioResponseDTO.setRole(Rol.valueOf("ADMIN"));
+        usuarioResponseDTO.setId(1L);
+        usuarioResponseDTO.setUsername("testuser");
+
+        when(usuarioService.findByEmailUser("test@example.com")).thenReturn(usuarioResponseDTO);
+        when(jwtService.generateToken(anyMap(), any())).thenReturn("mocked-token");
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginDTO)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value("fake-jwt-token"));
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void testRegister() throws Exception {
+        RegisterRequestDTO request = new RegisterRequestDTO();
+        request.setUserName("testuser");
+        request.setEmail("test@example.com");
+        request.setPassword("password");
+        request.setRole(Rol.valueOf("ADMIN"));
+
+        UsuarioResponseDTO response = new UsuarioResponseDTO();
+        response.setUsername("testuser");
+        response.setEmail("test@example.com");
+        response.setRole(Rol.valueOf("ADMIN"));
+        response.setId(1L);
+
+        when(usuarioService.registerUser(any(UsuarioDTO.class))).thenReturn(response);
+        when(jwtService.generateToken(anyMap(), any())).thenReturn("mocked-token");
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
     }
 }

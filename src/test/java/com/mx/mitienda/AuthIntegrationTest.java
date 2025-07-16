@@ -1,10 +1,11 @@
 package com.mx.mitienda;
 
 import com.mx.mitienda.model.dto.LoginRequest;
-import com.mx.mitienda.service.AuthService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.core.Authentication;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -14,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class AuthIntegrationTest {
 
     @Autowired
-    private AuthService authService;
+    private AuthenticationManager authService;
 
     @Test
     void shouldAuthenticateSuccessfully() {
@@ -22,6 +23,6 @@ public class AuthIntegrationTest {
         loginRequest.setEmail("admin@example.com");
         loginRequest.setPassword("123456"); // Asume que está hasheado o se mockea
 
-        assertDoesNotThrow(() -> authService.authenticate(loginRequest));
+        assertDoesNotThrow(() -> authService.authenticate((Authentication) loginRequest));
     }
 }

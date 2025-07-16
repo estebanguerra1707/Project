@@ -2,7 +2,8 @@ package com.mx.mitienda;
 
 import com.mx.mitienda.model.dto.DetalleVentaRequestDTO;
 import com.mx.mitienda.model.dto.VentaRequestDTO;
-import com.mx.mitienda.model.entity.Venta;
+import com.mx.mitienda.model.Venta;
+import com.mx.mitienda.model.dto.VentaResponseDTO;
 import com.mx.mitienda.repository.VentaRepository;
 import com.mx.mitienda.service.IVentaService;
 import org.junit.jupiter.api.Test;
@@ -40,9 +41,9 @@ public class VentaIntegrationTest {
         detalle.setQuantity(2);
         request.setDetails(List.of(detalle));
 
-        Venta venta = ventaService.save(request, "admin@example.com");
+        VentaResponseDTO venta = ventaService.registerSell(request, "admin@example.com");
 
         assertNotNull(venta.getId());
-        assertEquals(1, venta.getDetailsList().size());
+        assertEquals(1, venta.getDetails().size());
     }
 }

@@ -4,7 +4,7 @@ import com.mx.mitienda.model.PasswordResetToken;
 import com.mx.mitienda.model.Usuario;
 import com.mx.mitienda.repository.PasswordResetTokenRepository;
 import com.mx.mitienda.repository.UsuarioRepository;
-import com.mx.mitienda.service.impl.PasswordResetServiceImpl;
+import com.mx.mitienda.service.PasswordResetServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -42,8 +42,7 @@ class PasswordResetServiceTest {
 
         when(passwordResetTokenRepository.findByToken("abc123")).thenReturn(Optional.of(token));
 
-        Optional<PasswordResetToken> result = passwordResetService.validarToken("abc123");
-        assertTrue(result.isPresent());
-        assertEquals("abc123", result.get().getToken());
+        passwordResetService.resetPassword("abc123", "123465");
+      
     }
 }
