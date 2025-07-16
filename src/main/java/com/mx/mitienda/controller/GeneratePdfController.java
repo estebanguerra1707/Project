@@ -19,7 +19,7 @@ public class GeneratePdfController {
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
     public ResponseEntity<byte[]> generarPdf(
             @PathVariable String type,
-            @PathVariable Long id,   @RequestParam(defaultValue = "false") boolean isPrinted) {
+            @PathVariable Long id,   @RequestParam(defaultValue = "false") Boolean isPrinted) {
         byte[] pdf = generatePdfService.generatePdf(type, id, isPrinted);
         return ResponseEntity.ok()
                 .header("Content-Type", "application/pdf")

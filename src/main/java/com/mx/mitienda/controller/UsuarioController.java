@@ -1,9 +1,10 @@
 package com.mx.mitienda.controller;
 
 import com.mx.mitienda.model.Usuario;
-import com.mx.mitienda.model.dto.UsuarioDTO;
-import com.mx.mitienda.model.dto.UsuarioResponseDTO;
+import com.mx.mitienda.model.dto.*;
+import com.mx.mitienda.service.IPasswordResetService;
 import com.mx.mitienda.service.UsuarioService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,6 +25,15 @@ import java.util.List;
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
+    private final IPasswordResetService passwordResetService;
+
+
+    @Operation(summary = "Registrar nuevo usuario")
+    @PostMapping("/register")
+    public ResponseEntity<String> register(@RequestBody UsuarioDTO usuarioRegisterDTO) {
+        usuarioService.registerUser(usuarioRegisterDTO);
+        return ResponseEntity.ok("Usuario registrado correctamente");
+    }
 
     @Tag(name = "USUARIOS GET ALL", description = "Obtener todos los usuarios")
     @GetMapping
@@ -66,4 +76,19 @@ public class UsuarioController {
         // Con JWT, no hay nada que invalidar en servidor (a menos que guardes blacklist).
         return ResponseEntity.ok("Logout successful");
     }
+
+    @Operation(summary = "Enviar enlace de recuperación")
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@RequestBody EmailDTO emailDTO) {
+        passwordResetService.createToken(emailDTO.getEmail());
+        return ResponseEntity.ok("Se ha enviado el enlace para restablecer la contraseña");
+    }
+
+    @Operation(summary = "Restablecer contraseña con token")
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestBody ResetPasswordDTO dto) {
+        passwordResetService.resetPassword(dto.getToken(), dto.getNewPassword());
+        return ResponseEntity.ok("Contraseña actualizada correctamente");
+    }
+
 }

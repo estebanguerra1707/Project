@@ -27,6 +27,9 @@ public class MailService {
     private String privateKey;
     private final JavaMailSender mailSender;
 
+    @Value("${alertas.stock.email.origen}")
+    private String origen;
+
 
     public void sendPDFEmail(List<String> emailList, String toName, String subject, String htmlBody, byte[] pdfBytes, String filename) {
         try {
@@ -39,7 +42,7 @@ public class MailService {
             for (String email : emailList) {
                 JSONObject message = new JSONObject()
                         .put(Emailv31.Message.FROM, new JSONObject()
-                                .put("Email", "esguerra0717@gmail.com")
+                                .put("Email", origen)
                                 .put("Name", "Mi Tienda"))
                         .put(Emailv31.Message.TO, new JSONArray()
                                 .put(new JSONObject()
@@ -98,5 +101,35 @@ public class MailService {
             throw new RuntimeException("Error enviando correo con Mailjet", e);
         }
 
+    }
+
+    public void sendEmail(String email, String restableceTuContraseña, String body) {
+        try {
+            MailjetClient client = new MailjetClient(publicKey, privateKey);
+
+            JSONArray messages = new JSONArray();
+            JSONObject message = new JSONObject()
+                    .put(Emailv31.Message.FROM, new JSONObject()
+                            .put("Email", origen)
+                            .put("Name", "Mi Tienda"))
+                    .put(Emailv31.Message.TO, new JSONArray()
+                            .put(new JSONObject()
+                                    .put("Email", email)))
+                    .put(Emailv31.Message.SUBJECT, restableceTuContraseña)
+                    .put(Emailv31.Message.HTMLPART, body);
+
+            messages.put(message);
+
+
+            MailjetRequest request = new MailjetRequest(Emailv31.resource)
+                    .property(Emailv31.MESSAGES, messages);
+
+            MailjetResponse response = client.post(request);
+            System.out.println("Status: " + response.getStatus());
+            System.out.println("Data: " + response.getData());
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error enviando correo con Mailjet", e);
+        }
     }
 }

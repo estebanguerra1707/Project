@@ -42,8 +42,6 @@ public class UsuarioService implements UserDetailsService {
 
     public UsuarioResponseDTO registerUser(UsuarioDTO dto) {
         Usuario usuario = usuarioMapper.toEntity(dto);
-        usuario.setActive(true);
-
         Usuario saved = usuarioRepository.save(usuario);
         return usuarioMapper.toResponse(saved);
 

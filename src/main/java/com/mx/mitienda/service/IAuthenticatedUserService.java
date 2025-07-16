@@ -8,4 +8,5 @@ public interface IAuthenticatedUserService {
     Sucursal getCurrentBranch();
     Long getCurrentBranchId();
     Long getCurrentBusinessTypeId();
+    public Long getBusinessTypeIdFromSession();
 }

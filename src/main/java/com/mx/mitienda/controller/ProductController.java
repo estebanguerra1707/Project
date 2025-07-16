@@ -28,18 +28,20 @@ public class ProductController {
     public ResponseEntity<ProductoResponseDTO> save(@RequestBody ProductoDTO product) {
         return ResponseEntity.ok(productService.save(product));
     }
-    @Tag(name = "PRODUCT GET ALL", description = "Operaciones relacionadas con GET ALL PRODUCTS")
-    @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
-    public ResponseEntity<List<ProductoResponseDTO>> getProducts() {
-        return ResponseEntity.ok(productService.findCurrentUserProductos());
-    }
+
 
     @Tag(name = "PRODUCT GET BY ID", description = "Operaciones relacionadas con GET BY ID PRODUCT")
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
     public ResponseEntity<ProductoResponseDTO> getById(@PathVariable Long id) {
         return ResponseEntity.ok(productService.getById(id));
+    }
+
+    @Tag(name = "PRODUCT GET ALL", description = "Operaciones relacionadas con GET ALL PRODUCTS")
+    @GetMapping
+    public ResponseEntity<List<ProductoResponseDTO>> listarPorTipoDeNegocioDelUsuario() {
+        List<ProductoResponseDTO> productos = productService.getAll();
+        return ResponseEntity.ok(productos);
     }
 
     @Tag(name = "PRODUCT UPDATE", description = "Operaciones relacionadas con UPDATE PRODUCT")
@@ -56,11 +58,5 @@ public class ProductController {
         productService.disableProduct(id);
     }
 
-    @GetMapping("/sucursal/{branchId}/tipo-negocio/{businessTypeId}")
-    public ResponseEntity<List<ProductoResponseDTO>> getBySucursalAndTipo(
-            @PathVariable Long branchId,
-            @PathVariable Long businessTypeId
-    ) {
-        return ResponseEntity.ok(productService.findByBranchAndBusinessType(branchId, businessTypeId));
-    }
+
 }

@@ -39,11 +39,13 @@ public class ProductCategoryController {
     }
 
     @GetMapping("/business-type/{businessTypeId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ProductCategoryResponseDTO>> getCategoriesByBusinessType(@PathVariable Long businessTypeId) {
         return ResponseEntity.ok(categoryService.getByBusinessType(businessTypeId));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
     public ResponseEntity<ProductCategoryResponseDTO> getCategoryById(@PathVariable Long id) {
         return ResponseEntity.ok(categoryService.getById(id));
     }
@@ -52,6 +54,12 @@ public class ProductCategoryController {
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
     public ResponseEntity<ProductCategoryResponseDTO>  update(@PathVariable Long id, @RequestBody ProductCategoryDTO productCategoryDTO) {
         return ResponseEntity.ok(categoryService.update(id, productCategoryDTO));
+    }
+
+    @GetMapping("/actual")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    public ResponseEntity<List<ProductCategoryResponseDTO>> getCategoriasActuales() {
+        return ResponseEntity.ok(categoryService.getByCurrentUserBusinessType());
     }
 
 

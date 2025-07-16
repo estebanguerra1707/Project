@@ -2,13 +2,20 @@ package com.mx.mitienda.service;
 
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.mapper.ProductoMapper;
+import com.mx.mitienda.model.BusinessType;
 import com.mx.mitienda.model.Producto;
+import com.mx.mitienda.model.Sucursal;
+import com.mx.mitienda.model.Usuario;
 import com.mx.mitienda.model.dto.ProductoDTO;
 import com.mx.mitienda.model.dto.ProductoFiltroDTO;
 import com.mx.mitienda.model.dto.ProductoResponseDTO;
+import com.mx.mitienda.repository.BusinessTypeRepository;
 import com.mx.mitienda.repository.ProductoRepository;
+import com.mx.mitienda.repository.SucursalRepository;
+import com.mx.mitienda.repository.UsuarioRepository;
 import com.mx.mitienda.util.ProductoSpecBuilder;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -16,8 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProductoServiceImpl implements IProductoService {
@@ -25,10 +32,27 @@ public class ProductoServiceImpl implements IProductoService {
     private final ProductoRepository productoRepository;
     private final ProductoMapper productoMapper;
     private final IAuthenticatedUserService authenticatedUserService;
+    private final UsuarioRepository usuarioRepository;
+    private final SucursalRepository sucursalRepository;
+    private final BusinessTypeRepository businessTypeRepository;
 
     public List<ProductoResponseDTO> getAll() {
-        Stream<Producto> stream = productoRepository.findByActiveTrue(Sort.by(Sort.Direction.ASC,"id")).stream();
-        return stream.map(productoMapper::toResponse).collect(Collectors.toList());
+        Long branchId = authenticatedUserService.getCurrentBranchId();
+        log.info("BRANCH DEL USUARIO::" + branchId);
+        Long businessTypeId = authenticatedUserService.getBusinessTypeIdFromSession();
+        log.info("NEGOCIO DEL USUARIO::" + businessTypeId);
+        Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(branchId).orElseThrow(()-> new NotFoundException("No se ha encontado la sucursal"));
+        BusinessType businessType = businessTypeRepository.findByIdAndActiveTrue(businessTypeId).orElseThrow(()-> new NotFoundException("No se ha encontrado el tipo de negocio"));
+        List<Producto> productos = productoRepository.findByBranchAndBusinessType(branchId, businessTypeId);
+        if (productos.isEmpty()) {
+            throw new NotFoundException(String.format(
+                    "No hay productos disponibles para la sucursal '%s' con tipo de negocio '%s'",
+                    sucursal.getName(),
+                    businessType.getName()));
+        }
+        return productos.stream()
+                .map(productoMapper::toResponse)
+                .collect(Collectors.toList());
     }
 
     public ProductoResponseDTO getById(Long id){
@@ -70,22 +94,12 @@ public class ProductoServiceImpl implements IProductoService {
         return productoRepository.findAll(spec);
     }
 
-    @Override
-    public List<ProductoResponseDTO> findByBranchAndBusinessType(Long branchId, Long businessTypeId) {
-        return productoRepository.findByBranchAndBusinessType(branchId, businessTypeId)
-                .stream()
-                .map(productoMapper::toResponse)
-                .collect(Collectors.toList());
-    }
-    @Override
-    public List<ProductoResponseDTO> findCurrentUserProductos() {
-        Long branchId = authenticatedUserService.getCurrentBranchId();
-        Long businessTypeId = authenticatedUserService.getCurrentBusinessTypeId();
 
-        return productoRepository.findByBranchAndBusinessType(branchId, businessTypeId)
-                .stream()
-                .map(productoMapper::toResponse)
-                .collect(Collectors.toList());
+    private Long getBusinessTypeIdFromSession() {
+        String email = authenticatedUserService.getCurrentUser().getEmail();
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
+        return usuario.getBranch().getBusinessType().getId();
     }
 
 }

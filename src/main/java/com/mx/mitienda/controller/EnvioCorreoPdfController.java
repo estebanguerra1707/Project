@@ -25,7 +25,7 @@ public class EnvioCorreoPdfController {
     @Tag(name = " ENVIO DE CORREO", description = "Operaciones relacionadas con ENVIO DE CORREO")
 
     public ResponseEntity<String> sendTransactionPdfByEmail(@PathVariable Long id, @PathVariable String transactionType,
-                                                            @RequestBody EnvioCorreoDTO envioCorreoDTO, @RequestParam(defaultValue = "false") boolean isPrinted) throws MailjetException {
+                                                            @RequestBody EnvioCorreoDTO envioCorreoDTO, @RequestParam(defaultValue = "false") Boolean isPrinted) throws MailjetException {
         byte[] pdfBytes = generatePdfService.generatePdf(transactionType, id, isPrinted);
 
         mailService.sendPDFEmail(envioCorreoDTO.getEmailList(),"Cliente",

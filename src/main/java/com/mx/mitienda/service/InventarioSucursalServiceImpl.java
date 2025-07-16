@@ -2,12 +2,16 @@ package com.mx.mitienda.service;
 
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.mapper.InventarioSucursalMapper;
+import com.mx.mitienda.model.BusinessType;
 import com.mx.mitienda.model.InventarioSucursal;
+import com.mx.mitienda.model.Sucursal;
 import com.mx.mitienda.model.dto.InventarioAlertaFiltroDTO;
 import com.mx.mitienda.model.dto.InventarioAlertasDTO;
 import com.mx.mitienda.model.dto.InventarioSucursalRequestDTO;
 import com.mx.mitienda.model.dto.InventarioSucursalResponseDTO;
+import com.mx.mitienda.repository.BusinessTypeRepository;
 import com.mx.mitienda.repository.InventarioSucursalRepository;
+import com.mx.mitienda.repository.SucursalRepository;
 import com.mx.mitienda.specification.InventarioSucursalSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,6 +30,8 @@ public class InventarioSucursalServiceImpl  implements IInventarioSucursalServic
     private final InventarioSucursalRepository inventarioSucursalRepository;
     private final InventarioSucursalMapper inventarioSucursalMapper;
     private final AuthenticatedUserServiceImpl authenticatedUserService;
+    private final SucursalRepository sucursalRepository;
+    private final BusinessTypeRepository businessTypeRepository;
 
     @Override
     public List<InventarioSucursalResponseDTO> getProductoEnSucursal(Long sucursalId, Long productId) {
@@ -90,6 +96,41 @@ public class InventarioSucursalServiceImpl  implements IInventarioSucursalServic
         if(inventarioSucursal.getStock()< inventarioSucursal.getMinStock()){
             System.out.print("El producto necesita ser abastecido nuevamente, quedan pocas piezas: "+ inventarioSucursal.getProduct().getName());
         }
+    }
+
+    @Override
+    public List<InventarioSucursalResponseDTO> getByBusinessType(Long businessTypeId) {
+        return inventarioSucursalRepository.findByBranch_BusinessType_Id(businessTypeId)
+                .stream()
+                .map(inventarioSucursalMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<InventarioSucursalResponseDTO> findByBranchAndBusinessType() {
+        Long currentBranchId = authenticatedUserService.getCurrentBranchId();
+        Long currentBusinessType = authenticatedUserService.getBusinessTypeIdFromSession();
+
+        Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(currentBranchId)
+                .orElseThrow(() -> new NotFoundException("Sucursal no encontrada"));
+
+        BusinessType businessType = businessTypeRepository.findByIdAndActiveTrue(currentBusinessType)
+                .orElseThrow(() -> new NotFoundException("Tipo de negocio no encontrado"));
+
+        List<InventarioSucursal> inventario = inventarioSucursalRepository.findByBranchAndBusinessType(sucursal.getId(), businessType.getId());
+
+        if (inventario.isEmpty()) {
+            throw new NotFoundException(String.format(
+                    "No hay inventario disponible para la sucursal '%s' con tipo de negocio '%s'",
+                    sucursal.getName(),
+                    businessType.getName()
+            ));
+        }
+
+        return inventario.stream()
+                .map(inventarioSucursalMapper::toResponse)
+                .collect(Collectors.toList());
+
     }
 
 }

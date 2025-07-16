@@ -16,6 +16,7 @@ import java.util.Optional;
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
     //Esto crea CRUD automático (findAll, save, deleteById, etc.) para la entidad Producto.
+    List<Producto> findByActiveTrueAndProductCategory_BusinessType_Id(Long businessTypeId, Sort sort);
     List<Producto> findByActiveTrue();
     Optional<Producto> findByIdAndActiveTrue(Long id);
     List<Producto> findAll(Specification<Producto> spec);
@@ -28,10 +29,15 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 """)
     Optional<Producto> findAllActiveWithDetailOrderByIdAsc(@Param("id") Long id);
     @Query("""
-        SELECT p FROM Producto p
-        JOIN p.productCategory c
-        JOIN c.businessType bt
-        WHERE p.branch.id = :branchId AND bt.id = :businessTypeId
-    """)
+    SELECT p FROM Producto p
+    JOIN p.productCategory c
+    JOIN c.businessType bt
+    WHERE bt.id = :businessTypeId
+    AND EXISTS (
+        SELECT 1 FROM InventarioSucursal i
+        WHERE i.product = p AND i.branch.id = :branchId
+    )
+    ORDER BY p.id
+""")
     List<Producto> findByBranchAndBusinessType(Long branchId, Long businessTypeId);
 }

@@ -37,7 +37,7 @@ public class GeneratePdfServiceImpl implements IGeneratePdfService {
     private final CompraMapper compraMapper;
 
     @Override
-    public byte[] generatePdf(String type, Long id, boolean isPrinted) {
+    public byte[] generatePdf(String type, Long id, Boolean isPrinted) {
         Context context = new Context();
         String template;
 

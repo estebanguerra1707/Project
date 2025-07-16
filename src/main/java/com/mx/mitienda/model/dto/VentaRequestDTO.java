@@ -11,6 +11,8 @@ public class VentaRequestDTO {
     Long clientId;
     Long branchId;
     LocalDateTime saleDate;
+    private List<String> emailList;
+    private Boolean isPrinted;
     List<DetalleVentaRequestDTO> details;
     private Long paymentMethodId;
     private BigDecimal amountPaid;

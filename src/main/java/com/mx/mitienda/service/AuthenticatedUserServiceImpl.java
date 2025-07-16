@@ -32,7 +32,7 @@ public class AuthenticatedUserServiceImpl implements IAuthenticatedUserService {
     @Override
     public Long getCurrentBranchId() {
         Sucursal branch = getCurrentBranch();
-        if(branch == null) throw new IllegalArgumentException("El usuario no tiene una sucirdal asignada");
+        if(branch == null) throw new IllegalArgumentException("El usuario no tiene una sucursal asignada");
         return branch.getId();
     }
 
@@ -44,4 +44,13 @@ public class AuthenticatedUserServiceImpl implements IAuthenticatedUserService {
         }
         return branch.getBusinessType().getId();
     }
+    @Override
+    public Long getBusinessTypeIdFromSession() {
+        String username = getCurrentUser().getUsername();
+        Usuario usuario = usuarioRepository.findByEmail(username)
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
+
+        return usuario.getBranch().getBusinessType().getId();
+    }
+
 }
