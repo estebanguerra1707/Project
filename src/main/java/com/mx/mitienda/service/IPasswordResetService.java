@@ -1,4 +1,5 @@
 package com.mx.mitienda.service;
 
-public class IPasswordResetService {
-}
+public interface IPasswordResetService {
+    void createToken(String email);
+    void resetPassword(String token, String newPassword);}

@@ -30,6 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.mx.mitienda.util.Utils.VENTA_CODE;
+
 
 @Slf4j
 @Service
@@ -45,6 +47,8 @@ public class VentaServiceImpl implements IVentaService {
     private final InventarioSucursalRepository inventarioSucursalRepository;
     private final IHistorialMovimientosService historialMovimientosService;
     private final IAlertaCorreoService alertaCorreoService;
+    private final IGeneratePdfService generatePdfService;
+    private final MailService mailService;
 
     @Transactional //si falla o hay unea excepcion en cualquier lugar del metodo, se hace rollback de todo
     public VentaResponseDTO registerSell(VentaRequestDTO request, String username) {
@@ -59,6 +63,7 @@ public class VentaServiceImpl implements IVentaService {
 
             int stockAnterior = inventarioSucursal.getStock();
             int stockNuevo = stockAnterior - detalle.getQuantity(); // fue salida
+            inventarioSucursal.setStockCritico(stockNuevo < inventarioSucursal.getMinStock());
             if (stockNuevo < 0) {
                 throw new IllegalArgumentException("No hay suficiente stock para vender: " + detalle.getProduct().getName());
             }
@@ -87,7 +92,8 @@ public class VentaServiceImpl implements IVentaService {
             );
         }
 
-
+      //envio venta por email
+        generateSaleOutput(venta, request.getIsPrinted(), request.getEmailList());
         return ventaMapper.toResponse(ventaRepository.save(venta));
     }
 
@@ -172,6 +178,25 @@ public class VentaServiceImpl implements IVentaService {
                 .stream()
                 .map(ventaMapper::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    private void generateSaleOutput(Venta venta, Boolean printed, List<String> emailList) {
+        byte[] pdfBytes = generatePdfService.generatePdf(VENTA_CODE, venta.getId(), printed != null && printed);
+
+        if (emailList != null && !emailList.isEmpty()) {
+            mailService.sendPDFEmail(
+                    emailList,
+                    "Venta",
+                    "Comprobante de " + VENTA_CODE,
+                    "<p>Adjunto encontrarás tu comprobante de venta.</p>",
+                    pdfBytes,
+                    VENTA_CODE+"_" + venta.getId() + ".pdf"
+            );
+        }
+
+        if (printed != null && printed) {
+            log.info("Ticket térmico generado para venta {}", venta.getId());
+        }
     }
 
 }

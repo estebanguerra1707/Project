@@ -6,11 +6,8 @@ import com.mx.mitienda.model.dto.CompraRequestDTO;
 import com.mx.mitienda.model.dto.CompraResponseDTO;
 import com.mx.mitienda.model.dto.DetalleCompraResponseDTO;
 import com.mx.mitienda.repository.*;
-import com.mx.mitienda.service.IHistorialMovimientosService;
-import com.mx.mitienda.service.IInventarioSucursalService;
-import com.mx.mitienda.service.UsuarioService;
+import com.mx.mitienda.service.IAuthenticatedUserService;
 import com.mx.mitienda.util.NumberToWordsConverter;
-import com.mx.mitienda.util.enums.TipoMovimiento;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -30,8 +27,14 @@ public class CompraMapper {
     private final UsuarioRepository usuarioRepository;
     private final SucursalRepository sucursalRepository;
     private final MetodoPagoRepository metodoPagoRepository;
+    private final BusinessTypeRepository businessTypeRepository;
+    private final IAuthenticatedUserService authenticatedUserService;
 
     public Compra toEntity(CompraRequestDTO compraRequestDTO, String userName) {
+
+        Long businessTypeId = authenticatedUserService.getCurrentBusinessTypeId();
+        Long branchId = authenticatedUserService.getCurrentBranchId();
+
         Compra compra = new Compra();
 
         Usuario usuario = usuarioRepository.findByUsernameAndActiveTrue(userName)
@@ -40,11 +43,14 @@ public class CompraMapper {
         Proveedor proveedor = proveedorRepository.findByIdAndActiveTrue(compraRequestDTO.getProviderId())
                 .orElseThrow(() -> new NotFoundException("Proveedor no alineado con el producto"));
 
-        Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(compraRequestDTO.getBranchId())
+        Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(branchId)
                 .orElseThrow(() -> new NotFoundException("Sucursal no encontrada"));
 
         MetodoPago paymentMethod = metodoPagoRepository.findById(compraRequestDTO.getPaymentMethodId())
                 .orElseThrow(() -> new NotFoundException("Método de pago no encontrado"));
+
+        BusinessType businessType = businessTypeRepository.findByIdAndActiveTrue(businessTypeId)
+                .orElseThrow(() -> new NotFoundException("Tipo de negocio no encontrado"));
 
         compra.setProveedor(proveedor);
         compra.setBranch(sucursal);
@@ -67,6 +73,15 @@ public class CompraMapper {
             Producto producto = productoRepository.findByIdAndActiveTrue(detalleDTO.getProductId())
                     .orElseThrow(() -> new NotFoundException("Producto no encontrado"));
 
+            Long tipoProducto = producto.getProductCategory().getBusinessType().getId();
+            if (!tipoProducto.equals(businessTypeId)) {
+                throw new NotFoundException(String.format(
+                        "El producto '%s' no pertenece al tipo de negocio '%s' de la sucursal '%s'",
+                        producto.getName(),
+                        businessType.getName(),
+                        sucursal.getName()
+                ));
+            }
             DetalleCompra detail = new DetalleCompra();
             detail.setCompra(compra);
             detail.setProduct(producto);

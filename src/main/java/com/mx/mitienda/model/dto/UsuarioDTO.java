@@ -9,4 +9,5 @@ public class UsuarioDTO {
     private String email;
     private Rol role;
     private String password; // opcional, cambiar solo si se manda
+    private Long branchId;
 }

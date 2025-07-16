@@ -17,4 +17,6 @@ public interface IInventarioSucursalService {
     void disminuirStock(Long productId, int cantidad);
     void aumentarStock(Long productId, int cantidad );
     public Page<InventarioAlertasDTO> obtenerAlertasStock(InventarioAlertaFiltroDTO filtro, Pageable pageable);
+    public List<InventarioSucursalResponseDTO> getByBusinessType(Long businessTypeId);
+    List<InventarioSucursalResponseDTO> findByBranchAndBusinessType();
 }

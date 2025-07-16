@@ -60,4 +60,10 @@ public class InventarioSucursalController {
         inventarioSucursalService.disminuirStock(movimiento.getProductId(), movimiento.getCantidad());
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    public List<InventarioSucursalResponseDTO> getByBusinessType() {
+        return inventarioSucursalService.findByBranchAndBusinessType();
+    }
 }

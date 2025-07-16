@@ -15,5 +15,7 @@ public class CompraRequestDTO {
     private BigDecimal amountPaid;
     private BigDecimal changeAmount;
     private String amountInWords;
+    private List<String> emailList;
+    private boolean isPrinted;
     private List<DetalleCompraRequestDTO> details;
 }

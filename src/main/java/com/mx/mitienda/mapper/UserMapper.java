@@ -1,9 +1,13 @@
 package com.mx.mitienda.mapper;
 
+import com.mx.mitienda.exception.NotFoundException;
+import com.mx.mitienda.model.Sucursal;
 import com.mx.mitienda.model.Usuario;
 import com.mx.mitienda.model.dto.UsuarioDTO;
 import com.mx.mitienda.model.dto.UsuarioResponseDTO;
+import com.mx.mitienda.repository.SucursalRepository;
 import com.mx.mitienda.repository.UsuarioRepository;
+import com.mx.mitienda.util.enums.Rol;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -13,6 +17,7 @@ import org.springframework.stereotype.Component;
 public class UserMapper {
     private final PasswordEncoder passwordEncoder;
     private final UsuarioRepository usuarioRepository;
+    private final SucursalRepository sucursalRepository;
 
     public Usuario toEntity(UsuarioDTO dto) {
         if (usuarioRepository.findByEmail(dto.getEmail()).isPresent()) {
@@ -21,10 +26,15 @@ public class UserMapper {
         if (usuarioRepository.findByUsername(dto.getUsername()).isPresent()) {
             throw new IllegalArgumentException("Username ya registrado");
         }
+        Rol rol = Rol.valueOf(String.valueOf(dto.getRole()));
+        Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(dto.getBranchId()).orElseThrow(()-> new NotFoundException("No se ha encontrado la sucursal, intenta con otra"));
         Usuario usuario = new Usuario();
         usuario.setUsername(dto.getUsername());
         usuario.setEmail(dto.getEmail());
-        usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
+        usuario.setPassword(passwordEncoder.encode(dto.getPassword()));
+        usuario.setRole(rol);
+        usuario.setActive(true);
+        usuario.setBranch(sucursal);
         return usuario;
     }
 
