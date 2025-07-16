@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Page;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -28,9 +29,9 @@ class HistorialDeMovimientosControllerTest {
     @WithMockUser(roles = "ADMIN")
     void shouldReturnMovimientos() throws Exception {
         HistorialMovimientosResponseDTO movimiento = new HistorialMovimientosResponseDTO();
-        movimiento.setProductName("Producto 1");
+        movimiento.setReference("Producto 1");
 
-        when(historialMovimientosService.findAllByBranch()).thenReturn(List.of(movimiento));
+        when(historialMovimientosService.obtenerPaginadoPorInventario(null, null)).thenReturn((Page<HistorialMovimientosResponseDTO>) List.of(movimiento));
 
         mockMvc.perform(get("/historial"))
                 .andExpect(status().isOk())
