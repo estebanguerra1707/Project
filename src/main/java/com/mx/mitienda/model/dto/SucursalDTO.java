@@ -7,4 +7,6 @@ public class SucursalDTO {
     private String name;
     private String address;
     private String phone;
+    private Boolean isAlertaStockCritico;
+    private Long businessTypeId;
 }

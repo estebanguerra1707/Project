@@ -6,6 +6,7 @@ import com.mx.mitienda.model.dto.InventarioSucursalRequestDTO;
 import com.mx.mitienda.model.dto.InventarioSucursalResponseDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 
@@ -19,4 +20,5 @@ public interface IInventarioSucursalService {
     Page<InventarioAlertasDTO> obtenerAlertasStock(InventarioAlertaFiltroDTO filtro, Pageable pageable);
     List<InventarioSucursalResponseDTO> getByBusinessType(Long businessTypeId);
     List<InventarioSucursalResponseDTO> findByBranchAndBusinessType();
+    InventarioSucursalResponseDTO actualizarInventario(Long id, InventarioSucursalRequestDTO dto);
 }

@@ -37,7 +37,7 @@ public class CompraMapper {
 
         Compra compra = new Compra();
 
-        Usuario usuario = usuarioRepository.findByUsernameAndActiveTrue(userName)
+        Usuario usuario = usuarioRepository.findByEmailAndActiveTrue(userName)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado: " + userName));
 
         Proveedor proveedor = proveedorRepository.findByIdAndActiveTrue(compraRequestDTO.getProviderId())

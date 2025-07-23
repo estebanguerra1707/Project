@@ -5,6 +5,7 @@ import com.mx.mitienda.mapper.InventarioSucursalMapper;
 import com.mx.mitienda.model.BusinessType;
 import com.mx.mitienda.model.InventarioSucursal;
 import com.mx.mitienda.model.Sucursal;
+import com.mx.mitienda.model.Usuario;
 import com.mx.mitienda.model.dto.InventarioAlertaFiltroDTO;
 import com.mx.mitienda.model.dto.InventarioAlertasDTO;
 import com.mx.mitienda.model.dto.InventarioSucursalRequestDTO;
@@ -17,9 +18,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -132,5 +135,17 @@ public class InventarioSucursalServiceImpl  implements IInventarioSucursalServic
                 .collect(Collectors.toList());
 
     }
+
+    @Override
+    public InventarioSucursalResponseDTO actualizarInventario(Long id, InventarioSucursalRequestDTO inventarioSucursalRequestDTO) {
+        InventarioSucursal inventario = inventarioSucursalRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Inventario no encontrado con id: " + id));
+
+        inventarioSucursalMapper.updateEntity(inventario, inventarioSucursalRequestDTO);
+
+
+        return inventarioSucursalMapper.toResponse(inventarioSucursalRepository.save(inventario));
+    }
+
 
 }

@@ -21,7 +21,7 @@ public class AuthenticatedUserServiceImpl implements IAuthenticatedUserService {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
 
-        return usuarioRepository.findByUsername(username).orElseThrow(()-> new NotFoundException("Usuario no encontrado"));
+        return usuarioRepository.findByEmailAndActiveTrue(username).orElseThrow(()-> new NotFoundException("Usuario no encontrado, favor de validar"));
     }
 
     @Override

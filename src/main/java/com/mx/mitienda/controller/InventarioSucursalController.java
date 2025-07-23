@@ -1,5 +1,6 @@
 package com.mx.mitienda.controller;
 
+import com.mx.mitienda.model.InventarioSucursal;
 import com.mx.mitienda.model.dto.CompraResponseDTO;
 import com.mx.mitienda.model.dto.InventarioSucursalRequestDTO;
 import com.mx.mitienda.model.dto.InventarioSucursalResponseDTO;
@@ -10,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,6 +29,16 @@ public class InventarioSucursalController {
     public  ResponseEntity<List<InventarioSucursalResponseDTO>> getInventarioSucursal(@PathVariable Long sucursalId) {
         return ResponseEntity.ok(inventarioSucursalService.getProductosEnSucursal(sucursalId));
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<InventarioSucursalResponseDTO> actualizarInventario(
+            @PathVariable Long id,
+            @RequestBody InventarioSucursalRequestDTO dto
+    ) {
+        InventarioSucursalResponseDTO actualizado = inventarioSucursalService.actualizarInventario(id, dto);
+        return ResponseEntity.ok(actualizado);
+    }
+
 
     @GetMapping("/producto/{productoId}")
     @PreAuthorize("hasRole('ADMIN')")

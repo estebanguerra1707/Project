@@ -1,16 +1,15 @@
 package com.mx.mitienda.mapper;
 
 import com.mx.mitienda.exception.NotFoundException;
-import com.mx.mitienda.model.BusinessType;
-import com.mx.mitienda.model.ProductCategory;
-import com.mx.mitienda.model.Producto;
-import com.mx.mitienda.model.Proveedor;
+import com.mx.mitienda.model.*;
 import com.mx.mitienda.model.dto.ProductoDTO;
 import com.mx.mitienda.model.dto.ProductoResponseDTO;
 import com.mx.mitienda.repository.*;
+import com.mx.mitienda.service.IAuthenticatedUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Component
@@ -22,15 +21,22 @@ public class ProductoMapper {
     private final ProveedorRepository proveedorRepository;
     private final ProductDetailMapper productDetailMapper;
     private final ProductoRepository productoRepository;
+    private final IAuthenticatedUserService authenticatedUserService;
+    private final SucursalRepository sucursalRepository;
 
     public Producto toEntity(ProductoDTO productoDTO) {
+        validateCreateDTO(productoDTO);
+
+        Long branchId = authenticatedUserService.getCurrentBranchId();
+        Long businessTypeId = authenticatedUserService.getCurrentBusinessTypeId();
+
         // Cargar la categoría con su businessType
         ProductCategory category = productCategoryRepository.findWithBusinessTypeById(productoDTO.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Categoría no encontrada"));
 
         Proveedor proveedor = proveedorRepository.findById(productoDTO.getProviderId()).orElseThrow(()->new NotFoundException("Proveedor no encontrado"));
 
-        BusinessType businessType = businessTypeRepository.findById(productoDTO.getBusinessTypeId())
+        BusinessType businessType = businessTypeRepository.findById(businessTypeId)
                 .orElseThrow(() -> new RuntimeException("Tipo de negocio no encontrado"));
 
         Long categoryBusinessId = category.getBusinessType() != null
@@ -41,6 +47,10 @@ public class ProductoMapper {
             throw new IllegalArgumentException("La categoría no pertenece al tipo de negocio proporcionado");
         }
 
+        Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(branchId)
+                .orElseThrow(() -> new NotFoundException("Sucursal no encontrada"));
+
+
         Producto producto = new Producto();
 
         producto.setName(productoDTO.getName());
@@ -50,7 +60,9 @@ public class ProductoMapper {
         producto.setActive(true);
         producto.setProductCategory(category);
         producto.setProvider(proveedor);
-
+        producto.setCreationDate(LocalDateTime.now());
+        producto.setBranch(sucursal);
+        producto.setBusinessType(businessType);
         return producto;
     }
 
@@ -78,6 +90,7 @@ public class ProductoMapper {
         if (producto.getProductDetail() != null) {
             response.setProductDetail(productDetailMapper.toResponse(producto.getProductDetail()));
         }
+        response.setCreationDate(producto.getCreationDate());
         return response;
     }
 
@@ -116,9 +129,6 @@ public class ProductoMapper {
         }
         if (productoDTO.getPurchasePrice() == null) {
             throw new IllegalArgumentException("El precio es obligatorio.");
-        }
-        if (productoDTO.getBusinessTypeId() == null) {
-            throw new IllegalArgumentException("El tipo de negocio es obligatorio.");
         }
         if (productoDTO.getCategoryId() == null) {
             throw new IllegalArgumentException("La categoría es obligatoria.");

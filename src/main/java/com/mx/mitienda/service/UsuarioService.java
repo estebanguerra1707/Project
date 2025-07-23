@@ -7,13 +7,11 @@ import com.mx.mitienda.model.Usuario;
 import com.mx.mitienda.model.dto.UsuarioDTO;
 import com.mx.mitienda.model.dto.UsuarioResponseDTO;
 import com.mx.mitienda.repository.UsuarioRepository;
-import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -84,7 +82,8 @@ public class UsuarioService implements UserDetailsService {
     }
 
     public UsuarioResponseDTO findByEmailUser(String email) {
-        Usuario usuario = usuarioRepository.findByEmailAndActiveTrue(email);
+        Usuario usuario = usuarioRepository.findByEmailAndActiveTrue(email).orElseThrow(() -> new NotFoundException(
+                "No se ha encontrado el uusario, favor de validar"));
         return usuarioMapper.toResponse(usuario);
     }
 
@@ -99,7 +98,7 @@ public class UsuarioService implements UserDetailsService {
     }
 
     public Optional<Usuario> getByUsername(String username) {
-        return usuarioRepository.findByUsername(username);
+        return usuarioRepository.findByEmailAndActiveTrue(username);
     }
 
     @Override

@@ -13,7 +13,6 @@ public class ProductoDTO {
     private String description;
     private BigDecimal purchasePrice;
     private Integer stock;
-    private Long businessTypeId;
     private Long providerId;
     private LocalDateTime updatedDate;
 }

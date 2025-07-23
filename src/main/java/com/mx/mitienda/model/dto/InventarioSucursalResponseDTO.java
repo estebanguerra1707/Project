@@ -18,4 +18,5 @@ public class InventarioSucursalResponseDTO {
     private Integer maxStock;
     private LocalDateTime lastUpdated;
     private String updatedBy;
+    private Boolean isStockCritico;
 }

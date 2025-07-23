@@ -49,7 +49,13 @@ public class Producto {
 	@JoinColumn(name = "branch_id")
 	private Sucursal branch;
 
+	@ManyToOne
+	@EqualsAndHashCode.Exclude
+	@ToString.Exclude
+	@JoinColumn(name = "business_type_id", foreignKey = @ForeignKey(name = "fk_category_business_type"))
+	private BusinessType businessType;
 
+	//esto si es dce tipo refaccionaria
 	@OneToOne(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 	@EqualsAndHashCode.Exclude
 	@ToString.Exclude

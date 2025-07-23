@@ -63,8 +63,6 @@ public class CompraServiceImpl implements ICompraService {
 
     @Transactional
     public CompraResponseDTO save(CompraRequestDTO compraRequestDTO, Authentication auth) {
-        Long businessTypeId = authenticatedUserService.getCurrentBusinessTypeId();
-        Long branchId = authenticatedUserService.getCurrentBranchId();
 
         String username = auth.getName();
         String rol = auth.getAuthorities().stream()
