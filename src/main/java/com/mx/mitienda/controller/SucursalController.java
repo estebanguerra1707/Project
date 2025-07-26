@@ -23,7 +23,7 @@ public class SucursalController {
 
     @Tag(name = "Sucursal SAVE", description = "Operaciones relacionadas con salvar sucursal")
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<SucursalResponseDTO>  create(@RequestBody SucursalDTO dto) {
         SucursalResponseDTO response =  iSucursal.create(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -31,14 +31,14 @@ public class SucursalController {
 
     @Tag(name = "Sucursal UPDATE", description = "Operaciones relacionadas con actualizar sucursal")
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<SucursalResponseDTO>  update(@PathVariable Long id, @RequestBody SucursalDTO dto) {
         return ResponseEntity.ok(iSucursal.update(id, dto));
     }
 
     @Tag(name = "Sucursal DISABLE", description = "Operaciones relacionadas con inhabilitar sucursal")
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<Void>  disable(@PathVariable Long id){
         iSucursal.disable(id);
         return ResponseEntity.noContent().build();
@@ -46,24 +46,26 @@ public class SucursalController {
 
     @Tag(name = "Sucursal FIND ALL", description = "Operaciones relacionadas con encontrar todas las  sucursales")
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN')")
     public ResponseEntity<List<SucursalResponseDTO> >findAll(){
         return ResponseEntity.ok(iSucursal.findAll());
     }
 
     @Tag(name = "Sucursal FIND", description = "Operaciones relacionadas con encontrar una sola sucursal")
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<SucursalResponseDTO> findById(@PathVariable Long id){
         return ResponseEntity.ok(iSucursal.findById(id));
     }
 
     @GetMapping("/tipo-negocio/{businessTypeId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<List<SucursalResponseDTO>> getByBusinessType(@PathVariable Long businessTypeId) {
         return ResponseEntity.ok(iSucursal.getByBusinessType(businessTypeId));
     }
 
     @PutMapping("/isCriticAlert/{sucursalId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN')")
     public ResponseEntity<SucursalResponseDTO> isCriticAlert(@PathVariable Long sucursalId,  @RequestParam(required =false) Boolean isEnable) {
         return ResponseEntity.ok(iSucursal.isStockCriticAlert(sucursalId, isEnable));
     }

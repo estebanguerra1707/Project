@@ -19,7 +19,7 @@ public class BusinessTypeController {
     private final IBusinessTypeService businessTypeService;
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<BusinessTypeResponseDTO> create(@RequestBody BusinessTypeDTO dto) {
         return ResponseEntity.ok(businessTypeService.save(dto));
     }

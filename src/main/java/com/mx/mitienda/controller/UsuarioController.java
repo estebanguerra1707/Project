@@ -30,6 +30,7 @@ public class UsuarioController {
 
     @Operation(summary = "Registrar nuevo usuario")
     @PostMapping("/register")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<String> register(@RequestBody UsuarioDTO usuarioRegisterDTO) {
         usuarioService.registerUser(usuarioRegisterDTO);
         return ResponseEntity.ok("Usuario registrado correctamente");
@@ -37,21 +38,21 @@ public class UsuarioController {
 
     @Tag(name = "USUARIOS GET ALL", description = "Obtener todos los usuarios")
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<List<UsuarioResponseDTO>> getAll() {
         return ResponseEntity.ok(usuarioService.getAll());
     }
 
     @Tag(name = "USUARIOS GET BY ID", description = "Obtener un usuario por ID")
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<UsuarioResponseDTO> getById(@PathVariable Long id) {
         return ResponseEntity.ok(usuarioService.getById(id));
     }
 
     @Tag(name = "USUARIOS DELETE LOGICO", description = "Desactivar un usuario")
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<Void> disable(@PathVariable Long id) {
         usuarioService.logicUserErase(id);
         return ResponseEntity.noContent().build();
@@ -59,11 +60,12 @@ public class UsuarioController {
 
     @Tag(name = "USUARIOS UPDATE", description = "Actualizar usuario con DTO limpio")
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<UsuarioResponseDTO> update(@PathVariable Long id, @RequestBody UsuarioDTO usuarioDTO) {
         return ResponseEntity.ok(usuarioService.updateUser(id, usuarioDTO));
     }
     @GetMapping("/sucursal/{branchId}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<List<UsuarioResponseDTO>> getBySucursal(@PathVariable Long branchId) {
         return ResponseEntity.ok(usuarioService.getUsuariosBySucursal(branchId));
     }

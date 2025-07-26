@@ -28,7 +28,7 @@ public class CompraController {
 
     @Tag(name = "COMPRA SAVE", description = "Operaciones relacionadas con SALVAR compra ")
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN)")
     public ResponseEntity<CompraResponseDTO> save(@RequestBody CompraRequestDTO compra, Authentication authentication) {
         String username = authentication.getName(); // <-- viene del token
         CompraResponseDTO saved = compraServiceImpl.save(compra, authentication);
@@ -37,14 +37,14 @@ public class CompraController {
 
     @Tag(name = "COMPRA GET ALL", description = "Operaciones relacionadas con obtener todas las compras ")
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN)")
     public ResponseEntity<List<CompraResponseDTO>> getPurchases() {
         return ResponseEntity.ok(compraServiceImpl.findCurrentUserCompras());
     }
 
     @Tag(name = "COMPRA GET ALL", description = "Operaciones relacionadas con obtener todas las compras ")
     @PostMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN)")
     public ResponseEntity<List<CompraResponseDTO>> search(@RequestBody CompraFiltroDTO filtro) {
         return ResponseEntity.ok(compraServiceImpl.advancedSearch(filtro));
     }

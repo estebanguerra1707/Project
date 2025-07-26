@@ -1,6 +1,7 @@
 package com.mx.mitienda.model.dto;
 
 import com.mx.mitienda.util.enums.Rol;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -18,6 +19,9 @@ public class RegisterRequestDTO {
 
     @NotNull(message = "El rol es obligatorio")
     private Rol role;
+
+    @Nullable
+    private Long branchId;
 
     @NotBlank(message = "El usuario debe ser obligatorio")
     private String userName;

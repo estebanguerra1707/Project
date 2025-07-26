@@ -7,6 +7,7 @@ import com.mx.mitienda.model.dto.UsuarioDTO;
 import com.mx.mitienda.model.dto.UsuarioResponseDTO;
 import com.mx.mitienda.service.JwtService;
 import com.mx.mitienda.service.UsuarioService;
+import com.mx.mitienda.util.enums.Rol;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -47,7 +48,7 @@ public class AuthController {
         return buildAuthResponse(usuarioResponse, userDetails);
     }
 
-    @Tag(name = "REGISTER", description = "Operaciones relacionadas con registrar usuarioa en la app")
+    @Tag(name = "REGISTER", description = "Operaciones relacionadas con registrar usuario en la app")
     @PostMapping("/register")
     public Map<String, Object> save(@RequestBody @Valid RegisterRequestDTO request){
         Usuario newUser = Usuario.builder()
@@ -62,6 +63,7 @@ public class AuthController {
         usuarioDTO.setUsername(request.getUserName());
         usuarioDTO.setEmail(request.getEmail());
         usuarioDTO.setPassword(request.getPassword());
+        usuarioDTO.setBranchId(request.getBranchId());
 
         UsuarioResponseDTO registrado = usuarioService.registerUser(usuarioDTO);
         UserDetails userDetails = new User(
@@ -71,6 +73,18 @@ public class AuthController {
         );
         return buildAuthResponse(registrado, userDetails);
 
+    }
+    @PostMapping("/register-sa")
+    public ResponseEntity<?> registerSuperAdmin(@RequestBody RegisterRequestDTO request) {
+        UsuarioDTO usuarioDTO = new UsuarioDTO();
+        usuarioDTO.setUsername(request.getUserName());
+        usuarioDTO.setEmail(request.getEmail());
+        usuarioDTO.setPassword(request.getPassword());
+        usuarioDTO.setBranchId(request.getBranchId());
+        usuarioDTO.setRole(Rol.SUPER_ADMIN);
+        request.setBranchId(null);
+        usuarioService.registerUser(usuarioDTO);
+        return ResponseEntity.ok("Super Admin creado exitosamente");
     }
 
 

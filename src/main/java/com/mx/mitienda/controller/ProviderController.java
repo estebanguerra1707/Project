@@ -22,13 +22,13 @@ public class ProviderController {
     }
     @Tag(name = "PROVIDER SAVE", description = "Operaciones relacionadas con SAVE PROVIDER")
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ProveedorResponseDTO save(@RequestBody ProveedorDTO Proveedor) {
         return proveedorService.save(Proveedor);
     }
     @Tag(name = "PROVIDER get all ", description = "Operaciones relacionadas con get all PROVIDER")
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public List<ProveedorResponseDTO> getAll() {
         return proveedorService.getAll();
     }
@@ -40,13 +40,13 @@ public class ProviderController {
     }
     @Tag(name = "PROVIDER update ", description = "Operaciones relacionadas con update PROVIDER")
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ProveedorResponseDTO update(@PathVariable Long id, @RequestBody ProveedorDTO proveedor) {
         return proveedorService.update(id, proveedor);
     }
     @Tag(name = "PROVIDER delete ", description = "Operaciones relacionadas con delete PROVIDER")
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public void delete(@PathVariable Long id) {
         proveedorService.disable(id);
     }

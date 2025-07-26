@@ -27,37 +27,38 @@ public class ProductCategoryController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN', 'SUPER_ADMIN)")
     public ResponseEntity<ProductCategoryResponseDTO> createCategory(@RequestBody ProductCategoryDTO dto) {
         ProductCategoryResponseDTO created = categoryService.save(dto);
         return ResponseEntity.ok(created);
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN', 'SUPER_ADMIN)")
     public ResponseEntity<List<ProductCategoryResponseDTO>> getAllCategories() {
         return ResponseEntity.ok(categoryService.getAll());
     }
 
     @GetMapping("/business-type/{businessTypeId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN', 'SUPER_ADMIN)")
     public ResponseEntity<List<ProductCategoryResponseDTO>> getCategoriesByBusinessType(@PathVariable Long businessTypeId) {
         return ResponseEntity.ok(categoryService.getByBusinessType(businessTypeId));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<ProductCategoryResponseDTO> getCategoryById(@PathVariable Long id) {
         return ResponseEntity.ok(categoryService.getById(id));
     }
     @Tag(name = "PRODUCT UPDATE", description = "Operaciones relacionadas con UPDATE PRODUCT")
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<ProductCategoryResponseDTO>  update(@PathVariable Long id, @RequestBody ProductCategoryDTO productCategoryDTO) {
         return ResponseEntity.ok(categoryService.update(id, productCategoryDTO));
     }
 
     @GetMapping("/actual")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<List<ProductCategoryResponseDTO>> getCategoriasActuales() {
         return ResponseEntity.ok(categoryService.getByCurrentUserBusinessType());
     }

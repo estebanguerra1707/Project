@@ -24,7 +24,7 @@ public class ProductController {
     }
     @Tag(name = "PRODUCT SAVE", description = "Operaciones relacionadas con SALVAR PRODUCT")
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<ProductoResponseDTO> save(@RequestBody ProductoDTO product) {
         return ResponseEntity.ok(productService.save(product));
     }
@@ -32,13 +32,14 @@ public class ProductController {
 
     @Tag(name = "PRODUCT GET BY ID", description = "Operaciones relacionadas con GET BY ID PRODUCT")
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<ProductoResponseDTO> getById(@PathVariable Long id) {
         return ResponseEntity.ok(productService.getById(id));
     }
 
     @Tag(name = "PRODUCT GET ALL", description = "Operaciones relacionadas con GET ALL PRODUCTS")
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<List<ProductoResponseDTO>> listarPorTipoDeNegocioDelUsuario() {
         List<ProductoResponseDTO> productos = productService.getAll();
         return ResponseEntity.ok(productos);
@@ -46,14 +47,14 @@ public class ProductController {
 
     @Tag(name = "PRODUCT UPDATE", description = "Operaciones relacionadas con UPDATE PRODUCT")
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<ProductoResponseDTO> update(@PathVariable Long id, @RequestBody ProductoDTO productoDTO) {
         return ResponseEntity.ok(productService.updateProduct(productoDTO, id));
     }
 
     @Tag(name = "PRODUCT DELETE", description = "Operaciones relacionadas con DELETE PRODUCT")
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public void delete(@PathVariable Long id) {
         productService.disableProduct(id);
     }

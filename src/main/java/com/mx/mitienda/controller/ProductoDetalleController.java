@@ -19,7 +19,7 @@ public class ProductoDetalleController {
     private final IProductDetailService productDetailService;
 
     @PostMapping("/{productId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<ProductoDetailResponseDTO> createProductDetail(
             @PathVariable Long productId,
             @RequestBody ProductoDetailDTO productoDetailDTO) {
@@ -28,15 +28,14 @@ public class ProductoDetalleController {
     }
 
     @GetMapping("{productId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<ProductoDetailResponseDTO> getProductDetail(@PathVariable Long productId){
         ProductoDetailResponseDTO response = productDetailService.getProductDetail(productId);
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{detailId}")
-
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ProductoDetailResponseDTO> updatePruductDetail(
             @PathVariable Long detailId,
             @RequestBody ProductoDetailDTO productoDetailDTO

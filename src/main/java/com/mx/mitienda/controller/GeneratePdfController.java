@@ -16,7 +16,7 @@ public class GeneratePdfController {
     private final IGeneratePdfService generatePdfService;
 
     @GetMapping("/{type}/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<byte[]> generarPdf(
             @PathVariable String type,
             @PathVariable Long id,   @RequestParam(defaultValue = "false") Boolean isPrinted) {

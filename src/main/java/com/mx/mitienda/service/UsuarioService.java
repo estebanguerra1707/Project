@@ -88,7 +88,7 @@ public class UsuarioService implements UserDetailsService {
     }
 
     public Optional<Usuario> findByEmail(String email) {
-        return usuarioRepository.findByEmail(email);
+        return usuarioRepository.findByEmailAndActiveTrue(email);
     }
 
     public UsuarioResponseDTO getByUsernameActive(String username) {

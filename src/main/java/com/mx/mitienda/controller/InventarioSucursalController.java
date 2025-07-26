@@ -25,12 +25,13 @@ public class InventarioSucursalController {
     private final IInventarioSucursalService inventarioSucursalService;
 
     @GetMapping("/sucursal/{sucursalId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN', 'SUPER_ADMIN')")
     public  ResponseEntity<List<InventarioSucursalResponseDTO>> getInventarioSucursal(@PathVariable Long sucursalId) {
         return ResponseEntity.ok(inventarioSucursalService.getProductosEnSucursal(sucursalId));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<InventarioSucursalResponseDTO> actualizarInventario(
             @PathVariable Long id,
             @RequestBody InventarioSucursalRequestDTO dto
@@ -41,40 +42,39 @@ public class InventarioSucursalController {
 
 
     @GetMapping("/producto/{productoId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN', 'SUPER_ADMIN')")
     public  ResponseEntity<List<InventarioSucursalResponseDTO>> getInventarioProducto(@PathVariable Long productoId) {
         return ResponseEntity.ok(inventarioSucursalService.getProducto(productoId));
     }
 
     @GetMapping("/sucursal/{sucursalId}/producto/{productId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN', 'SUPER_ADMIN')")
     public  ResponseEntity<List<InventarioSucursalResponseDTO>> getInventarioProductoSucursal(@PathVariable Long sucursalId, @PathVariable Long productId) {
         return ResponseEntity.ok(inventarioSucursalService.getProductoEnSucursal(sucursalId, productId));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<InventarioSucursalResponseDTO> createInventario(@RequestBody InventarioSucursalRequestDTO inventarioSucursalRequestDTO) {
         return ResponseEntity.ok(inventarioSucursalService.create(inventarioSucursalRequestDTO));
     }
 
     @PostMapping("/aumentar")
-
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<Void> aumentarStock(@RequestBody MovimientoStockDTO movimientoStockDTO){
         inventarioSucursalService.aumentarStock(movimientoStockDTO.getProductId(), movimientoStockDTO.getCantidad());
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/disminuir")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<Void> disminuirStock(@RequestBody MovimientoStockDTO movimiento) {
         inventarioSucursalService.disminuirStock(movimiento.getProductId(), movimiento.getCantidad());
         return ResponseEntity.ok().build();
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public List<InventarioSucursalResponseDTO> getByBusinessType() {
         return inventarioSucursalService.findByBranchAndBusinessType();
     }

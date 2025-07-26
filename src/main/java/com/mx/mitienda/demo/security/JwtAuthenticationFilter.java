@@ -1,6 +1,8 @@
 package com.mx.mitienda.demo.security;
 
+import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.model.Usuario;
+import com.mx.mitienda.security.UserContext;
 import com.mx.mitienda.service.JwtService;
 import com.mx.mitienda.service.UsuarioService;
 import jakarta.servlet.FilterChain;
@@ -26,6 +28,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UsuarioService usuarioService;
+    private final UserContext userContext;
+
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -58,6 +62,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                Usuario usuario = usuarioService.findByEmail(email).orElseThrow(()->new NotFoundException("No se ha encontrado el usuario por su email..."));
+                userContext.setCurrentUser(usuario);
             }
         }
 

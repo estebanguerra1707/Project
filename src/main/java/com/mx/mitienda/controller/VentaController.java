@@ -28,7 +28,7 @@ public class VentaController {
 
     @Tag(name = "VENTAS registrar venta", description = "Operaciones relacionadas con registrar todas las ventas ")
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
     public ResponseEntity<VentaResponseDTO> registerSell(@RequestBody VentaRequestDTO ventaRequest, Authentication authentication){
         String username = authentication.getName();
         VentaResponseDTO venta = ventaServiceImpl.registerSell(ventaRequest, username);
@@ -37,14 +37,14 @@ public class VentaController {
     @Tag(name = "VENTA GET ALL", description = "Operaciones relacionadas con obtener todas las ventas ")
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
     public ResponseEntity<List<VentaResponseDTO>> getSales() {
         return ResponseEntity.ok(ventaServiceImpl.findCurrentUserVentas());
     }
 
     @Tag(name = "VENTAS FILTER", description = "Operaciones relacionadas con registrar filtrar las ventas ")
     @PostMapping("/filter")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
     public ResponseEntity<List<VentaResponseDTO>>findByFilter(@RequestBody VentaFiltroDTO filter, Authentication authentication){
         String username = authentication.getName();
         String role = authentication.getAuthorities().stream().findFirst().map(auth -> auth.getAuthority().replace("ROLE_","")).orElse("");
@@ -54,14 +54,14 @@ public class VentaController {
 
     @Tag(name = "VENTAS ID", description = "Operaciones relacionadas con obtener venta por id")
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
     public ResponseEntity<VentaResponseDTO> getById(@PathVariable Long id){
         return ResponseEntity.ok(ventaServiceImpl.getById(id));
     }
 
     @Tag(name = "VENTAS detalles", description = "Operaciones relacionadas con detalle venta")
     @GetMapping("/{id}/detail")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
     public ResponseEntity<List<DetalleVentaResponseDTO>> getDetallesPorVenta(@PathVariable Long id) {
         return ResponseEntity.ok(ventaServiceImpl.getDetailsPerSale(id));
     }
@@ -70,7 +70,7 @@ public class VentaController {
             value = "/{ventaId}/ticket",
             produces = MediaType.APPLICATION_PDF_VALUE
     )
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
     public ResponseEntity<byte[]> getTicketVenta(@PathVariable Long ventaId) {
 
         byte[] pdf = ventaServiceImpl.generateTicketPdf(ventaId);

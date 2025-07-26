@@ -21,7 +21,7 @@ public class EnvioCorreoPdfController {
     private final MailService mailService;
 
     @GetMapping("/{transactionType}/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @Tag(name = " ENVIO DE CORREO", description = "Operaciones relacionadas con ENVIO DE CORREO")
 
     public ResponseEntity<String> sendTransactionPdfByEmail(@PathVariable Long id, @PathVariable String transactionType,

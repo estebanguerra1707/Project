@@ -21,19 +21,22 @@ public class UserMapper {
     private final UsuarioRepository usuarioRepository;
     private final SucursalRepository sucursalRepository;
 
-    public Usuario toEntity(UsuarioDTO dto) {
-        if (usuarioRepository.findByEmail(dto.getEmail()).isPresent()) {
+    public Usuario toEntity(UsuarioDTO usuarioDTO) {
+        Sucursal sucursal = new Sucursal();
+        if (usuarioRepository.findByEmail(usuarioDTO.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email ya registrado");
         }
-        if (usuarioRepository.findByUsername(dto.getUsername()).isPresent()) {
+        if (usuarioRepository.findByUsername(usuarioDTO.getUsername()).isPresent()) {
             throw new IllegalArgumentException("Username ya registrado");
         }
-        Rol rol = Rol.valueOf(String.valueOf(dto.getRole()));
-        Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(dto.getBranchId()).orElseThrow(()-> new NotFoundException("No se ha encontrado la sucursal, intenta con otra"));
+        Rol rol = Rol.valueOf(String.valueOf(usuarioDTO.getRole()));
+        if (usuarioDTO.getBranchId() != null) {
+             sucursal = sucursalRepository.findByIdAndActiveTrue(usuarioDTO.getBranchId()).orElseThrow(()-> new NotFoundException("No se ha encontrado la sucursal, intenta con otra"));
+        }
         Usuario usuario = new Usuario();
-        usuario.setUsername(dto.getUsername());
-        usuario.setEmail(dto.getEmail());
-        usuario.setPassword(passwordEncoder.encode(dto.getPassword()));
+        usuario.setUsername(usuarioDTO.getUsername());
+        usuario.setEmail(usuarioDTO.getEmail());
+        usuario.setPassword(passwordEncoder.encode(usuarioDTO.getPassword()));
         usuario.setRole(rol);
         usuario.setActive(true);
         usuario.setBranch(sucursal);
