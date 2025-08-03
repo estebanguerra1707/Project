@@ -1,14 +1,12 @@
 package com.mx.mitienda.controller;
 
-import com.mx.mitienda.model.dto.DetalleVentaResponseDTO;
-import com.mx.mitienda.model.dto.VentaFiltroDTO;
-import com.mx.mitienda.model.dto.VentaRequestDTO;
-import com.mx.mitienda.model.dto.VentaResponseDTO;
+import com.mx.mitienda.model.dto.*;
 import com.mx.mitienda.service.IVentaService;
 import com.mx.mitienda.service.VentaServiceImpl;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +14,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @SecurityRequirement(name = "bearerAuth")
 @RestController
@@ -64,6 +66,37 @@ public class VentaController {
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
     public ResponseEntity<List<DetalleVentaResponseDTO>> getDetallesPorVenta(@PathVariable Long id) {
         return ResponseEntity.ok(ventaServiceImpl.getDetailsPerSale(id));
+    }
+
+    @GetMapping("/ganancias")
+    public ResponseEntity<ReporteGananciasDTO> obtenerResumen() {
+        return ResponseEntity.ok(new ReporteGananciasDTO(
+                ventaServiceImpl.obtenerGananciaHoy(),
+                ventaServiceImpl.obtenerGananciaSemana(),
+                ventaServiceImpl.obtenerGananciaMes()
+        ));
+    }
+    @GetMapping("/ganancia-dia")
+    public ResponseEntity<GanaciaDiaDTO> getGananciaDia(@RequestParam("fecha") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        BigDecimal ganancia = ventaServiceImpl.obtenerGananciaPorDia(fecha);
+        return ResponseEntity.ok(new GanaciaDiaDTO(fecha, ganancia));
+    }
+
+
+    @PostMapping("/ganancia-rango")
+    public ResponseEntity<BigDecimal> getGananciaPorRango(@RequestBody GananciaPorFechaDTO gananciaPorFechaDTO) {
+        return ResponseEntity.ok(ventaServiceImpl.obtenerGananciaPorRango(gananciaPorFechaDTO.getStartDate(), gananciaPorFechaDTO.getEndDate()));
+    }
+
+    @PostMapping("/ganancia-diaria-rango")
+    public ResponseEntity<List<GanaciaDiaDTO>> getGananciaDiariaRango(@RequestBody GananciaPorFechaDTO gananciaPorFechaDTO) {
+        Map<LocalDate, BigDecimal> datos = ventaServiceImpl.obtenerGananciasPorDiaEnRango(gananciaPorFechaDTO.getStartDate(), gananciaPorFechaDTO.getEndDate());
+
+        List<GanaciaDiaDTO> respuesta = datos.entrySet().stream()
+                .map(entry -> new GanaciaDiaDTO(entry.getKey(), entry.getValue()))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(respuesta);
     }
 
     @GetMapping(

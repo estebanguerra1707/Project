@@ -55,8 +55,9 @@ public class ProductoServiceImpl implements IProductoService {
                 .collect(Collectors.toList());
     }
 
-    public ProductoResponseDTO getById(Long id){
-        Producto producto = productoRepository.findAllActiveWithDetailOrderByIdAsc(id).orElseThrow(()->new NotFoundException("Producto no encontrado"));
+    public ProductoResponseDTO getById(Long idProducto){
+        Long branchId = authenticatedUserService.getCurrentBranchId();
+        Producto producto = productoRepository.findActiveWithDetailByIdAndSucursal(idProducto,branchId ).orElseThrow(()->new NotFoundException("Producto no encontrado dentro de esta sucursal asignada al usuario loggeado, intenta con otro producto"));
         return productoMapper.toResponse(producto);
     }
 

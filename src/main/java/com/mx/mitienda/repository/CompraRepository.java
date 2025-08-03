@@ -16,6 +16,7 @@ public interface CompraRepository extends JpaRepository<Compra, JpaSpecification
     //Esto crea CRUD automático (findAll, save, deleteById, etc.) para la entidad Compra.
     List<Compra> findByActiveTrueOrderByIdAsc();
     Optional<Compra> findByIdAndActiveTrue(Long id);
+    Optional<Compra> findByIdAndBranch_IdAndActiveTrue(Long id, Long branchId);
     List<Compra> findAll(Specification spec, Sort sort);
     List<Compra> findByUsuario_UsernameAndActiveTrue(String username);
     Optional<Compra> findById(Long id);

@@ -1,11 +1,15 @@
 package com.mx.mitienda.service;
 
+import com.mx.mitienda.exception.ForbiddenException;
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.mapper.SucursalMapper;
 import com.mx.mitienda.model.Sucursal;
+import com.mx.mitienda.model.Usuario;
 import com.mx.mitienda.model.dto.SucursalDTO;
 import com.mx.mitienda.model.dto.SucursalResponseDTO;
 import com.mx.mitienda.repository.SucursalRepository;
+import com.mx.mitienda.repository.UsuarioRepository;
+import com.mx.mitienda.util.enums.Rol;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,7 +22,7 @@ public class SucursalServiceImpl implements ISucursalService {
 
     private final SucursalRepository sucursalRepository;
     private final SucursalMapper sucursalMapper;
-
+    private final AuthenticatedUserServiceImpl authenticatedUserService;
     @Override
     public SucursalResponseDTO create(SucursalDTO sucursalDTO) {
         if (sucursalRepository.existsByNameIgnoreCaseAndAddressIgnoreCaseAndActiveTrue(sucursalDTO.getName(),sucursalDTO.getAddress())){
@@ -55,16 +59,28 @@ public class SucursalServiceImpl implements ISucursalService {
 
     @Override
     public List<SucursalResponseDTO> findAll() {
-        return sucursalRepository.findByActiveTrueOrderByIdAsc().stream().map(sucursalMapper::toResponse).collect(Collectors.toList());
+        if(authenticatedUserService.isSuperAdmin()){
+            return sucursalRepository.findByActiveTrueOrderByIdAsc().stream().map(sucursalMapper::toResponse).collect(Collectors.toList());
+        }else{
+            throw new ForbiddenException("Solo el super administrador puede ver todas las sucursales.");
+        }
     }
 
     @Override
     public SucursalResponseDTO findById(Long id) {
-        return sucursalMapper.toResponse(sucursalRepository.findByIdAndActiveTrue(id)
-                .orElseThrow(() -> new NotFoundException("Sucursal no encontrada")));
+
+        if(authenticatedUserService.isSuperAdmin()){
+            return sucursalMapper.toResponse(sucursalRepository.findByIdAndActiveTrue(id)
+                    .orElseThrow(() -> new NotFoundException("Sucursal no encontrada")));
+        }
+        Sucursal sucursal = authenticatedUserService.getCurrentBranch();
+        return sucursalMapper.toResponse(sucursal);
     }
     @Override
     public List<SucursalResponseDTO> getByBusinessType(Long businessTypeId) {
+        if(!authenticatedUserService.isSuperAdmin()){
+            throw new ForbiddenException("El usuario no tiene permisos para ver sucursales de este tipo.");
+        }
         return sucursalRepository.findByBusinessType_Id(businessTypeId)
                 .stream()
                 .map(sucursalMapper::toResponse)

@@ -48,4 +48,12 @@ public class CompraController {
     public ResponseEntity<List<CompraResponseDTO>> search(@RequestBody CompraFiltroDTO filtro) {
         return ResponseEntity.ok(compraServiceImpl.advancedSearch(filtro));
     }
+
+    @Tag(name = "COMPRA GET BY ID", description = "Operaciones relacionadas con obtener todas las compras ")
+    @GetMapping("/{purchaseId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN)")
+    public ResponseEntity<CompraResponseDTO> getById(@PathVariable Long purchaseId) {
+        return ResponseEntity.ok(compraServiceImpl.getById(purchaseId));
+    }
+
 }

@@ -7,4 +7,5 @@ public class ProveedorDTO {
     private String name;
     private String contact;
     private String email;
+    private Long branchId;
 }

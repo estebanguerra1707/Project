@@ -22,12 +22,20 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     List<Producto> findAll(Specification<Producto> spec);
     List<Producto> findByActiveTrue(Sort sort);
     @Query("""
-    SELECT DISTINCT p FROM Producto p
+    SELECT p FROM Producto p
     LEFT JOIN FETCH p.productDetail
-    WHERE p.id = :id AND p.active = true
-    ORDER BY p.id ASC
+    WHERE p.id = :id
+    AND p.active = true
+    AND EXISTS (
+        SELECT 1 FROM InventarioSucursal i
+        WHERE i.product = p
+        AND i.branch.id = :branchId
+    )
 """)
-    Optional<Producto> findAllActiveWithDetailOrderByIdAsc(@Param("id") Long id);
+    Optional<Producto> findActiveWithDetailByIdAndSucursal(
+            @Param("id") Long id,
+            @Param("branchId") Long branchId
+    );
     @Query("""
     SELECT p FROM Producto p
     JOIN p.productCategory c

@@ -56,7 +56,7 @@ public class VentaSpecBuilder {
     public VentaSpecBuilder username(String username) {
         if (username != null && !username.isBlank()) {
             builder.and((root, query, cb) ->
-                    cb.equal(root.get("username").get("username"), username));
+                    cb.equal(root.get("usuario").get("email"), username));
         }
         return this;
     }

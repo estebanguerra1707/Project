@@ -1,15 +1,19 @@
 package com.mx.mitienda.service;
 
+import com.mx.mitienda.exception.ForbiddenException;
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.mapper.ProductCategoryMapper;
 import com.mx.mitienda.model.BusinessType;
 import com.mx.mitienda.model.ProductCategory;
+import com.mx.mitienda.model.Sucursal;
+import com.mx.mitienda.model.Usuario;
 import com.mx.mitienda.model.dto.ProductCategoryDTO;
 import com.mx.mitienda.model.dto.ProductCategoryResponseDTO;
 import com.mx.mitienda.repository.BusinessTypeRepository;
 import com.mx.mitienda.repository.ProductCategoryRepository;
 import com.mx.mitienda.repository.SucursalRepository;
 import com.mx.mitienda.repository.UsuarioRepository;
+import com.mx.mitienda.util.enums.Rol;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,10 +28,7 @@ public class ProductCategoryService implements IProductCategoryService{
     private final ProductCategoryRepository categoryRepository;
     private final ProductCategoryMapper productCategoryMapper;
     private final IAuthenticatedUserService authenticatedUserService;
-    private final UsuarioRepository usuarioRepository;
-    private final SucursalRepository sucursalRepository;
     private final BusinessTypeRepository businessTypeRepository;
-
     @Override
     public ProductCategoryResponseDTO save(ProductCategoryDTO dto) {
         ProductCategory category = productCategoryMapper.toEntity(dto);
@@ -35,8 +36,20 @@ public class ProductCategoryService implements IProductCategoryService{
     }
     @Override
     public List<ProductCategoryResponseDTO> getAll() {
+        Long businessTypeId = authenticatedUserService.getCurrentBusinessTypeId();
+        if (authenticatedUserService.isSuperAdmin()) {
+            return categoryRepository.findAll().stream()
+                    .map(productCategoryMapper::toResponse)
+                    .toList();
+        }
+        Sucursal sucursal = authenticatedUserService.getCurrentBranch();
+        if (sucursal == null || sucursal.getBusinessType() == null) {
+            throw new ForbiddenException("Tu sucursal no tiene tipo de negocio asignado.");
+        }
 
-        return categoryRepository.findAll().stream().map(productCategoryMapper::toResponse).collect(Collectors.toList());
+        return categoryRepository.findByBusinessTypeId(businessTypeId).stream()
+                .map(productCategoryMapper::toResponse)
+                .toList();
     }
     @Override
     public List<ProductCategoryResponseDTO> getByBusinessType(Long businessTypeId) {
@@ -44,8 +57,17 @@ public class ProductCategoryService implements IProductCategoryService{
     }
     @Override
     public ProductCategoryResponseDTO getById(Long id) {
-        ProductCategory productCategory =  categoryRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Category with ID " + id + " not found"));
+        Long businessTypeId = authenticatedUserService.getCurrentBusinessTypeId();
+
+        if (authenticatedUserService.isSuperAdmin()) {
+            ProductCategory productCategory =  categoryRepository.findById(id)
+                    .orElseThrow(() -> new NotFoundException("Categoria con ID " + id + " no encontrada"));
+            return productCategoryMapper.toResponse(productCategory);
+        }
+
+        ProductCategory productCategory = categoryRepository.findByIdAndBusinessTypeId(id, businessTypeId)
+                .orElseThrow(() -> new NotFoundException("Categoría no encontrada para tu tipo de negocio."));
+
         return productCategoryMapper.toResponse(productCategory);
     }
 

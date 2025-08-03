@@ -1,5 +1,6 @@
 package com.mx.mitienda.service;
 
+import com.mx.mitienda.exception.ForbiddenException;
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.exception.PdfGenerationException;
 import com.mx.mitienda.mapper.DetalleVentaMapper;
@@ -24,10 +25,15 @@ import org.thymeleaf.context.Context;
 import org.xhtmlrenderer.pdf.ITextRenderer;
 
 import java.io.ByteArrayOutputStream;
+import java.math.BigDecimal;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.mx.mitienda.util.Utils.VENTA_CODE;
@@ -99,7 +105,7 @@ public class VentaServiceImpl implements IVentaService {
 
     public List<VentaResponseDTO> getAll(String username, String rol) {
         List<Venta> ventas = new ArrayList<>();
-        if (rol.equals(Rol.ADMIN)) {
+        if (authenticatedUserService.isAdmin()|| authenticatedUserService.isSuperAdmin()) {
             ventas = ventaRepository.findByActiveTrue();
         } else {
             ventas = ventaRepository.findByUsuario_UsernameAndActiveTrue(username);
@@ -122,7 +128,7 @@ public class VentaServiceImpl implements IVentaService {
                 .byPaymentMethod(filterDTO.getPaymentMethodId())
                 .withId(filterDTO.getId());
 
-        if (!role.equals(Rol.ADMIN)) {
+        if (!authenticatedUserService.isAdmin() ||authenticatedUserService.isSuperAdmin()) {
             builder.username(username);
         }
         Sort sort = Sort.by(Sort.Direction.ASC, "totalAmount");
@@ -133,8 +139,13 @@ public class VentaServiceImpl implements IVentaService {
                 .collect(Collectors.toList());
     }
 
-    public List<DetalleVentaResponseDTO> getDetailsPerSale(Long id) {
-        return detalleVentaRepository.findByVenta_Id(id)
+    public List<DetalleVentaResponseDTO> getDetailsPerSale(Long idVenta) {
+        Long branchId = authenticatedUserService.getCurrentBranchId();
+        if (authenticatedUserService.isSuperAdmin()) {
+            return detalleVentaRepository.findByVenta_Id(idVenta)
+                    .stream().map(detalleVentaMapper::toResponse).toList();
+        }
+        return detalleVentaRepository.findByVenta_IdAndVenta_Branch_Id(idVenta, branchId)
                 .stream()
                 .map(detalleVentaMapper::toResponse)
                 .collect(Collectors.toList());
@@ -180,6 +191,80 @@ public class VentaServiceImpl implements IVentaService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public BigDecimal obtenerGananciaHoy() {
+        Long branchId = getBranchIdIfAuthorized();
+        LocalDateTime inicio = LocalDate.now().atStartOfDay();
+        LocalDateTime fin = LocalDate.now().atTime(23, 59, 59, 999_000_000); // 23:59:59.999
+        return ventaRepository.obtenerGananciaPorRangoYBranch(inicio, fin, branchId);
+
+    }
+
+    @Override
+    public BigDecimal obtenerGananciaSemana() {
+        Long branchId = getBranchIdIfAuthorized();
+        LocalDateTime inicio = LocalDate.now().with(DayOfWeek.MONDAY).atStartOfDay();
+        LocalDateTime fin = LocalDate.now()
+                .with(DayOfWeek.SUNDAY)
+                .atTime(23, 59, 59, 999_000_000);
+        return ventaRepository.obtenerGananciaPorRangoYBranch(inicio, fin, branchId);
+
+    }
+
+    @Override
+    public BigDecimal obtenerGananciaMes() {
+        Long branchId = getBranchIdIfAuthorized();
+        LocalDateTime inicio = LocalDate.now()
+                .withDayOfMonth(1)
+                .atStartOfDay();
+        LocalDateTime fin = LocalDate.now()
+                .withDayOfMonth(LocalDate.now().lengthOfMonth())
+                .atTime(23, 59, 59, 999_000_000);
+        return ventaRepository.obtenerGananciaPorRangoYBranch(inicio, fin, branchId);
+    }
+
+    @Override
+    public BigDecimal obtenerGananciaPorDia(LocalDate dia) {
+        Long branchId = getBranchIdIfAuthorized();
+        LocalDateTime inicio = dia.atStartOfDay();
+        LocalDateTime fin = dia.plusDays(1).atStartOfDay();
+        return ventaRepository.obtenerGananciaPorRangoYBranch(inicio, fin, branchId);
+    }
+
+    @Override
+    public BigDecimal obtenerGananciaPorRango(LocalDate desde, LocalDate hasta) {
+        Long branchId = getBranchIdIfAuthorized();
+        LocalDateTime inicio = desde.atStartOfDay();
+        LocalDateTime fin = hasta.plusDays(1).atStartOfDay();
+        return ventaRepository.obtenerGananciaPorRangoYBranch(inicio, fin, branchId);
+    }
+
+    @Override
+    public Map<LocalDate, BigDecimal> obtenerGananciasPorDiaEnRango(LocalDate desde, LocalDate hasta) {
+        if (desde.isAfter(hasta)) {
+            throw new IllegalArgumentException("Rango de fechas mal asignado");
+        }
+        Long branchId = getBranchIdIfAuthorized();
+        Map<LocalDate, BigDecimal> resultado = new LinkedHashMap<>();
+        LocalDate diaActual = desde;
+
+        while (!diaActual.isAfter(hasta)) {
+            LocalDateTime inicio = diaActual.atStartOfDay();
+            LocalDateTime fin = diaActual.plusDays(1).atStartOfDay();
+            BigDecimal ganancia = ventaRepository.obtenerGananciaPorRangoYBranch(inicio, fin, branchId);
+            resultado.put(diaActual, ganancia != null ? ganancia : BigDecimal.ZERO);
+            diaActual = diaActual.plusDays(1);
+        }
+
+        return resultado;
+    }
+    private Long getBranchIdIfAuthorized() {
+        Usuario usuario = authenticatedUserService.getCurrentUser();
+        if (usuario.getRole() == Rol.ADMIN || usuario.getRole() == Rol.SUPER_ADMIN) {
+            return usuario.getBranch().getId();
+        }
+        throw new ForbiddenException("No tienes permisos para consultar esta información.");
+    }
     private void generateSaleOutput(Venta venta, Boolean printed, List<String> emailList) {
         byte[] pdfBytes = generatePdfService.generatePdf(VENTA_CODE, venta.getId(), printed != null && printed);
 
@@ -198,5 +283,7 @@ public class VentaServiceImpl implements IVentaService {
             log.info("Ticket térmico generado para venta {}", venta.getId());
         }
     }
+
+
 
 }

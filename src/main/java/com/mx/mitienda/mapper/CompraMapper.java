@@ -30,6 +30,8 @@ public class CompraMapper {
     private final BusinessTypeRepository businessTypeRepository;
     private final IAuthenticatedUserService authenticatedUserService;
 
+    private final ProveedorSucursalRepository proveedorSucursalRepository;
+
     public Compra toEntity(CompraRequestDTO compraRequestDTO, String userName) {
 
         Long businessTypeId = authenticatedUserService.getCurrentBusinessTypeId();
@@ -51,6 +53,12 @@ public class CompraMapper {
 
         BusinessType businessType = businessTypeRepository.findByIdAndActiveTrue(businessTypeId)
                 .orElseThrow(() -> new NotFoundException("Tipo de negocio no encontrado"));
+
+        boolean asociado = proveedorSucursalRepository
+                .existsByProveedorIdAndSucursalId(proveedor.getId(), sucursal.getId());
+        if (!asociado) {
+            throw new IllegalArgumentException("El proveedor no está asociado a tu sucursal.");
+        }
 
         compra.setProveedor(proveedor);
         compra.setBranch(sucursal);
@@ -136,4 +144,5 @@ public class CompraMapper {
     compraResponseDTO.setDetails(details);
     return compraResponseDTO;
     }
+
 }

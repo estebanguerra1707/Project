@@ -27,4 +27,5 @@ public interface InventarioSucursalRepository extends JpaRepository<InventarioSu
 
    Page<InventarioSucursal> findAll(Specification<InventarioSucursal> spec, Pageable pageable);
    List<InventarioSucursal> findByBranch_BusinessType_Id(Long businessTypeId);
+   boolean existsByIdAndBranch_Id(Long id, Long branchId);
 }

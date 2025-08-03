@@ -4,6 +4,7 @@ import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.model.Sucursal;
 import com.mx.mitienda.model.Usuario;
 import com.mx.mitienda.repository.UsuarioRepository;
+import com.mx.mitienda.util.enums.Rol;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -52,5 +53,16 @@ public class AuthenticatedUserServiceImpl implements IAuthenticatedUserService {
 
         return usuario.getBranch().getBusinessType().getId();
     }
+
+    @Override
+    public boolean isSuperAdmin() {
+        return getCurrentUser().getRole().name().equals(Rol.SUPER_ADMIN);
+    }
+
+    @Override
+    public boolean isAdmin() {
+        return getCurrentUser().getRole().name().equals(Rol.ADMIN);
+    }
+
 
 }

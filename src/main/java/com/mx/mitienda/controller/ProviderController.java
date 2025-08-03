@@ -2,24 +2,27 @@ package com.mx.mitienda.controller;
 
 import com.mx.mitienda.model.dto.ProveedorDTO;
 import com.mx.mitienda.model.dto.ProveedorResponseDTO;
+import com.mx.mitienda.service.IProveedorSucursalService;
 import com.mx.mitienda.service.ProveedorServiceImpl;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/proveedores")
+@RequiredArgsConstructor
 public class ProviderController {
 
     private final ProveedorServiceImpl proveedorService;
+    private final IProveedorSucursalService proveedorSucursalService;
 
-    public ProviderController(ProveedorServiceImpl ProveedorService) {
-        this.proveedorService = ProveedorService;
-    }
     @Tag(name = "PROVIDER SAVE", description = "Operaciones relacionadas con SAVE PROVIDER")
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
@@ -49,5 +52,11 @@ public class ProviderController {
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public void delete(@PathVariable Long id) {
         proveedorService.disable(id);
+    }
+
+    @GetMapping("/proveedor-sucursal/{branchId}")
+    public ResponseEntity<List<ProveedorResponseDTO>> getProveedoresPorSucursal(@PathVariable Long branchId) {
+        List<ProveedorResponseDTO> proveedores = proveedorSucursalService.getProveedoresBySucursal(branchId);
+        return ResponseEntity.ok(proveedores);
     }
 }

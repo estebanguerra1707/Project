@@ -13,5 +13,6 @@ public interface ProductCategoryRepository extends JpaRepository<ProductCategory
     Optional<ProductCategory> findById(Long id);
     List<ProductCategory> findByBusinessTypeId(Long businessTypeId);
     Optional<ProductCategory> findWithBusinessTypeById(Long id);
+    Optional<ProductCategory> findByIdAndBusinessTypeId(Long id, Long businessTypeId);
 
 }

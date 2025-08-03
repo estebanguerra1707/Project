@@ -43,7 +43,7 @@ public class CompraServiceImpl implements ICompraService {
     private String destinatario;
 
     public List<CompraResponseDTO> getAll(String username, String role){
-        if(role.equals(Rol.ADMIN)){
+        if(role.equals(Rol.ADMIN) || authenticatedUserService.isSuperAdmin()){
             return compraRepository.findByActiveTrueOrderByIdAsc().stream()
                     .map(compraMapper::toResponse)
                     .collect(Collectors.toList());
@@ -56,9 +56,15 @@ public class CompraServiceImpl implements ICompraService {
     }
 
 
-    public CompraResponseDTO getById(Long id){
-        Compra compra = compraRepository.findByIdAndActiveTrue(id).orElseThrow(()->(new NotFoundException("La compra con el id:: " +id+"no se ha encontrado")));
+    public CompraResponseDTO getById(Long idPurchase){
+        Long branchId = authenticatedUserService.getCurrentBranchId();
+        if(authenticatedUserService.isSuperAdmin()){
+            Compra compra = compraRepository.findByIdAndActiveTrue(idPurchase).orElseThrow(()->(new NotFoundException("La compra con el id:: " +idPurchase+" no se ha encontrado")));
+            return compraMapper.toResponse(compra);
+        }
+        Compra compra = compraRepository.findByIdAndBranch_IdAndActiveTrue(idPurchase,branchId).orElseThrow(()->(new NotFoundException("La compra no se ha encontrado dentro de la sucursal con el usuario loggeado, intenta con otro")));
         return compraMapper.toResponse(compra);
+
     }
 
     @Transactional
@@ -185,4 +191,6 @@ public class CompraServiceImpl implements ICompraService {
         if (Boolean.TRUE.equals(isPrinted)) log.info("::Generando ticket térmico para compra::{}", compraGuardada.getId());
         if (emailList != null && !emailList.isEmpty()) log.info("::Enviando PDF de compra a:: {}", emailList);
     }
+
+
 }
