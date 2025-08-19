@@ -1,6 +1,7 @@
 package com.mx.mitienda.repository;
 
 import com.mx.mitienda.model.Venta;
+import com.mx.mitienda.model.dto.DevolucionVentasRequestDTO;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -25,17 +26,32 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
         WHERE b.id = :branchId AND b.businessType.id = :businessTypeId
     """)
     List<Venta> findByBranchAndBusinessType(Long branchId, Long businessTypeId);
-    @Query("SELECT SUM(v.totalAmount) FROM Venta v WHERE v.saleDate BETWEEN :start AND :end AND v.active = true")
-    BigDecimal obtenerGananciaPorRango(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    // GANANCIA por ventas (sin devoluciones):
+    // SUM( (precioVenta - precioCompra) * cantidad )
     @Query("""
-    SELECT COALESCE(SUM(v.totalAmount), 0)
-    FROM Venta v
-    WHERE v.saleDate BETWEEN :inicio AND :fin
-      AND v.branch.id = :branchId
-      AND v.active = true
-""")
-    BigDecimal obtenerGananciaPorRangoYBranch(@Param("inicio") LocalDateTime inicio,
-                                              @Param("fin") LocalDateTime fin,
-                                              @Param("branchId") Long branchId);
-
+        SELECT COALESCE(SUM( (dv.unitPrice - COALESCE(p.purchasePrice, 0)) * dv.quantity ), 0)
+        FROM Venta v
+        JOIN v.detailsList dv
+        JOIN dv.product p
+        WHERE v.active = true
+          AND v.branch.id = :branchId
+          AND v.saleDate >= :inicio
+          AND v.saleDate <  :fin
+    """)
+    BigDecimal sumGananciaVentas(@Param("inicio") LocalDateTime inicio,
+                                 @Param("fin") LocalDateTime fin,
+                                 @Param("branchId") Long branchId);
+    Optional<Venta> findByIdAndBranch_IdAndActiveTrue(Long ventaId,Long  branchId);
+    // VENTAS BRUTAS: usa tu totalAmount
+    @Query("""
+        SELECT COALESCE(SUM(v.totalAmount), 0)
+        FROM Venta v
+        WHERE v.active = true
+          AND v.branch.id = :branchId
+          AND v.saleDate >= :inicio
+          AND v.saleDate <  :fin
+    """)
+    BigDecimal sumVentasBrutas(@Param("inicio") LocalDateTime inicio,
+                               @Param("fin") LocalDateTime fin,
+                               @Param("branchId") Long branchId);
 }

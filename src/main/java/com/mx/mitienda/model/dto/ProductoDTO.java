@@ -15,4 +15,5 @@ public class ProductoDTO {
     private Integer stock;
     private Long providerId;
     private LocalDateTime updatedDate;
+    private String codigoBarras;
 }

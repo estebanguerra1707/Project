@@ -2,6 +2,8 @@ package com.mx.mitienda.repository;
 
 import com.mx.mitienda.model.ProductCategory;
 import com.mx.mitienda.model.Producto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,7 +21,6 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     List<Producto> findByActiveTrueAndProductCategory_BusinessType_Id(Long businessTypeId, Sort sort);
     List<Producto> findByActiveTrue();
     Optional<Producto> findByIdAndActiveTrue(Long id);
-    List<Producto> findAll(Specification<Producto> spec);
     List<Producto> findByActiveTrue(Sort sort);
     @Query("""
     SELECT p FROM Producto p
@@ -48,4 +49,21 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     ORDER BY p.id
 """)
     List<Producto> findByBranchAndBusinessType(Long branchId, Long businessTypeId);
+    boolean existsByCodigoBarrasAndProductCategory_BusinessType_Id(String codigoBarras, Long businessTypeId);
+    boolean existsBySkuAndProductCategory_BusinessType_Id(String sku, Long businessTypeId);
+    boolean existsByNameIgnoreCaseAndProductCategory_BusinessType_Id(String name, Long businessTypeId);
+    @Query("""
+    SELECT p FROM Producto p
+    JOIN p.productCategory pc
+    JOIN pc.businessType bt
+    WHERE p.codigoBarras = :codigoBarras
+      AND bt.id = :businessTypeId
+      AND p.active = true
+""")
+    Optional<Producto> findByCodigoBarrasAndBusinessTypeId(
+            @Param("codigoBarras") String codigoBarras,
+            @Param("businessTypeId") Long businessTypeId
+    );
+
+    Page<Producto> findAll(Specification<Producto> spec, Pageable pageable);
 }

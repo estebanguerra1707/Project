@@ -5,13 +5,15 @@ import com.mx.mitienda.model.dto.CompraRequestDTO;
 import com.mx.mitienda.model.dto.CompraResponseDTO;
 import org.springframework.security.core.Authentication;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 public interface ICompraService {
-    public List<CompraResponseDTO> getAll(String username, String role);
-    public CompraResponseDTO getById(Long id);
-    public CompraResponseDTO save(CompraRequestDTO compraRequestDTO, Authentication auth);
-    public void inactivePurchase(Long id);
-    public List<CompraResponseDTO> advancedSearch(CompraFiltroDTO compraDTO);
-    public List<CompraResponseDTO> findCurrentUserCompras();
+     List<CompraResponseDTO> getAll(String username, String role);
+     CompraResponseDTO getById(Long id);
+     CompraResponseDTO save(CompraRequestDTO compraRequestDTO, Authentication auth);
+     void inactivePurchase(Long id);
+     List<CompraResponseDTO> advancedSearch(CompraFiltroDTO compraDTO);
+     List<CompraResponseDTO> findCurrentUserCompras();
 }

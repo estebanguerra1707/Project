@@ -29,7 +29,7 @@ class ProductoServiceImplTest {
         productoRepository = mock(ProductoRepository.class);
         productoMapper = mock(ProductoMapper.class);
         authenticatedUserService = mock(IAuthenticatedUserService.class);
-        productoService = new ProductoServiceImpl(productoRepository, productoMapper, authenticatedUserService, null,null, null);
+        productoService = new ProductoServiceImpl(productoRepository, productoMapper, authenticatedUserService, null,null, null, null);
     }
 
     @Test

@@ -24,4 +24,7 @@ public interface IVentaService {
    BigDecimal obtenerGananciaPorDia(LocalDate dia);
    BigDecimal obtenerGananciaPorRango(LocalDate desde, LocalDate hasta);
    Map<LocalDate, BigDecimal> obtenerGananciasPorDiaEnRango(LocalDate desde, LocalDate hasta);
+   BigDecimal obtenerGananciaPorVenta(Long ventaId);
+   BigDecimal obtenerVentasBrutasPorRango(LocalDate desde, LocalDate hasta);
+   BigDecimal obtenerVentasNetasPorRango(LocalDate desde, LocalDate hasta);
 }

@@ -1,16 +1,19 @@
 package com.mx.mitienda.repository;
 
 import com.mx.mitienda.model.InventarioSucursal;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface InventarioSucursalRepository extends JpaRepository<InventarioSucursal, Long> {
+   @Lock(LockModeType.PESSIMISTIC_WRITE)
    Optional<InventarioSucursal> findByProduct_IdAndBranch_Id(Long IdProduct, Long idBranch);
    List<InventarioSucursal> findByBranch_IdAndProduct_IdOrderByBranch_Id(Long branchId, Long productId);
    List<InventarioSucursal> findByBranch_Id(Long branchId);

@@ -22,4 +22,5 @@ public class ProductoResponseDTO {
     private String bussinessTypeName;
     private LocalDateTime creationDate;
     private ProductoDetailResponseDTO productDetail;
+    private String codigoBarras;
 }

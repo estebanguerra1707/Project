@@ -11,9 +11,12 @@ public class ProductoFiltroDTO {
     private BigDecimal min;
     private BigDecimal max;
     private String category;
-    private Boolean availabe;
+    private Boolean available;
     private Boolean withoutCategory;
     private Long id;
-    private Long categoryId; // <- necesario para relacionar
+    private Long categoryId;
+    private Long branchId;
+    private Long businessTypeId;
+    private String codigoBarras;
 
 }

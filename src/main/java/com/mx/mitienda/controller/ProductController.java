@@ -1,11 +1,18 @@
 package com.mx.mitienda.controller;
 
 import com.mx.mitienda.model.dto.ProductoDTO;
+import com.mx.mitienda.model.dto.ProductoFiltroDTO;
 import com.mx.mitienda.model.dto.ProductoResponseDTO;
+import com.mx.mitienda.service.IAuthenticatedUserService;
 import com.mx.mitienda.service.IProductoService;
 import com.mx.mitienda.service.ProductoServiceImpl;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -15,13 +22,12 @@ import java.util.List;
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/productos")
+@RequiredArgsConstructor
 public class ProductController {
 
     private final IProductoService productService;
+    private final IAuthenticatedUserService authenticatedUserService;
 
-    public ProductController(ProductoServiceImpl service) {
-        this.productService = service;
-    }
     @Tag(name = "PRODUCT SAVE", description = "Operaciones relacionadas con SALVAR PRODUCT")
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
@@ -60,4 +66,23 @@ public class ProductController {
     }
 
 
+    @GetMapping("/codigo-barras/{codigoBarras}")
+    @PreAuthorize("hasAnyRole('ADMIN','VENDOR','SUPER_ADMIN')")
+    public ResponseEntity<ProductoResponseDTO> buscarPorCodigoBarras(@PathVariable String codigoBarras) {
+        return ResponseEntity.ok(productService.buscarPorCodigoBarras(codigoBarras));
+    }
+
+    @PostMapping("/avanzado")
+    public Page<ProductoResponseDTO> buscarAvanzado(
+            @RequestBody ProductoFiltroDTO filtro,
+            @PageableDefault(size = 20) Pageable pageable // default; se puede sobreescribir con query params
+    ) {
+        // Usuario normal: siempre “forzar” su branch
+        if (!authenticatedUserService.isSuperAdmin()) {
+            filtro.setBranchId(authenticatedUserService.getCurrentBranchId());
+        }
+        // SUPER_ADMIN: si no manda branchId, se busca en TODAS las sucursales (branchId = null).
+        // Puede además mandar businessTypeId para acotar por tipo de negocio.
+        return productService.buscarAvanzado(filtro, pageable);
+    }
 }

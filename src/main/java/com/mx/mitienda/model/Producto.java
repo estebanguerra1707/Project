@@ -22,13 +22,19 @@ public class Producto {
 
 	private String description;
 
-	@Column(name = "price")
+	@Column(name = "purchase_price")
 	private BigDecimal purchasePrice;
+
+	@Column(name = "sale_price", precision = 18, scale = 2)
+	private BigDecimal salePrice;
 
 	private Boolean active;
 
 	@Column(name = "creation_date")
 	private LocalDateTime creationDate;
+
+	@Column(name = "codigo_barras", unique = true)
+	private String codigoBarras;
 
 	@ManyToOne
 	@JsonBackReference

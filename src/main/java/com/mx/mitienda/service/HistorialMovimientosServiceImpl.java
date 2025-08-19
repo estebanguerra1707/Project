@@ -3,11 +3,11 @@ package com.mx.mitienda.service;
 import com.mx.mitienda.exception.ForbiddenException;
 import com.mx.mitienda.model.HistorialMovimiento;
 import com.mx.mitienda.model.InventarioSucursal;
-import com.mx.mitienda.model.Usuario;
+
 import com.mx.mitienda.model.dto.HistorialMovimientosResponseDTO;
 import com.mx.mitienda.repository.HistorialMovimientoRepository;
 import com.mx.mitienda.repository.InventarioSucursalRepository;
-import com.mx.mitienda.util.enums.Rol;
+
 import com.mx.mitienda.util.enums.TipoMovimiento;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -15,8 +15,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor

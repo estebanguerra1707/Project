@@ -50,6 +50,9 @@ public class ProductoMapper {
         Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(branchId)
                 .orElseThrow(() -> new NotFoundException("Sucursal no encontrada"));
 
+        if (productoDTO.getCodigoBarras() == null || productoDTO.getCodigoBarras().isBlank()) {
+            throw new IllegalArgumentException("El código de barras es obligatorio.");
+        }
 
         Producto producto = new Producto();
 
@@ -63,6 +66,7 @@ public class ProductoMapper {
         producto.setCreationDate(LocalDateTime.now());
         producto.setBranch(sucursal);
         producto.setBusinessType(businessType);
+        producto.setCodigoBarras(productoDTO.getCodigoBarras());
         return producto;
     }
 
@@ -91,6 +95,7 @@ public class ProductoMapper {
             response.setProductDetail(productDetailMapper.toResponse(producto.getProductDetail()));
         }
         response.setCreationDate(producto.getCreationDate());
+        response.setCodigoBarras(producto.getCodigoBarras());
         return response;
     }
 

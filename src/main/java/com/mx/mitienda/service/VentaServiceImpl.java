@@ -30,13 +30,10 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.mx.mitienda.util.Utils.VENTA_CODE;
+import static com.mx.mitienda.util.Utils.*;
 
 
 @Slf4j
@@ -55,6 +52,16 @@ public class VentaServiceImpl implements IVentaService {
     private final IAlertaCorreoService alertaCorreoService;
     private final IGeneratePdfService generatePdfService;
     private final MailService mailService;
+    private final DevolucionVentasRepository devolucionVentasRepository;
+    private final DetalleDevolucionVentasRepository detalleDevolucionVentasRepository;
+
+    private BigDecimal safe(BigDecimal venta) {
+        return venta != null ? venta : BigDecimal.ZERO;
+    }
+    // pequeño contenedor inmutable para devolver 3 valores
+    //es lo mismo que crear un DTO
+    private record Totales(BigDecimal brutas, BigDecimal netas, BigDecimal gananciaNeta) {}
+
 
     @Transactional //si falla o hay unea excepcion en cualquier lugar del metodo, se hace rollback de todo
     public VentaResponseDTO registerSell(VentaRequestDTO request, String username) {
@@ -69,7 +76,7 @@ public class VentaServiceImpl implements IVentaService {
 
             int stockAnterior = inventarioSucursal.getStock();
             int stockNuevo = stockAnterior - detalle.getQuantity(); // fue salida
-            inventarioSucursal.setStockCritico(stockNuevo < inventarioSucursal.getMinStock());
+            inventarioSucursal.setStockCritico(stockNuevo <= inventarioSucursal.getMinStock());
             if (stockNuevo < 0) {
                 throw new IllegalArgumentException("No hay suficiente stock para vender: " + detalle.getProduct().getName());
             }
@@ -191,52 +198,64 @@ public class VentaServiceImpl implements IVentaService {
                 .collect(Collectors.toList());
     }
 
+    // cálculo central [inicio, fin)
+    private Totales calcularTotales(LocalDateTime inicio, LocalDateTime fin) {
+        Long branchId = getBranchIdIfAuthorized();
+
+        BigDecimal ventasBrutas  = safe(ventaRepository.sumVentasBrutas(inicio, fin, branchId));
+        BigDecimal devoluciones    = safe(devolucionVentasRepository.sumImporteDevuelto(inicio, fin, branchId));
+        BigDecimal ventasNetas   = ventasBrutas.subtract(devoluciones);//substract es resta
+
+        BigDecimal gananciaVentas = safe(ventaRepository.sumGananciaVentas(inicio, fin, branchId));
+        BigDecimal ganaciaDevoluciones    = safe(devolucionVentasRepository.sumGananciaPerdidaPorDevoluciones(inicio, fin, branchId));
+        BigDecimal gananciaNeta   = gananciaVentas.subtract(ganaciaDevoluciones);
+
+        return new Totales(ventasBrutas, ventasNetas, gananciaNeta);
+    }
+
     @Override
     public BigDecimal obtenerGananciaHoy() {
-        Long branchId = getBranchIdIfAuthorized();
         LocalDateTime inicio = LocalDate.now().atStartOfDay();
         LocalDateTime fin = LocalDate.now().atTime(23, 59, 59, 999_000_000); // 23:59:59.999
-        return ventaRepository.obtenerGananciaPorRangoYBranch(inicio, fin, branchId);
-
+        return calcularTotales(inicio, fin).gananciaNeta();
     }
 
     @Override
     public BigDecimal obtenerGananciaSemana() {
-        Long branchId = getBranchIdIfAuthorized();
+
         LocalDateTime inicio = LocalDate.now().with(DayOfWeek.MONDAY).atStartOfDay();
         LocalDateTime fin = LocalDate.now()
                 .with(DayOfWeek.SUNDAY)
                 .atTime(23, 59, 59, 999_000_000);
-        return ventaRepository.obtenerGananciaPorRangoYBranch(inicio, fin, branchId);
-
+        return calcularTotales(inicio, fin).gananciaNeta();
     }
 
     @Override
     public BigDecimal obtenerGananciaMes() {
-        Long branchId = getBranchIdIfAuthorized();
+
         LocalDateTime inicio = LocalDate.now()
                 .withDayOfMonth(1)
                 .atStartOfDay();
         LocalDateTime fin = LocalDate.now()
                 .withDayOfMonth(LocalDate.now().lengthOfMonth())
                 .atTime(23, 59, 59, 999_000_000);
-        return ventaRepository.obtenerGananciaPorRangoYBranch(inicio, fin, branchId);
+        return calcularTotales(inicio, fin).gananciaNeta();
     }
 
     @Override
     public BigDecimal obtenerGananciaPorDia(LocalDate dia) {
-        Long branchId = getBranchIdIfAuthorized();
-        LocalDateTime inicio = dia.atStartOfDay();
+
+        LocalDateTime inicio = inicioDelDia(dia);
         LocalDateTime fin = dia.plusDays(1).atStartOfDay();
-        return ventaRepository.obtenerGananciaPorRangoYBranch(inicio, fin, branchId);
+        return calcularTotales(inicio, fin).gananciaNeta();
     }
+
 
     @Override
     public BigDecimal obtenerGananciaPorRango(LocalDate desde, LocalDate hasta) {
-        Long branchId = getBranchIdIfAuthorized();
-        LocalDateTime inicio = desde.atStartOfDay();
-        LocalDateTime fin = hasta.plusDays(1).atStartOfDay();
-        return ventaRepository.obtenerGananciaPorRangoYBranch(inicio, fin, branchId);
+        LocalDateTime inicio = inicioDelDia(desde);
+        LocalDateTime fin = finDelDia(hasta);
+        return calcularTotales(inicio, fin).gananciaNeta();
     }
 
     @Override
@@ -244,20 +263,51 @@ public class VentaServiceImpl implements IVentaService {
         if (desde.isAfter(hasta)) {
             throw new IllegalArgumentException("Rango de fechas mal asignado");
         }
-        Long branchId = getBranchIdIfAuthorized();
+
         Map<LocalDate, BigDecimal> resultado = new LinkedHashMap<>();
         LocalDate diaActual = desde;
 
         while (!diaActual.isAfter(hasta)) {
-            LocalDateTime inicio = diaActual.atStartOfDay();
-            LocalDateTime fin = diaActual.plusDays(1).atStartOfDay();
-            BigDecimal ganancia = ventaRepository.obtenerGananciaPorRangoYBranch(inicio, fin, branchId);
+            LocalDateTime inicio = inicioDelDia(diaActual);
+            LocalDateTime fin    = finDelDia(diaActual);
+            BigDecimal ganancia = calcularTotales(inicio, fin).gananciaNeta();
             resultado.put(diaActual, ganancia != null ? ganancia : BigDecimal.ZERO);
             diaActual = diaActual.plusDays(1);
         }
-
         return resultado;
     }
+
+    @Override
+    public BigDecimal obtenerGananciaPorVenta(Long ventaId) {
+        Venta venta = ventaRepository.findById(ventaId).orElseThrow(()-> new NotFoundException("Venta no encontrada"));
+        return venta.getDetailsList().stream()
+                .map(detalleVenta -> {
+                    BigDecimal precioVenta = detalleVenta.getUnitPrice();
+                    BigDecimal precioCompra = detalleVenta.getProduct().getPurchasePrice();
+                    int cantidadVendida = detalleVenta.getQuantity();
+                    // Cantidad devuelta de este detalle
+                    int cantidadDevuelta = Optional.ofNullable(
+                            detalleDevolucionVentasRepository.sumCantidadDevuelta(detalleVenta.getId())
+                    ).orElse(0);
+                    // Cantidad efectiva (vendida - devuelta)
+                    int cantidadEfectiva = cantidadVendida - cantidadDevuelta;
+                    BigDecimal resta =  precioVenta.subtract(precioCompra);
+                    return resta.multiply(BigDecimal.valueOf(cantidadEfectiva));
+                }).reduce(BigDecimal.ZERO,BigDecimal::add);
+    }
+    @Override
+    public BigDecimal obtenerVentasBrutasPorRango(LocalDate desde, LocalDate hasta) {
+        LocalDateTime inicio = inicioDelDia(desde);
+        LocalDateTime fin = finDelDia(hasta); // hasta las 23:59:59.999
+        return calcularTotales(inicio, fin).brutas();
+    }
+    @Override
+    public BigDecimal obtenerVentasNetasPorRango(LocalDate desde, LocalDate hasta) {
+        LocalDateTime inicio = inicioDelDia(desde);
+        LocalDateTime fin = finDelDia(hasta);
+        return calcularTotales(inicio, fin).netas();
+    }
+
     private Long getBranchIdIfAuthorized() {
         Usuario usuario = authenticatedUserService.getCurrentUser();
         if (usuario.getRole() == Rol.ADMIN || usuario.getRole() == Rol.SUPER_ADMIN) {
@@ -283,7 +333,4 @@ public class VentaServiceImpl implements IVentaService {
             log.info("Ticket térmico generado para venta {}", venta.getId());
         }
     }
-
-
-
 }

@@ -26,6 +26,9 @@ public class DetalleVenta {
     @Column(name = "sub_total")
     private BigDecimal subTotal;
 
+    @Column(name = "cantidad_devuelta")
+    private Integer cantidadDevuelta;
+
     private Boolean active;
 
     @ManyToOne

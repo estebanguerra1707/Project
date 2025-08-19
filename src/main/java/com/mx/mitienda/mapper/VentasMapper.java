@@ -98,7 +98,7 @@ public class VentasMapper {
             detalle.setVenta(venta);
             detalle.setProduct(producto);
             detalle.setQuantity(cantidad);
-            detalle.setUnitPrice(producto.getPurchasePrice());
+            detalle.setUnitPrice(producto.getSalePrice());
             detalle.setSubTotal(producto.getPurchasePrice().multiply(BigDecimal.valueOf(cantidad)));
             detalle.setActive(true);
             return detalle;
@@ -139,6 +139,7 @@ public class VentasMapper {
 
         List<DetalleVentaResponseDTO> details = venta.getDetailsList().stream().map(detail->{
             DetalleVentaResponseDTO detalleVentaResponseDTO = new DetalleVentaResponseDTO();
+            detalleVentaResponseDTO.setProductId(detail.getProduct().getId());
             detalleVentaResponseDTO.setProductName(detail.getProduct().getName());
             detalleVentaResponseDTO.setQuantity(detail.getQuantity());
             detalleVentaResponseDTO.setUnitPrice(detail.getUnitPrice());

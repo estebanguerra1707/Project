@@ -1,10 +1,12 @@
 package com.mx.mitienda.controller;
 
 import com.mx.mitienda.model.dto.*;
+import com.mx.mitienda.service.IDevolucionVentasService;
 import com.mx.mitienda.service.IVentaService;
 import com.mx.mitienda.service.VentaServiceImpl;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -27,6 +29,8 @@ import java.util.stream.Collectors;
 public class VentaController {
 
     private final IVentaService ventaServiceImpl;
+    private final IDevolucionVentasService devolucionVentasService;
+
 
     @Tag(name = "VENTAS registrar venta", description = "Operaciones relacionadas con registrar todas las ventas ")
     @PostMapping
@@ -69,6 +73,7 @@ public class VentaController {
     }
 
     @GetMapping("/ganancias")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
     public ResponseEntity<ReporteGananciasDTO> obtenerResumen() {
         return ResponseEntity.ok(new ReporteGananciasDTO(
                 ventaServiceImpl.obtenerGananciaHoy(),
@@ -76,7 +81,9 @@ public class VentaController {
                 ventaServiceImpl.obtenerGananciaMes()
         ));
     }
+
     @GetMapping("/ganancia-dia")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
     public ResponseEntity<GanaciaDiaDTO> getGananciaDia(@RequestParam("fecha") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         BigDecimal ganancia = ventaServiceImpl.obtenerGananciaPorDia(fecha);
         return ResponseEntity.ok(new GanaciaDiaDTO(fecha, ganancia));
@@ -84,11 +91,12 @@ public class VentaController {
 
 
     @PostMapping("/ganancia-rango")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
     public ResponseEntity<BigDecimal> getGananciaPorRango(@RequestBody GananciaPorFechaDTO gananciaPorFechaDTO) {
         return ResponseEntity.ok(ventaServiceImpl.obtenerGananciaPorRango(gananciaPorFechaDTO.getStartDate(), gananciaPorFechaDTO.getEndDate()));
     }
-
     @PostMapping("/ganancia-diaria-rango")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
     public ResponseEntity<List<GanaciaDiaDTO>> getGananciaDiariaRango(@RequestBody GananciaPorFechaDTO gananciaPorFechaDTO) {
         Map<LocalDate, BigDecimal> datos = ventaServiceImpl.obtenerGananciasPorDiaEnRango(gananciaPorFechaDTO.getStartDate(), gananciaPorFechaDTO.getEndDate());
 
@@ -97,6 +105,46 @@ public class VentaController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(respuesta);
+    }
+
+
+    // 1) Ganancia (neta) por venta específica (considerando devoluciones)
+    @GetMapping("/ganancia/{ventaId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    public ResponseEntity<BigDecimal> obtenerGananciaPorVenta(@PathVariable Long ventaId) {
+        BigDecimal ganancia = ventaServiceImpl.obtenerGananciaPorVenta(ventaId);
+        return ResponseEntity.ok(ganancia);
+    }
+
+    // 2) Ventas BRUTAS por rango [desde, hasta]
+    @GetMapping("/brutas")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    public ResponseEntity<BigDecimal> obtenerVentasBrutasPorRango(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+
+        BigDecimal total = ventaServiceImpl.obtenerVentasBrutasPorRango(desde, hasta);
+        return ResponseEntity.ok(total);
+    }
+
+    // 3) Ventas NETAS por rango [desde, hasta] (resta importes devueltos)
+    @GetMapping("/netas")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    public ResponseEntity<BigDecimal> obtenerVentasNetasPorRango(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+
+        BigDecimal total = ventaServiceImpl.obtenerVentasNetasPorRango(desde, hasta);
+        return ResponseEntity.ok(total);
+    }
+
+
+    @PostMapping("/devolucion")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    public ResponseEntity<DevolucionVentasResponseDTO> devolverVenta(
+            @Valid @RequestBody DevolucionVentasRequestDTO devolucionVentasRequestDTO,
+            Authentication authentication) {
+        return ResponseEntity.ok(devolucionVentasService.procesarDevolucion(devolucionVentasRequestDTO, authentication));
     }
 
     @GetMapping(

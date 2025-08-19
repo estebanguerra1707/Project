@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @SpringBootApplication(scanBasePackages = "com.mx.mitienda")
 @EnableJpaRepositories(basePackages = "com.mx.mitienda.repository")
 @EntityScan(basePackages = "com.mx.mitienda.model")
+@ComponentScan(basePackages = "com.mx.mitienda")
 @EnableJpaAuditing(auditorAwareRef = "auditorAware")
 public class DemoApplication {
 
