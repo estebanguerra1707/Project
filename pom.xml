@@ -64,7 +64,6 @@
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
-			<version>42.7.3</version>
 		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
@@ -148,10 +147,36 @@
 			<version>0.2.0</version>
 			<scope>provided</scope>
 		</dependency>
+		<!-- Actuator (healthcheck) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>secretsmanager</artifactId>
+			<version>2.25.28</version> <!-- o la más reciente estable -->
+		</dependency>
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>auth</artifactId>
+			<version>2.25.28</version>
+		</dependency>
+
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>sts</artifactId> <!-- útil si quieres usar AssumeRole -->
+			<version>2.25.28</version>
+		</dependency>
 	</dependencies>
 
 	<build>
 		<plugins>
+
 <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -207,6 +232,7 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
+					<layers enabled="true"/>
 					<excludes>
 						<exclude>
 							<groupId>org.projectlombok</groupId>

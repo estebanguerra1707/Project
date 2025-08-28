@@ -1,15 +1,21 @@
 package com.mx.mitienda.service;
 
+import com.mx.mitienda.security.JwtSecretProvider;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,22 +23,40 @@ import java.util.function.Function;
 
 
 @Service
+@RequiredArgsConstructor
 public class JwtService {
-    @Value("${JWT_SECRET}")
-    private String secretKey;
 
-    @Value("${JWT_EXPIRATION_MS}")
+    private static final Logger log = LoggerFactory.getLogger(JwtService.class);
+
+    @Value("${JWT_EXPIRATION_MS:3600000}") // 1h por default si no está
     private long expirationMs;
 
     private Key signingKey;
+    private final JwtSecretProvider secretProvider;
+
+    // Si guardaste el secreto en Base64 en AWS, pon true en application.properties:
+    @Value("${mi-tienda.jwt.secret-base64:false}")
+    private boolean secretIsBase64;
 
     @PostConstruct
     public void init() {
-        if (secretKey == null || secretKey.length() < 32) {
-            throw new IllegalArgumentException(" JWT_SECRET debe tener al menos 32 caracteres.");
+        // 1) Lée el secreto DESDE Secrets Manager
+        String rawSecret = secretProvider.get();
+        if (rawSecret == null || rawSecret.isBlank()) {
+            throw new IllegalStateException("JWT secret vacío (Secrets Manager).");
         }
-        signingKey = Keys.hmacShaKeyFor(secretKey.getBytes());
-        System.out.println("🔐 Llave JWT inicializada correctamente. Longitud: " + secretKey.length());
+
+        // 2) Si lo guardaste en Base64, decodifica; si no, usa bytes UTF-8
+        byte[] keyBytes = secretIsBase64
+                ? Base64.getDecoder().decode(rawSecret)
+                : rawSecret.getBytes(StandardCharsets.UTF_8);
+
+        if (keyBytes.length < 32) { // 256 bits mínimo para HS256
+            throw new IllegalArgumentException("JWT secret debe ser ≥ 32 bytes (256 bits). Actual: " + keyBytes.length);
+        }
+
+        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+        log.info("🔐 Llave JWT inicializada ({} bytes). Exp: {} ms", keyBytes.length, expirationMs);
     }
 
     public String genToken(UserDetails userDetails) {
@@ -40,15 +64,21 @@ public class JwtService {
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
+        Date now = new Date();
+        Date exp = new Date(now.getTime() + expirationMs);
+
         String token = Jwts.builder()
                 .setClaims(extraClaims)
-                .setSubject(userDetails.getUsername())  // el email
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expirationMs))
+                .setSubject(userDetails.getUsername()) // email/username
+                .setIssuedAt(now)
+                .setExpiration(exp)
+                // Para JJWT 0.11.x:
                 .signWith(signingKey, SignatureAlgorithm.HS256)
+                // Para JJWT 0.12.x alternativa:
+                // .signWith(signingKey, Jwts.SIG.HS256)
                 .compact();
 
-        System.out.println(" Token generado para: " + userDetails.getUsername());
+        log.debug("JWT emitido para {}", userDetails.getUsername());
         return token;
     }
 
@@ -57,7 +87,7 @@ public class JwtService {
         try {
             return getClaim(token, Claims::getSubject);
         } catch (Exception e) {
-            System.out.println("⚠ Error extrayendo email del token: " + e.getMessage());
+            System.out.println("Error extrayendo email del token: " + e.getMessage());
             return null;
         }
     }
@@ -89,4 +119,5 @@ public class JwtService {
         }
         return expired;
     }
+
 }

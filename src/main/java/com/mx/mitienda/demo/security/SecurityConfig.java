@@ -23,6 +23,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UsuarioService usuarioService;
+    private final ActuatorApiKeyFilter actuatorApiKeyFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -30,8 +31,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                           request -> Utils.isPublic(request.getRequestURI())).permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers("/actuator/**").hasRole("ACTUATOR")
+                        .requestMatchers(request -> Utils.isPublic(request.getRequestURI())).permitAll()
                         .requestMatchers("/compras/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
                         .requestMatchers("/ventas/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
                         .requestMatchers("/proveedores/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
@@ -47,14 +49,15 @@ public class SecurityConfig {
                         .requestMatchers("/reportes/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
                         .requestMatchers("/historial/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
                         .requestMatchers("/dashboard/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
+                        .requestMatchers("/actuator/health").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, excep) ->
                                 res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "No autorizado"))
                 )
+                .addFilterBefore(actuatorApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
         return http.build();
     }
 
