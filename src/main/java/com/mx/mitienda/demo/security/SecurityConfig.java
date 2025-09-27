@@ -37,11 +37,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Actuator: health abierto, demás con rol ACTUATOR
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/actuator/**").hasRole("ACTUATOR")
-
                         // Públicos según tu helper
                         .requestMatchers(request -> Utils.isPublic(request.getRequestURI())).permitAll()
-
                         // Rutas protegidas por roles
                         .requestMatchers("/compras/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
                         .requestMatchers("/ventas/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
@@ -69,7 +68,6 @@ public class SecurityConfig {
         if (act != null) {
             http.addFilterBefore(act, UsernamePasswordAuthenticationFilter.class);
         }
-
         // JWT siempre
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

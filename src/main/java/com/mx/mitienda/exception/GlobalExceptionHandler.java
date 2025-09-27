@@ -11,17 +11,17 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
 @Slf4j
-@ControllerAdvice
+@RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private ResponseEntity<Object> buildResponse(HttpStatus status, String message, HttpServletRequest request) {
@@ -35,7 +35,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<Object> handleNotFoundException(NotFoundException ex,  HttpServletRequest request) {
+    public ResponseEntity<Object> handleNotFoundException(NotFoundException ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
 
@@ -47,8 +47,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Object> handleValidationException(MethodArgumentNotValidException ex, HttpServletRequest request) {
         Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(error ->
-                errors.put(error.getField(), error.getDefaultMessage()));
+        ex.getBindingResult().getFieldErrors()
+                .forEach(err -> errors.put(err.getField(), err.getDefaultMessage()));
 
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
@@ -61,15 +61,16 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler({
-            ExpiredJwtException.class,
-            MalformedJwtException.class,
-            SignatureException.class,
-            BadCredentialsException.class,
-            UsernameNotFoundException.class
-    })
-    public ResponseEntity<Object> handleJwtAndAuthExceptions(Exception ex, HttpServletRequest request) {
-        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
+    // ---- JWT solamente ----
+    @ExceptionHandler({ExpiredJwtException.class, MalformedJwtException.class, SignatureException.class})
+    public ResponseEntity<Object> handleJwtExceptions(Exception ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Token inválido o expirado", request);
+    }
+
+    // ---- Fallos de autenticación (sin ambigüedad) ----
+    @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class})
+    public ResponseEntity<Object> handleAuthFailures(Exception ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Credenciales inválidas", request);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
@@ -78,29 +79,19 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(NoHandlerFoundException.class)
-    public ResponseEntity<Object> handleNotFound(NoHandlerFoundException ex, HttpServletRequest request) {
+    public ResponseEntity<Object> handleNoHandler(NoHandlerFoundException ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.NOT_FOUND, "Ruta no encontrada", request);
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<String> handleGenericException(Exception ex) {
-        log.error("Error inesperado: ", ex);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error inesperado: " + ex.getMessage());
-    }
-
     @ExceptionHandler(PdfGenerationException.class)
-    public ResponseEntity<String> handlePdfGenerationException(PdfGenerationException ex) {
-        // Log opcional
-        log.error("Error inesperado: ",ex);
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Error generando PDF: " + ex.getMessage());
+    public ResponseEntity<Object> handlePdfGenerationException(PdfGenerationException ex, HttpServletRequest request) {
+        log.error("Error generando PDF", ex);
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Error generando PDF", request);
     }
 
-    @ExceptionHandler({ BadCredentialsException.class, UsernameNotFoundException.class })
-    @ResponseStatus(HttpStatus.UNAUTHORIZED)
-    public Map<String,String> handleAuth(Exception ex) {
-        return Map.of("error", "bad_credentials");
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Object> handleGenericException(Exception ex, HttpServletRequest request) {
+        log.error("Error inesperado", ex);
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Error inesperado", request);
     }
-
 }

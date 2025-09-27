@@ -11,18 +11,24 @@ import com.mx.mitienda.util.enums.Rol;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -34,19 +40,47 @@ public class AuthController {
     private final UsuarioService usuarioService;
 
     @Tag(name = "LOGIN", description = "Operaciones relacionadas con login a la app")
-
     @PostMapping("/login")
-    public Map<String, Object> login(@RequestBody @Valid LoginRequest loginRequest){
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        loginRequest.getEmail(),
-                        loginRequest.getPassword()
-                )
-        );
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        UsuarioResponseDTO usuarioResponse = usuarioService.findByEmailUser(userDetails.getUsername());
-        return buildAuthResponse(usuarioResponse, userDetails);
+    public ResponseEntity<?> login(@RequestBody @Valid LoginRequest loginRequest) {
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            loginRequest.getEmail(),        // o getUsername() si tu servicio usa username
+                            loginRequest.getPassword()
+                    )
+            );
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            UsuarioResponseDTO usuarioResponse =
+                    usuarioService.findByEmailUser(userDetails.getUsername());
+            if (usuarioResponse == null) {
+                log.warn("Usuario no encontrado tras autenticar: {}", userDetails.getUsername());
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "bad_credentials"));
+            }
+            // En el servicio o en el AuthController, justo después de cargar el usuario:
+            if (usuarioResponse.getRole() != Rol.SUPER_ADMIN && usuarioResponse.getBranchName() == null) {
+                throw new IllegalArgumentException("El usuario debe tener una sucursal asignada");
+            }
+
+            Map<String, Object> body = buildAuthResponse(usuarioResponse, userDetails);
+            return ResponseEntity.ok(body);
+
+        } catch (BadCredentialsException |
+                 UsernameNotFoundException ex) {
+            log.warn("Credenciales inválidas para {}: {}", loginRequest.getEmail(), ex.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "bad_credentials"));
+        } catch (DisabledException ex) {
+            log.warn("Usuario deshabilitado {}: {}", loginRequest.getEmail(), ex.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "user_disabled"));
+        } catch (Exception ex) {
+            log.error("Fallo inesperado en /auth/login", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "server_error"));
+        }
     }
+
 
     @Tag(name = "REGISTER", description = "Operaciones relacionadas con registrar usuario en la app")
     @PostMapping("/register")

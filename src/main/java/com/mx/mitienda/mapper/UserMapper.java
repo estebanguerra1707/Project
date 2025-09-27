@@ -44,15 +44,23 @@ public class UserMapper {
     }
 
     public UsuarioResponseDTO toResponse(Usuario usuario) {
-        UsuarioResponseDTO usuarioResponseDTO = new UsuarioResponseDTO();
-        usuarioResponseDTO.setId(usuario.getId());
-        usuarioResponseDTO.setRole(usuario.getRole());
-        usuarioResponseDTO.setUsername(usuario.getUsername());
-        usuarioResponseDTO.setEmail(usuario.getEmail());
-        usuarioResponseDTO.setActive(usuario.getActive());
-        usuarioResponseDTO.setBranchId(usuario.getBranch().getId());
-        usuarioResponseDTO.setBranchName(usuario.getBranch().getName());
-        return usuarioResponseDTO;
+        UsuarioResponseDTO dto = new UsuarioResponseDTO();
+        dto.setId(usuario.getId());
+        dto.setRole(usuario.getRole());
+        dto.setUsername(usuario.getUsername());
+        dto.setEmail(usuario.getEmail());
+        dto.setActive(usuario.getActive());
+
+        var branch = usuario.getBranch();
+        if (branch != null) {
+            dto.setBranchId(branch.getId());
+            dto.setBranchName(branch.getName());
+        } else {
+            // SUPER_ADMIN normalmente no tiene sucursal
+            dto.setBranchId(null);
+            dto.setBranchName(null); // o "ALL", según lo que prefiera el frontend
+        }
+        return  dto;
     }
 
     public void  updateEntity(Usuario current, UsuarioDTO updated) {
