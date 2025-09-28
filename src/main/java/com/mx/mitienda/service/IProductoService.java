@@ -10,7 +10,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 
 public interface IProductoService {
-    List<ProductoResponseDTO> getAll();
+    Page<ProductoResponseDTO> getAll(Pageable pageable);
     ProductoResponseDTO getById(Long id);
     ProductoResponseDTO save(ProductoDTO productoDTO);
     void disableProduct(Long id);

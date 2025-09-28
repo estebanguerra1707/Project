@@ -121,4 +121,20 @@ public class ProductoSpecification {
         String like = "%" + codigoBarras.trim().toLowerCase() + "%";
         return (root, query, cb) -> cb.like(cb.lower(root.get("codigoBarras")), like);
     }
+    public static Specification<Producto> active() {
+        return (root, q, cb) -> cb.isTrue(root.get("active"));
+    }
+
+    public static Specification<Producto> businessType(Long businessTypeId) {
+        if (businessTypeId == null) return null;
+        return (root, q, cb) ->
+                cb.equal(root.get("productCategory").get("businessType").get("id"), businessTypeId);
+    }
+
+    /** Filtra por sucursal sólo si se provee branchId */
+    public static Specification<Producto> branchIf(Long branchId) {
+        if (branchId == null) return null;
+        return (root, q, cb) -> cb.equal(root.get("sucursal").get("id"), branchId);
+    }
+
 }

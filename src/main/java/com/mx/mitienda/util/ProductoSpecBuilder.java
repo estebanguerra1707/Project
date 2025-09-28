@@ -27,17 +27,19 @@ public class ProductoSpecBuilder {
     }
 
     public ProductoSpecBuilder name(String name){
-        builder.and(ProductoSpecification.nameLike(name));
+        if (name != null && !name.isBlank()) {
+            builder.and(ProductoSpecification.nameLike(name));
+        }
         return this;
     }
 
     public ProductoSpecBuilder priceMajorTo(BigDecimal min){
-        builder.and(ProductoSpecification.priceMajorTo(min));
+        if (min != null) builder.and(ProductoSpecification.priceMajorTo(min));
         return this;
     }
 
     public ProductoSpecBuilder priceMinorTo(BigDecimal max){
-        builder.and(ProductoSpecification.priceMinorTo(max));
+        if (max != null) builder.and(ProductoSpecification.priceMinorTo(max));
         return this;
     }
 
@@ -46,49 +48,66 @@ public class ProductoSpecBuilder {
         if (min != null && max != null && min.compareTo(max) > 0) {
             BigDecimal tmp = min; min = max; max = tmp;
         }
-        builder.and(ProductoSpecification.priceMajorTo(min));
-        builder.and(ProductoSpecification.priceMinorTo(max));
+        priceMajorTo(min);
+        priceMinorTo(max);
         return this;
     }
 
     /** Por nombre de categoría (case-insensitive) */
     public ProductoSpecBuilder inCategory(String category){
-        builder.and(ProductoSpecification.categoryNameEquals(category));
+        if (category != null && !category.isBlank()) {
+            builder.and(ProductoSpecification.categoryNameEquals(category));
+        }
         return this;
     }
 
     /** Por ID de categoría */
     public ProductoSpecBuilder inCategoryId(Long categoryId){
-        builder.and(ProductoSpecification.categoryIdEquals(categoryId));
+        if (categoryId != null) {
+            builder.and(ProductoSpecification.categoryIdEquals(categoryId));
+        }
         return this;
     }
 
     public ProductoSpecBuilder withoutCategory(Boolean without){
-        builder.and(ProductoSpecification.withoutCategory(without));     // ← usa productCategory
+        if (without != null) {
+            builder.and(ProductoSpecification.withoutCategory(without));
+        }
         return this;
     }
 
     /** Disponible: true => stock > 0, false => stock = 0 */
     public ProductoSpecBuilder withStockAvailable(Boolean available){
-        builder.and(ProductoSpecification.withStockAvailable(available));
+        if (available != null) {
+            builder.and(ProductoSpecification.withStockAvailable(available));
+        }
+        return this;
+    }
+    /** Filtra por sucursal solo cuando branchId != null (útil para SUPER_ADMIN) */
+    public ProductoSpecBuilder inBranchId(Long branchId) {
+        if (branchId != null) {
+            builder.and(ProductoSpecification.branchIdEquals(branchId));
+        }
         return this;
     }
 
-    public ProductoSpecBuilder inBranchId(Long branchId) {
-        builder.and(ProductoSpecification.branchIdEquals(branchId));
-        return this;
-    }
     public ProductoSpecBuilder inBusinessTypeId(Long businessTypeId) {
-        builder.and(ProductoSpecification.businessTypeIdEquals(businessTypeId));
+        if (businessTypeId != null) {
+            builder.and(ProductoSpecification.businessTypeIdEquals(businessTypeId));
+        }
         return this;
     }
     public ProductoSpecBuilder withBarcode(String codigoBarras) {
-        builder.and(ProductoSpecification.barcodeEquals(codigoBarras)); // o barcodeLike(...)
+        if (codigoBarras != null && !codigoBarras.isBlank()) {
+            builder.and(ProductoSpecification.barcodeEquals(codigoBarras));
+        }
         return this;
     }
 
     public ProductoSpecBuilder barcodeLike(String codigoBarras) {
-        builder.and(ProductoSpecification.barcodeLike(codigoBarras));
+        if (codigoBarras != null && !codigoBarras.isBlank()) {
+            builder.and(ProductoSpecification.barcodeLike(codigoBarras));
+        }
         return this;
     }
 
@@ -109,12 +128,8 @@ public class ProductoSpecBuilder {
                 .inCategory(dto.getCategory())
                 .inCategoryId(dto.getCategoryId())
                 .withoutCategory(dto.getWithoutCategory())
-                .inBranchId(dto.getBranchId())
-                .priceBetween(dto.getMin(), dto.getMax())
-                .priceMajorTo(dto.getMin())
-                .priceMinorTo(dto.getMax())
                 .inBusinessTypeId(dto.getBusinessTypeId())
-                .withBarcode(dto.getCodigoBarras())
+                // Elige exacto o like según tu caso de uso (dejo 'like' por usabilidad)
                 .barcodeLike(dto.getCodigoBarras())
                 .build();
     }

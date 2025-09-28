@@ -46,9 +46,8 @@ public class ProductController {
     @Tag(name = "PRODUCT GET ALL", description = "Operaciones relacionadas con GET ALL PRODUCTS")
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
-    public ResponseEntity<List<ProductoResponseDTO>> listarPorTipoDeNegocioDelUsuario() {
-        List<ProductoResponseDTO> productos = productService.getAll();
-        return ResponseEntity.ok(productos);
+    public  Page<ProductoResponseDTO>  listarPorTipoDeNegocioDelUsuario(Pageable pageable) {
+        return productService.getAll(pageable);
     }
 
     @Tag(name = "PRODUCT UPDATE", description = "Operaciones relacionadas con UPDATE PRODUCT")
