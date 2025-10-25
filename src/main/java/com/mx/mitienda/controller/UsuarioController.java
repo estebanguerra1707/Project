@@ -29,7 +29,7 @@ public class UsuarioController {
 
 
     @Operation(summary = "Registrar nuevo usuario")
-    @PostMapping("/register")
+    @PostMapping
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<String> register(@RequestBody UsuarioDTO usuarioRegisterDTO) {
         usuarioService.registerUser(usuarioRegisterDTO);

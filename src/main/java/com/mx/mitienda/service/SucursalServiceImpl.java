@@ -12,6 +12,7 @@ import com.mx.mitienda.repository.UsuarioRepository;
 import com.mx.mitienda.util.enums.Rol;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,6 +24,8 @@ public class SucursalServiceImpl implements ISucursalService {
     private final SucursalRepository sucursalRepository;
     private final SucursalMapper sucursalMapper;
     private final AuthenticatedUserServiceImpl authenticatedUserService;
+
+    @Transactional
     @Override
     public SucursalResponseDTO create(SucursalDTO sucursalDTO) {
         if (sucursalRepository.existsByNameIgnoreCaseAndAddressIgnoreCaseAndActiveTrue(sucursalDTO.getName(),sucursalDTO.getAddress())){
@@ -32,6 +35,7 @@ public class SucursalServiceImpl implements ISucursalService {
         return sucursalMapper.toResponse(sucursalRepository.save(sucursal));
     }
 
+    @Transactional
     @Override
     public SucursalResponseDTO update(Long id, SucursalDTO sucursalDTO) {
         Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(id).orElseThrow(()->new NotFoundException("La sucursal no fue encontrada"));
@@ -57,15 +61,19 @@ public class SucursalServiceImpl implements ISucursalService {
 
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<SucursalResponseDTO> findAll() {
-        if(authenticatedUserService.isSuperAdmin()){
-            return sucursalRepository.findByActiveTrueOrderByIdAsc().stream().map(sucursalMapper::toResponse).collect(Collectors.toList());
-        }else{
+        if (!authenticatedUserService.isSuperAdmin()) {
             throw new ForbiddenException("Solo el super administrador puede ver todas las sucursales.");
         }
+        return sucursalRepository.findByActiveTrueOrderByIdAsc()
+                .stream()
+                .map(sucursalMapper::toResponse)
+                .toList();
     }
 
+    @Transactional(readOnly = true)
     @Override
     public SucursalResponseDTO findById(Long id) {
 
@@ -76,6 +84,8 @@ public class SucursalServiceImpl implements ISucursalService {
         Sucursal sucursal = authenticatedUserService.getCurrentBranch();
         return sucursalMapper.toResponse(sucursal);
     }
+
+    @Transactional(readOnly = true)
     @Override
     public List<SucursalResponseDTO> getByBusinessType(Long businessTypeId) {
         if(!authenticatedUserService.isSuperAdmin()){
@@ -86,6 +96,8 @@ public class SucursalServiceImpl implements ISucursalService {
                 .map(sucursalMapper::toResponse)
                 .collect(Collectors.toList());
     }
+
+    @Transactional(readOnly = true)
     @Override
     public SucursalResponseDTO isStockCriticAlert(Long sucursalId, Boolean estado) {
         Sucursal sucursal = sucursalRepository.findById(sucursalId)

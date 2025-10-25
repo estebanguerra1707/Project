@@ -318,7 +318,8 @@ CREATE TABLE public.detalle_venta (
     quantity integer NOT NULL,
     active boolean,
     sub_total numeric(38,2),
-    unit_price numeric(38,2)
+    unit_price numeric(38,2),
+    cantidad_devuelta numeric
 );
 
 

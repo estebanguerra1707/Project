@@ -19,8 +19,11 @@ public class ProductoResponseDTO {
     private Long providerId;
     private String providerName;
     private Long businessTypeId;
-    private String bussinessTypeName;
+    private String businessTypeName;
     private LocalDateTime creationDate;
     private ProductoDetailResponseDTO productDetail;
     private String codigoBarras;
+    private Long branchId;
+    private String branchName;
+    private Boolean active;
 }

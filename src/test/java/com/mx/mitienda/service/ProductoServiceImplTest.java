@@ -1,46 +1,70 @@
 package com.mx.mitienda.service;
 
-import com.mx.mitienda.model.Producto;
-import com.mx.mitienda.repository.ProductoRepository;
 import com.mx.mitienda.mapper.ProductoMapper;
+import com.mx.mitienda.model.Producto;
+import com.mx.mitienda.model.dto.ProductoFiltroDTO;
 import com.mx.mitienda.model.dto.ProductoResponseDTO;
-import com.mx.mitienda.service.ProductoServiceImpl;
-import com.mx.mitienda.service.IAuthenticatedUserService;
-
-import org.junit.jupiter.api.BeforeEach;
+import com.mx.mitienda.repository.ProductoRepository;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.*;
 
-import java.util.Collections;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class ProductoServiceImplTest {
 
+    @Mock
     private ProductoRepository productoRepository;
-    private ProductoMapper productoMapper;
-    private IAuthenticatedUserService authenticatedUserService;
-    private ProductoServiceImpl productoService;
+    @Mock private ProductoMapper productoMapper;
+    @Mock private IAuthenticatedUserService authenticatedUserService;
 
-    @BeforeEach
-    void setUp() {
-        productoRepository = mock(ProductoRepository.class);
-        productoMapper = mock(ProductoMapper.class);
-        authenticatedUserService = mock(IAuthenticatedUserService.class);
-        productoService = new ProductoServiceImpl(productoRepository, productoMapper, authenticatedUserService, null,null, null, null);
+    @InjectMocks
+    private ProductoServiceImpl productoService; // Mockito arma el constructor correcto
+
+    @Test
+    void getAll_shouldReturnEmptyPage_forSuperAdmin() {
+        // Arrange
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("name").ascending());
+
+        // usuario super admin
+        when(authenticatedUserService.isSuperAdmin()).thenReturn(true);
+        when(authenticatedUserService.getCurrentBusinessTypeId()).thenReturn(1L);
+
+        // Act
+        Page<ProductoResponseDTO> result = productoService.getAll(new ProductoFiltroDTO(), pageable);
+
+        // Assert
+        assertTrue(result.isEmpty());
+
     }
 
     @Test
-    void getAll_shouldReturnListOfProductos() {
-        when(authenticatedUserService.getCurrentBusinessTypeId()).thenReturn(1L);
-        when(productoRepository.findByActiveTrueAndProductCategory_BusinessType_Id(eq(1L), any()))
-            .thenReturn(Collections.emptyList());
+    void getAll_shouldFilterByBranch_forVendor() {
+        Pageable pageable = PageRequest.of(0, 5);
 
-        List<ProductoResponseDTO> result = productoService.getAll();
+        when(authenticatedUserService.isSuperAdmin()).thenReturn(false);
+        when(authenticatedUserService.getCurrentBusinessTypeId()).thenReturn(2L);
+        when(authenticatedUserService.getCurrentBranchId()).thenReturn(99L);
 
-        assertNotNull(result);
-        assertTrue(result.isEmpty());
+        Producto p = new Producto(); p.setId(1L);
+        ProductoResponseDTO dto = new ProductoResponseDTO(); dto.setId(1L);
+
+        when(productoMapper.toResponse(p)).thenReturn(dto);
+
+        Page<ProductoResponseDTO> result = productoService.getAll(new ProductoFiltroDTO(), pageable);
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals(1L, result.getContent().get(0).getId());
     }
 }

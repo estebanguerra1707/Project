@@ -14,10 +14,11 @@ import java.util.Optional;
 
 @Repository
 public interface ProveedorSucursalRepository extends JpaRepository<ProveedorSucursal, Long> {
-    @Query("SELECT ps.proveedor FROM ProveedorSucursal ps WHERE ps.sucursal.id = :branchId")
-    List<Proveedor> findProveedoresBySucursalId(@Param("branchId") Long branchId);
+
     @Query("SELECT ps.proveedor FROM ProveedorSucursal ps WHERE ps.sucursal.id = :branchId AND ps.proveedor.id = :proveedorId")
     Optional<Proveedor> findProveedorBySucursalAndProveedorId(@Param("branchId") Long branchId, @Param("proveedorId") Long proveedorId);
     boolean existsByProveedorAndSucursal(Proveedor proveedor, Sucursal sucursal);
     boolean existsByProveedorIdAndSucursalId(Long proveedorId, Long sucursalId);
+    @Query("SELECT DISTINCT ps.proveedor FROM ProveedorSucursal ps WHERE ps.sucursal.id = :branchId")
+    List<Proveedor> findProveedoresBySucursalId(@Param("branchId") Long branchId);
 }

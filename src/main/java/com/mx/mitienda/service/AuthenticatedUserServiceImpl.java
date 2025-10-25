@@ -56,13 +56,37 @@ public class AuthenticatedUserServiceImpl implements IAuthenticatedUserService {
 
     @Override
     public boolean isSuperAdmin() {
-        return getCurrentUser().getRole().name().equals(Rol.SUPER_ADMIN);
+        Usuario u = getCurrentUser(); // o como lo obtengas
+        return u != null && u.getRole() == Rol.SUPER_ADMIN;
     }
 
     @Override
     public boolean isAdmin() {
-        return getCurrentUser().getRole().name().equals(Rol.ADMIN);
+        Usuario u = getCurrentUser(); // o como lo obtengas
+        return u != null && u.getRole() == Rol.ADMIN;
     }
 
+    @Override
+    public UserContext getUserContext() {
+        Usuario user = getCurrentUser();
+        boolean isSuper = isSuperAdmin();
+
+        Long branchId = null;
+        Long businessTypeId = null;
+
+        if (!isSuper) {
+            branchId = getCurrentBranchId();
+            businessTypeId = getCurrentBusinessTypeId();
+        }
+        Boolean isAdmin= isAdmin();
+
+        return new UserContext(
+                isSuper,
+                branchId,
+                businessTypeId,
+                user.getEmail(),
+                isAdmin
+        );
+    }
 
 }

@@ -11,9 +11,9 @@ import java.util.List;
 import java.util.Map;
 
 public interface IVentaService {
-   VentaResponseDTO registerSell(VentaRequestDTO request, String username);
-   List<VentaResponseDTO> getAll(String username, String rol);
-   List<VentaResponseDTO> findByFilter(VentaFiltroDTO filterDTO, String username, String role);
+   VentaResponseDTO registerSell(VentaRequestDTO request);
+   List<VentaResponseDTO> getAll();
+   List<VentaResponseDTO> findByFilter(VentaFiltroDTO filterDTO);
    List<DetalleVentaResponseDTO> getDetailsPerSale(Long id);
    VentaResponseDTO getById(Long id);
    byte[] generateTicketPdf(Long idVenta);

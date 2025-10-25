@@ -41,7 +41,7 @@ public class VentaIntegrationTest {
         detalle.setQuantity(2);
         request.setDetails(List.of(detalle));
 
-        VentaResponseDTO venta = ventaService.registerSell(request, "admin@example.com");
+        VentaResponseDTO venta = ventaService.registerSell(request);
 
         assertNotNull(venta.getId());
         assertEquals(1, venta.getDetails().size());

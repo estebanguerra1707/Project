@@ -7,7 +7,9 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 
 @Data
@@ -33,6 +35,4 @@ public class Proveedor {
     @OneToMany(mappedBy = "provider")
     @JsonBackReference
     private List<Producto> products;
-
-
 }

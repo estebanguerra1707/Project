@@ -6,6 +6,7 @@ import com.mx.mitienda.model.*;
 import com.mx.mitienda.model.dto.CompraRequestDTO;
 import com.mx.mitienda.model.dto.CompraResponseDTO;
 import com.mx.mitienda.repository.*;
+import com.mx.mitienda.service.base.BaseService;
 import com.mx.mitienda.util.enums.Rol;
 import com.mx.mitienda.model.dto.CompraFiltroDTO;
 import com.mx.mitienda.util.CompraSpecBuilder;
@@ -30,11 +31,9 @@ import static com.mx.mitienda.util.Utils.*;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
-public class CompraServiceImpl implements ICompraService {
+public class CompraServiceImpl extends BaseService implements ICompraService {
     public final CompraRepository compraRepository;
     public final CompraMapper compraMapper;
-    private final IAuthenticatedUserService authenticatedUserService;
     private final InventarioSucursalRepository inventarioSucursalRepository;
     private final IHistorialMovimientosService historialMovimientosService;
     private final IAlertaCorreoService alertaCorreoService;
@@ -47,27 +46,61 @@ public class CompraServiceImpl implements ICompraService {
     @Value("${alertas.stock.email.destinatario}")
     private String destinatario;
 
+    public CompraServiceImpl(
+            IAuthenticatedUserService authenticatedUserService,
+            CompraRepository compraRepository,
+            CompraMapper compraMapper,
+            InventarioSucursalRepository inventarioSucursalRepository,
+            IHistorialMovimientosService historialMovimientosService,
+            IAlertaCorreoService alertaCorreoService,
+            ProductoRepository productoRepository,
+            IGeneratePdfService generatePdfService,
+            MailService mailService,
+            DetalleDevolucionComprasRepository detalleDevolucionComprasRepository,
+            DevolucionComprasRepository devolucionComprasRepository
+    ) {
+        super(authenticatedUserService);
+        this.compraRepository = compraRepository;
+        this.compraMapper = compraMapper;
+        this.inventarioSucursalRepository = inventarioSucursalRepository;
+        this.historialMovimientosService = historialMovimientosService;
+        this.alertaCorreoService = alertaCorreoService;
+        this.productoRepository = productoRepository;
+        this.generatePdfService = generatePdfService;
+        this.mailService = mailService;
+        this.detalleDevolucionComprasRepository = detalleDevolucionComprasRepository;
+        this.devolucionComprasRepository = devolucionComprasRepository;
+    }
+
     public List<CompraResponseDTO> getAll(String username, String role){
-        if(role.equals(Rol.ADMIN) || authenticatedUserService.isSuperAdmin()){
-            return compraRepository.findByActiveTrueOrderByIdAsc().stream()
+        UserContext ctx = ctx();
+        if (ctx.isSuperAdmin()) {
+            return compraRepository.findByActiveTrueOrderByIdAsc()
+                    .stream()
                     .map(compraMapper::toResponse)
                     .collect(Collectors.toList());
-
-        }else{
-            return compraRepository.findByUsuario_UsernameAndActiveTrue(username).stream()
+        } else {
+            return compraRepository.findByBranch_IdAndActiveTrue(ctx.getBranchId())
+                    .stream()
                     .map(compraMapper::toResponse)
                     .collect(Collectors.toList());
         }
     }
 
+
+
     @Override
     public CompraResponseDTO getById(Long idPurchase){
-        Long branchId = authenticatedUserService.getCurrentBranchId();
-        if(authenticatedUserService.isSuperAdmin()){
-            Compra compra = compraRepository.findByIdAndActiveTrue(idPurchase).orElseThrow(()->(new NotFoundException("La compra con el id:: " +idPurchase+" no se ha encontrado")));
-            return compraMapper.toResponse(compra);
+        UserContext ctx = ctx();
+        Compra compra;
+        if (ctx.isSuperAdmin()) {
+            compra = compraRepository.findByIdAndActiveTrue(idPurchase)
+                    .orElseThrow(() -> new NotFoundException("Compra no encontrada"));
+        } else {
+            compra = compraRepository.findByIdAndBranch_IdAndActiveTrue(idPurchase, ctx.getBranchId())
+                    .orElseThrow(() -> new NotFoundException(
+                            "La compra no se ha encontrado dentro de la sucursal asignada al usuario logueado"));
         }
-        Compra compra = compraRepository.findByIdAndBranch_IdAndActiveTrue(idPurchase,branchId).orElseThrow(()->(new NotFoundException("La compra no se ha encontrado dentro de la sucursal con el usuario loggeado, intenta con otro")));
         return compraMapper.toResponse(compra);
 
     }
@@ -172,10 +205,9 @@ public class CompraServiceImpl implements ICompraService {
 
     @Override
     public List<CompraResponseDTO> findCurrentUserCompras() {
-        Long branchId = authenticatedUserService.getCurrentBranchId();
-        Long businessTypeId = authenticatedUserService.getCurrentBusinessTypeId();
-
-        return compraRepository.findByBranchAndBusinessType(branchId, businessTypeId)
+        UserContext ctx = ctx();
+        return compraRepository.findByBranchAndBusinessType( ctx.getBranchId(),
+                        ctx.getBusinessTypeId())
                 .stream()
                 .map(compraMapper::toResponse)
                 .collect(Collectors.toList());

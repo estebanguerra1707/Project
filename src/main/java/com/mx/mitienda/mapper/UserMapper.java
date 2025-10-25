@@ -9,6 +9,7 @@ import com.mx.mitienda.repository.SucursalRepository;
 import com.mx.mitienda.repository.UsuarioRepository;
 import com.mx.mitienda.util.enums.Rol;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +17,7 @@ import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class UserMapper {
     private final PasswordEncoder passwordEncoder;
     private final UsuarioRepository usuarioRepository;
@@ -26,6 +28,7 @@ public class UserMapper {
         if (usuarioRepository.findByEmail(usuarioDTO.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email ya registrado");
         }
+
         if (usuarioRepository.findByUsername(usuarioDTO.getUsername()).isPresent()) {
             throw new IllegalArgumentException("Username ya registrado");
         }
@@ -39,7 +42,14 @@ public class UserMapper {
         usuario.setPassword(passwordEncoder.encode(usuarioDTO.getPassword()));
         usuario.setRole(rol);
         usuario.setActive(true);
-        usuario.setBranch(sucursal);
+        if (rol.equals(Rol.SUPER_ADMIN)) {
+            usuario.setBranch(null);
+        }else{
+            Sucursal branch = sucursalRepository.findById(sucursal.getId())
+                    .orElseThrow(() -> new NotFoundException("Sucursal no encontrada"));
+            usuario.setBranch(branch);
+        }
+
         return usuario;
     }
 
@@ -49,8 +59,9 @@ public class UserMapper {
         dto.setRole(usuario.getRole());
         dto.setUsername(usuario.getUsername());
         dto.setEmail(usuario.getEmail());
-        dto.setActive(usuario.getActive());
+        dto.setActive(Boolean.TRUE.equals(usuario.getActive()));
 
+        log.info("dto.email={}", dto.getEmail());
         var branch = usuario.getBranch();
         if (branch != null) {
             dto.setBranchId(branch.getId());
@@ -76,7 +87,38 @@ public class UserMapper {
         if (updated.getRole() != null) {
             current.setRole(updated.getRole());
         }
+        if (updated.getBranchId() != null) {
+            Sucursal branch = sucursalRepository.findById(updated.getBranchId())
+                    .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada: " + updated.getBranchId()));
+            current.setBranch(branch);
+        }
 
     }
 
+    public void validateCreateDTO(UsuarioDTO usuarioDTO) {
+        if (usuarioDTO.getUsername() == null || usuarioDTO.getUsername().isBlank()) {
+            throw new IllegalArgumentException("El nombre del usuario es obligatorio.");
+        }
+        if (usuarioDTO.getEmail() == null || usuarioDTO.getEmail().isBlank()) {
+            throw new IllegalArgumentException("El correo electrónico es obligatorio.");
+        }
+        // Validación de formato de correo (por si no confías solo en la anotación @Email)
+        if (!usuarioDTO.getEmail().matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            throw new IllegalArgumentException("El formato del correo electrónico no es válido.");
+        }
+        if (usuarioDTO.getRole() == null) {
+            throw new IllegalArgumentException("El rol es obligatorio.");
+        }
+        if (usuarioDTO.getPassword() == null || usuarioDTO.getPassword().isBlank()) {
+            throw new IllegalArgumentException("La contraseña es obligatoria.");
+        }
+        if (usuarioDTO.getPassword().length() < 6) {
+            throw new IllegalArgumentException("La contraseña debe tener al menos 6 caracteres.");
+        }
+        // Si el rol requiere una sucursal (ADMIN o VENDOR)
+        if ((usuarioDTO.getRole() == Rol.ADMIN || usuarioDTO.getRole() == Rol.VENDOR)
+                && usuarioDTO.getBranchId() == null) {
+            throw new IllegalArgumentException("La sucursal es obligatoria para este tipo de usuario.");
+        }
+    }
 }

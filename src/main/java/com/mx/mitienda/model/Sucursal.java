@@ -3,7 +3,9 @@ package com.mx.mitienda.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -22,7 +24,7 @@ public class Sucursal {
     private Boolean alertaStockCritico;
 
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "business_type_id", foreignKey = @ForeignKey(name = "fk_sucursal_business_type"))
     private BusinessType businessType;
 

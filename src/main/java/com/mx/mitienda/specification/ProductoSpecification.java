@@ -2,9 +2,12 @@ package com.mx.mitienda.specification;
 
 import com.mx.mitienda.model.Producto;
 import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ProductoSpecification {
 
@@ -135,6 +138,38 @@ public class ProductoSpecification {
     public static Specification<Producto> branchIf(Long branchId) {
         if (branchId == null) return null;
         return (root, q, cb) -> cb.equal(root.get("sucursal").get("id"), branchId);
+    }
+
+    public static Specification<Producto> byBusinessTypeAndBranch(Long businessTypeId, Long branchId, boolean superAdmin) {
+        return (root, query, cb) -> {
+            query.distinct(true);
+            List<Predicate> ps = new ArrayList<>();
+
+            // Solo filtra activos si NO es super admin
+            if (!superAdmin) {
+                ps.add(cb.isTrue(root.get("active")));
+            }
+
+            // businessType por categoría (y opcionalmente por el campo en Producto)
+            if (businessTypeId != null) {
+                var cat = root.join("productCategory", JoinType.LEFT);
+                var btFromCat = cat.join("businessType", JoinType.LEFT).get("id");
+                // Si tu modelo también guarda businessType en Producto:
+                var btFromProduct = root.join("businessType", JoinType.LEFT).get("id");
+                ps.add(cb.or(
+                        cb.equal(btFromCat, businessTypeId),
+                        cb.equal(btFromProduct, businessTypeId)
+                ));
+            }
+
+            // SOLO joinear inventario si debemos filtrar por sucursal
+            if (branchId != null) {
+                var inv = root.join("inventariosSucursal", JoinType.INNER);
+                ps.add(cb.equal(inv.get("branch").get("id"), branchId));
+            }
+
+            return cb.and(ps.toArray(new Predicate[0]));
+        };
     }
 
 }

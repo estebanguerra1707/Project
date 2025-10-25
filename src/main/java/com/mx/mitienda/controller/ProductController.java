@@ -46,8 +46,11 @@ public class ProductController {
     @Tag(name = "PRODUCT GET ALL", description = "Operaciones relacionadas con GET ALL PRODUCTS")
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
-    public  Page<ProductoResponseDTO>  listarPorTipoDeNegocioDelUsuario(Pageable pageable) {
-        return productService.getAll(pageable);
+    public Page<ProductoResponseDTO> getAll(
+            ProductoFiltroDTO filtro,
+            @PageableDefault(size = 20, sort = "product.name") Pageable pageable
+    ) {
+        return productService.getAll(filtro, pageable);
     }
 
     @Tag(name = "PRODUCT UPDATE", description = "Operaciones relacionadas con UPDATE PRODUCT")

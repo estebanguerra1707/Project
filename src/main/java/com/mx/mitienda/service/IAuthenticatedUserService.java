@@ -11,5 +11,6 @@ public interface IAuthenticatedUserService {
     Long getBusinessTypeIdFromSession();
     boolean isSuperAdmin();
     boolean isAdmin();
+    UserContext getUserContext();
 
 }

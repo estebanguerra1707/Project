@@ -11,6 +11,7 @@ import com.mx.mitienda.model.dto.VentaFiltroDTO;
 import com.mx.mitienda.model.dto.VentaRequestDTO;
 import com.mx.mitienda.model.dto.VentaResponseDTO;
 import com.mx.mitienda.repository.*;
+import com.mx.mitienda.service.base.BaseService;
 import com.mx.mitienda.util.VentaSpecBuilder;
 import com.mx.mitienda.util.enums.Rol;
 import com.mx.mitienda.util.enums.TipoMovimiento;
@@ -38,15 +39,13 @@ import static com.mx.mitienda.util.Utils.*;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
-public class VentaServiceImpl implements IVentaService {
+public class VentaServiceImpl extends BaseService implements IVentaService {
 
     private final VentaRepository ventaRepository;
     private final DetalleVentaRepository detalleVentaRepository;
     private final VentasMapper ventaMapper;
     private final DetalleVentaMapper detalleVentaMapper;
     private final TemplateEngine templateEngine;
-    private final IAuthenticatedUserService authenticatedUserService;
     private final InventarioSucursalRepository inventarioSucursalRepository;
     private final IHistorialMovimientosService historialMovimientosService;
     private final IAlertaCorreoService alertaCorreoService;
@@ -55,6 +54,35 @@ public class VentaServiceImpl implements IVentaService {
     private final DevolucionVentasRepository devolucionVentasRepository;
     private final DetalleDevolucionVentasRepository detalleDevolucionVentasRepository;
 
+    public VentaServiceImpl(
+            IAuthenticatedUserService authenticatedUserService,
+            VentaRepository ventaRepository,
+            DetalleVentaRepository detalleVentaRepository,
+            VentasMapper ventaMapper,
+            DetalleVentaMapper detalleVentaMapper,
+            TemplateEngine templateEngine,
+            InventarioSucursalRepository inventarioSucursalRepository,
+            IHistorialMovimientosService historialMovimientosService,
+            IAlertaCorreoService alertaCorreoService,
+            IGeneratePdfService generatePdfService,
+            MailService mailService,
+            DevolucionVentasRepository devolucionVentasRepository,
+            DetalleDevolucionVentasRepository detalleDevolucionVentasRepository
+    ) {
+        super(authenticatedUserService);
+        this.ventaRepository = ventaRepository;
+        this.detalleVentaRepository = detalleVentaRepository;
+        this.ventaMapper = ventaMapper;
+        this.detalleVentaMapper = detalleVentaMapper;
+        this.templateEngine = templateEngine;
+        this.inventarioSucursalRepository = inventarioSucursalRepository;
+        this.historialMovimientosService = historialMovimientosService;
+        this.alertaCorreoService = alertaCorreoService;
+        this.generatePdfService = generatePdfService;
+        this.mailService = mailService;
+        this.devolucionVentasRepository = devolucionVentasRepository;
+        this.detalleDevolucionVentasRepository = detalleDevolucionVentasRepository;
+    }
     private BigDecimal safe(BigDecimal venta) {
         return venta != null ? venta : BigDecimal.ZERO;
     }
@@ -64,8 +92,8 @@ public class VentaServiceImpl implements IVentaService {
 
 
     @Transactional //si falla o hay unea excepcion en cualquier lugar del metodo, se hace rollback de todo
-    public VentaResponseDTO registerSell(VentaRequestDTO request, String username) {
-        Venta venta = ventaMapper.toEntity(request, username);
+    public VentaResponseDTO registerSell(VentaRequestDTO request) {
+        Venta venta = ventaMapper.toEntity(request, ctx().getEmail());
 
         Venta ventaGuardada = ventaRepository.save(venta);
 
@@ -110,19 +138,24 @@ public class VentaServiceImpl implements IVentaService {
         return ventaMapper.toResponse(ventaRepository.save(venta));
     }
 
-    public List<VentaResponseDTO> getAll(String username, String rol) {
-        List<Venta> ventas = new ArrayList<>();
-        if (authenticatedUserService.isAdmin()|| authenticatedUserService.isSuperAdmin()) {
-            ventas = ventaRepository.findByActiveTrue();
+    public List<VentaResponseDTO> getAll() {
+        UserContext ctx = ctx();
+        if (ctx.isSuperAdmin()) {
+            return ventaRepository.findByActiveTrue()
+                    .stream()
+                    .map(ventaMapper::toResponse)
+                    .collect(Collectors.toList());
         } else {
-            ventas = ventaRepository.findByUsuario_UsernameAndActiveTrue(username);
+            return ventaRepository.findByBranch_IdAndActiveTrue(ctx.getBranchId())
+                    .stream()
+                    .map(ventaMapper::toResponse)
+                    .collect(Collectors.toList());
         }
-        return ventas.stream()
-                .map(ventaMapper::toResponse)
-                .collect(Collectors.toList());
     }
 
-    public List<VentaResponseDTO> findByFilter(VentaFiltroDTO filterDTO, String username, String role) {
+    public List<VentaResponseDTO> findByFilter(VentaFiltroDTO filterDTO) {
+        UserContext ctx = ctx();
+
         VentaSpecBuilder builder = new VentaSpecBuilder()
                 .client(filterDTO.getClientName())
                 .dateBetween(filterDTO.getStartDate(), filterDTO.getEndDate())
@@ -134,25 +167,29 @@ public class VentaServiceImpl implements IVentaService {
                 .sellPerMonthYear(filterDTO.getMonth(), filterDTO.getYear())
                 .byPaymentMethod(filterDTO.getPaymentMethodId())
                 .withId(filterDTO.getId());
-
-        if (!authenticatedUserService.isAdmin() ||authenticatedUserService.isSuperAdmin()) {
-            builder.username(username);
-        }
-        Sort sort = Sort.by(Sort.Direction.ASC, "totalAmount");
         Specification<Venta> spec = builder.build();
-        List<Venta> ventas = ventaRepository.findAll(spec, sort); // Esto SIEMPRE devuelve Venta
-        return ventas.stream()
-                .map(ventaMapper::toResponse) // Aquí se convierte a VentaResponseDTO
+
+        if (!ctx.isSuperAdmin()) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("branch").get("id"), ctx.getBranchId()));
+        }
+
+        Sort sort = Sort.by(Sort.Direction.ASC, "totalAmount");
+        return ventaRepository.findAll(spec, sort)
+                .stream()
+                .map(ventaMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
     public List<DetalleVentaResponseDTO> getDetailsPerSale(Long idVenta) {
-        Long branchId = authenticatedUserService.getCurrentBranchId();
-        if (authenticatedUserService.isSuperAdmin()) {
+        UserContext ctx = ctx();
+
+        if (ctx.isSuperAdmin()) {
             return detalleVentaRepository.findByVenta_Id(idVenta)
-                    .stream().map(detalleVentaMapper::toResponse).toList();
+                    .stream()
+                    .map(detalleVentaMapper::toResponse)
+                    .toList();
         }
-        return detalleVentaRepository.findByVenta_IdAndVenta_Branch_Id(idVenta, branchId)
+        return detalleVentaRepository.findByVenta_IdAndVenta_Branch_Id(idVenta, ctx.getBranchId())
                 .stream()
                 .map(detalleVentaMapper::toResponse)
                 .collect(Collectors.toList());
@@ -189,10 +226,8 @@ public class VentaServiceImpl implements IVentaService {
         }
     }
     public List<VentaResponseDTO> findCurrentUserVentas() {
-        Long branchId = authenticatedUserService.getCurrentBranchId();
-        Long businessTypeId = authenticatedUserService.getCurrentBusinessTypeId();
-
-        return ventaRepository.findByBranchAndBusinessType(branchId, businessTypeId)
+        UserContext ctx = ctx();
+        return ventaRepository.findByBranchAndBusinessType(ctx.getBranchId(), ctx.getBusinessTypeId())
                 .stream()
                 .map(ventaMapper::toResponse)
                 .collect(Collectors.toList());
@@ -200,7 +235,8 @@ public class VentaServiceImpl implements IVentaService {
 
     // cálculo central [inicio, fin)
     private Totales calcularTotales(LocalDateTime inicio, LocalDateTime fin) {
-        Long branchId = getBranchIdIfAuthorized();
+        UserContext ctx = ctx();
+        Long branchId = ctx.isSuperAdmin() ? null : ctx.getBranchId();
 
         BigDecimal ventasBrutas  = safe(ventaRepository.sumVentasBrutas(inicio, fin, branchId));
         BigDecimal devoluciones    = safe(devolucionVentasRepository.sumImporteDevuelto(inicio, fin, branchId));
@@ -308,13 +344,6 @@ public class VentaServiceImpl implements IVentaService {
         return calcularTotales(inicio, fin).netas();
     }
 
-    private Long getBranchIdIfAuthorized() {
-        Usuario usuario = authenticatedUserService.getCurrentUser();
-        if (usuario.getRole() == Rol.ADMIN || usuario.getRole() == Rol.SUPER_ADMIN) {
-            return usuario.getBranch().getId();
-        }
-        throw new ForbiddenException("No tienes permisos para consultar esta información.");
-    }
     private void generateSaleOutput(Venta venta, Boolean printed, List<String> emailList) {
         byte[] pdfBytes = generatePdfService.generatePdf(VENTA_CODE, venta.getId(), printed != null && printed);
 

@@ -1,5 +1,6 @@
 package com.mx.mitienda.service;
 
+import com.mx.mitienda.context.ScopeResolver;
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.mapper.ProductoMapper;
 import com.mx.mitienda.model.*;
@@ -7,11 +8,14 @@ import com.mx.mitienda.model.dto.ProductoDTO;
 import com.mx.mitienda.model.dto.ProductoFiltroDTO;
 import com.mx.mitienda.model.dto.ProductoResponseDTO;
 import com.mx.mitienda.repository.*;
+import com.mx.mitienda.service.base.BaseService;
+import com.mx.mitienda.specification.ProductoSpecification;
 import com.mx.mitienda.util.ProductoSpecBuilder;
 import com.mx.mitienda.util.enums.Rol;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -19,82 +23,96 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
-public class ProductoServiceImpl implements IProductoService {
+public class ProductoServiceImpl extends BaseService implements IProductoService {
 
     private final ProductoRepository productoRepository;
     private final ProductoMapper productoMapper;
-    private final IAuthenticatedUserService authenticatedUserService;
     private final UsuarioRepository usuarioRepository;
-    private final SucursalRepository sucursalRepository;
-    private final BusinessTypeRepository businessTypeRepository;
     private final ProductCategoryRepository productCategoryRepository;
 
-    public Page<ProductoResponseDTO> getAll(Pageable pageable) {
-        Usuario user = authenticatedUserService.getCurrentUser();
-        Specification<Producto> spec = new ProductoSpecBuilder()
-                .distinct()
-                .active(true) // si quieres solo activos; quítalo si no aplica
-                .build();
+    private static final Map<String, String> SORT_ALIAS = Map.of(
+            "product", "name",               // Si el front manda 'product', usa 'name'
+            "category", "productCategory.name" // Ejemplo extra opcional
+    );
 
-        if (isSuperAdmin(user)) {
-            Long branchId = authenticatedUserService.getCurrentBranchId();
-            if (branchId == null) {
-                throw new IllegalArgumentException("El usuario no tiene una sucursal asignada");
+    private static final Set<String> ALLOWED_SORTS = Set.of(
+            "id", "name", "sku", "purchasePrice", "salePrice",
+            "active", "creationDate", "codigoBarras", "productCategory.name"
+    );
+
+    public ProductoServiceImpl(
+            IAuthenticatedUserService authenticatedUserService,
+            ProductoRepository productoRepository,
+            ProductoMapper productoMapper,
+            UsuarioRepository usuarioRepository,
+            ProductCategoryRepository productCategoryRepository
+    ) {
+        super(authenticatedUserService); // 👈 pasa la dependencia al BaseService
+        this.productoRepository = productoRepository;
+        this.productoMapper = productoMapper;
+        this.usuarioRepository = usuarioRepository;
+        this.productCategoryRepository = productCategoryRepository;
+    }
+
+    private Pageable sanitize(Pageable pageable) {
+        Sort sanitized = Sort.unsorted();
+
+        for (Sort.Order o : pageable.getSort()) {
+            String requested = o.getProperty();
+            String mapped = SORT_ALIAS.getOrDefault(requested, requested);
+
+            if (ALLOWED_SORTS.contains(mapped)) {
+                sanitized = sanitized.and(Sort.by(new Sort.Order(o.getDirection(), mapped)));
             }
-            Long businessTypeId = authenticatedUserService.getBusinessTypeIdFromSession();
 
-            spec = new ProductoSpecBuilder()
-                    .distinct()
-                    .active(true)
-                    .inBranchId(branchId)
-                    .inBusinessTypeId(businessTypeId)
-                    .build();
         }
-        Page<Producto> page = productoRepository.findAll(spec, pageable);
-        // Nota: con paginación es mejor NO lanzar NotFound cuando viene vacío; regresa página vacía.
+        if (sanitized.isUnsorted()) {
+            sanitized = Sort.by(Sort.Order.asc("name"));
+        }
+
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sanitized);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductoResponseDTO> getAll(ProductoFiltroDTO filtro, Pageable pageable) {
+        UserContext ctx = ctx();
+
+        log.info("BUSINESS_TYPE_ID={} | BRANCH_ID={} | isSuper={}",
+                ctx.getBusinessTypeId(), ctx.getBranchId(), ctx.isSuperAdmin());
+
+        var spec = ProductoSpecification.byBusinessTypeAndBranch(
+                ctx.getBusinessTypeId(), ctx.getBranchId(), ctx.isSuperAdmin());
+
+        Pageable safePageable = sanitize(pageable);
+
+        Page<Producto> page = productoRepository.findAll(spec, safePageable);
         return page.map(productoMapper::toResponse);
     }
 
     public ProductoResponseDTO getById(Long idProducto){
-        Usuario user = authenticatedUserService.getCurrentUser();
+        UserContext ctx = ctx();
         final Producto producto;
-        if (isSuperAdmin(user)) {
+        if (ctx.isSuperAdmin()) {
             producto = productoRepository.findById(idProducto)
-                    .filter(Producto::getActive) // si tienes campo active
+                    .filter(Producto::getActive)
                     .orElseThrow(() -> new NotFoundException("Producto no encontrado"));
-        }else{
-            Long branchId = authenticatedUserService.getCurrentBranchId();
-            if (branchId == null) {
-                throw new IllegalArgumentException("El usuario no tiene una sucursal asignada");
-            }
+        } else {
+            Long branchId = ctx.getBranchId();
             producto = productoRepository
                     .findActiveWithDetailByIdAndSucursal(idProducto, branchId)
                     .orElseThrow(() -> new NotFoundException(
-                            "Producto no encontrado dentro de esta sucursal asignada al usuario loggeado, intenta con otro producto"));
+                            "Producto no encontrado en la sucursal del usuario logueado"));
         }
         return productoMapper.toResponse(producto);
     }
 
     public ProductoResponseDTO save(ProductoDTO productoDTO){
-
-        // Validaciones de campos obligatorios
-        if (productoDTO.getName() == null || productoDTO.getName().isBlank()) {
-            throw new IllegalArgumentException("El nombre del producto es obligatorio.");
-        }
-        if (productoDTO.getSku() == null || productoDTO.getSku().isBlank()) {
-            throw new IllegalArgumentException("El SKU del producto es obligatorio.");
-        }
-        if (productoDTO.getCodigoBarras() == null || productoDTO.getCodigoBarras().isBlank()) {
-            throw new IllegalArgumentException("El código de barras es obligatorio.");
-        }
-        if (productoDTO.getCategoryId() == null) {
-            throw new IllegalArgumentException("La categoría es obligatoria.");
-        }
 
         // Obtener la categoría para acceder al tipo de negocio
         ProductCategory productCategory = productCategoryRepository.findById(productoDTO.getCategoryId())
@@ -133,14 +151,10 @@ public class ProductoServiceImpl implements IProductoService {
     }
 
     public Page<ProductoResponseDTO> buscarAvanzado(ProductoFiltroDTO productDTO, Pageable pageable) {
-        Usuario user = authenticatedUserService.getCurrentUser();
-        if (!isSuperAdmin(user)) {
-            Long branchId = authenticatedUserService.getCurrentBranchId();
-            if (branchId == null) {
-                throw new IllegalArgumentException("El usuario no tiene una sucursal asignada");
-            }
-            // asumiendo que tu DTO tiene branchId y el builder lo usa:
-            productDTO.setBranchId(branchId);
+        var ctx = ctx();
+
+        if (!ctx.isSuperAdmin()) {
+            productDTO.setBranchId(ctx.getBranchId());
         }
 
         Specification<Producto> spec = ProductoSpecBuilder.fromDTO(productDTO);
@@ -148,16 +162,11 @@ public class ProductoServiceImpl implements IProductoService {
         return page.map(productoMapper::toResponse);
     }
 
-    private Long getBusinessTypeIdFromSession() {
-        String email = authenticatedUserService.getCurrentUser().getEmail();
-        Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
-        return usuario.getBranch().getBusinessType().getId();
-    }
 
     @Override
     public ProductoResponseDTO buscarPorCodigoBarras(String codigoBarras) {
-        Long businessType = authenticatedUserService.getBusinessTypeIdFromSession();
+        var ctx = ctx();
+        Long businessType = ctx.getBusinessTypeId();
         Producto producto = productoRepository.findByCodigoBarrasAndBusinessTypeId(codigoBarras, businessType)
                 .orElseThrow(() -> new NotFoundException("Producto no encontrado con ese código de barras"));
         return productoMapper.toResponse(producto);

@@ -2,6 +2,7 @@ package com.mx.mitienda.repository;
 
 import com.mx.mitienda.model.Venta;
 import com.mx.mitienda.model.dto.DevolucionVentasRequestDTO;
+import io.micrometer.common.KeyValues;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -54,4 +55,6 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     BigDecimal sumVentasBrutas(@Param("inicio") LocalDateTime inicio,
                                @Param("fin") LocalDateTime fin,
                                @Param("branchId") Long branchId);
+
+    List<Venta>  findByBranch_IdAndActiveTrue(Long branchId);
 }

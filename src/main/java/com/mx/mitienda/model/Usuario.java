@@ -1,5 +1,6 @@
 package com.mx.mitienda.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.mx.mitienda.util.enums.Rol;
 import jakarta.persistence.*;
 import lombok.*;
@@ -15,16 +16,21 @@ import java.util.List;
 @AllArgsConstructor
 @Entity
 @Builder
+@ToString
 public class Usuario  implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(unique = true)
     private String username;
 
+    @Column(unique = true)
     private String email;
 
+    @JsonIgnore
+    @ToString.Exclude
     private String password;
 
     @Enumerated(EnumType.STRING)
@@ -34,7 +40,7 @@ public class Usuario  implements UserDetails {
 
     @Override
     public String getUsername() {
-        return this.email; // usa email como identificador principal
+        return this.email;
     }
     @Override
     public String getPassword() {
@@ -45,29 +51,15 @@ public class Usuario  implements UserDetails {
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + this.role.name()));
     }
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
 
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
+    @Override public boolean isAccountNonExpired() { return true; }
+    @Override public boolean isAccountNonLocked() { return true; }
+    @Override public boolean isCredentialsNonExpired() { return true; }
+    @Override public boolean isEnabled() { return Boolean.TRUE.equals(this.active); }
 
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return this.active!=null && this.active;
-    }
 
     @ManyToOne
-    @JoinColumn(name = "branch_id", foreignKey = @ForeignKey(name = "fk_usuario_branch"))
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
+    @JoinColumn(name = "branch_id", nullable = true,  foreignKey = @ForeignKey(name = "fk_usuario_branch"))
+    @ToString.Exclude @EqualsAndHashCode.Exclude
     private Sucursal branch;
 }

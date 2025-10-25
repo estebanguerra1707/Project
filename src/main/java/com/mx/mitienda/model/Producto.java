@@ -6,6 +6,9 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -67,4 +70,7 @@ public class Producto {
 	@ToString.Exclude
 	private ProductDetail productDetail;
 
+    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY)
+    @EqualsAndHashCode.Exclude @ToString.Exclude
+    private Set<InventarioSucursal> inventariosSucursal = new HashSet<>();
 }

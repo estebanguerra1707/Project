@@ -59,4 +59,16 @@ public class ProviderController {
         List<ProveedorResponseDTO> proveedores = proveedorSucursalService.getProveedoresBySucursal(branchId);
         return ResponseEntity.ok(proveedores);
     }
+
+    @GetMapping("/tipo-negocio/{businessTypeId}")
+    @PreAuthorize("hasAuthority('SUPER_ADMIN')")
+    public List<ProveedorResponseDTO> getByBusinessType(@PathVariable Long businessTypeId) {
+        return proveedorService.getByBusinessType(businessTypeId);
+    }
+
+    @GetMapping("/actual")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN', 'ADMIN', 'VENDOR')")
+    public List<ProveedorResponseDTO> getActualCatalog() {
+        return proveedorService.getActualCatalog();
+    }
 }

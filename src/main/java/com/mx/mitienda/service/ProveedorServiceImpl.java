@@ -1,6 +1,7 @@
 package com.mx.mitienda.service;
 
 import com.mx.mitienda.exception.DuplicateProveedorException;
+import com.mx.mitienda.exception.ForbiddenException;
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.mapper.ProveedorMapper;
 import com.mx.mitienda.model.Proveedor;
@@ -14,14 +15,17 @@ import com.mx.mitienda.repository.ProveedorSucursalRepository;
 import com.mx.mitienda.repository.SucursalRepository;
 import com.mx.mitienda.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class ProveedorServiceImpl implements IProveedorService{
 
@@ -33,11 +37,41 @@ public class ProveedorServiceImpl implements IProveedorService{
     private final IProveedorSucursalService proveedorSucursalService;
     private final AuthenticatedUserServiceImpl authenticatedUserService;
 
-
+    @Transactional(readOnly = true)
     @Override
     public List<ProveedorResponseDTO> getAll(){
+        boolean isSuper = authenticatedUserService.isSuperAdmin();
+        if (isSuper) {
+            log.info("SUPER_ADMIN solicitó todos los proveedores");
+            return proveedorRepository.findAll().stream()
+                    .map(proveedorMapper::toResponse)
+                    .toList();
+        }
         Long branchId = authenticatedUserService.getCurrentBranchId();
-        return proveedorSucursalService.getProveedoresBySucursal(branchId);
+        if (branchId == null) {
+            throw new ForbiddenException("No se pudo determinar la sucursal actual del usuario.");
+        }
+
+        log.info("Usuario no super: branchId={}", branchId);
+        return proveedorRepository.findBySucursalId(branchId).stream()
+                .map(proveedorMapper::toResponse)
+                .toList();
+
+    }
+    @Transactional(readOnly = true)
+    @Override
+    public List<ProveedorResponseDTO> getByBusinessType(Long businessTypeId) {
+        return proveedorRepository.findByBusinessTypeId(businessTypeId).stream()
+                .map(proveedorMapper::toResponse)
+                .toList();
+    }
+    @Transactional(readOnly = true)
+    @Override
+    public List<ProveedorResponseDTO> getActualCatalog() {
+        Long branchId = authenticatedUserService.getCurrentBranchId();
+        if (branchId == null) throw new ForbiddenException("Tu sucursal no tiene tipo de negocio asignado.");
+        return proveedorSucursalRepository.findProveedoresBySucursalId(branchId)
+                .stream().map(proveedorMapper::toResponse).toList();
     }
 
     @Override

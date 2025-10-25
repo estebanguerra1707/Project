@@ -32,4 +32,5 @@ public class ProveedorSucursalServiceImpl implements  IProveedorSucursalService{
                 .orElseThrow(() -> new NotFoundException("Proveedor no asociado a la sucursal del usuario loggeado, intenta de nuevo"));
         return proveedorMapper.toResponse(proveedor);
     }
+    
 }

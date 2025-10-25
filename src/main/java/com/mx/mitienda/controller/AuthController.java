@@ -98,6 +98,7 @@ public class AuthController {
         usuarioDTO.setEmail(request.getEmail());
         usuarioDTO.setPassword(request.getPassword());
         usuarioDTO.setBranchId(request.getBranchId());
+        usuarioDTO.setRole(request.getRole());
 
         UsuarioResponseDTO registrado = usuarioService.registerUser(usuarioDTO);
         UserDetails userDetails = new User(

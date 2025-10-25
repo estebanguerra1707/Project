@@ -1,6 +1,7 @@
 package com.mx.mitienda.repository;
 
 import com.mx.mitienda.model.Compra;
+import io.micrometer.common.KeyValues;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -35,4 +36,6 @@ public interface CompraRepository extends JpaRepository<Compra, JpaSpecification
         WHERE b.id = :branchId AND b.businessType.id = :businessTypeId
     """)
     List<Compra> findByBranchAndBusinessType(Long branchId, Long businessTypeId);
+
+    List<Compra> findByBranch_IdAndActiveTrue(Long branchId);
 }

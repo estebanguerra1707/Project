@@ -16,4 +16,5 @@ public class ProductoDTO {
     private Long providerId;
     private LocalDateTime updatedDate;
     private String codigoBarras;
+    private Long branchId;
 }

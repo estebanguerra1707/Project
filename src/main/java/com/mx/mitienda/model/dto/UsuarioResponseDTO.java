@@ -1,11 +1,10 @@
 package com.mx.mitienda.model.dto;
 
 import com.mx.mitienda.util.enums.Rol;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 public class UsuarioResponseDTO {

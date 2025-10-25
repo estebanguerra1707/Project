@@ -37,7 +37,7 @@ public class VentaController {
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
     public ResponseEntity<VentaResponseDTO> registerSell(@RequestBody VentaRequestDTO ventaRequest, Authentication authentication){
         String username = authentication.getName();
-        VentaResponseDTO venta = ventaServiceImpl.registerSell(ventaRequest, username);
+        VentaResponseDTO venta = ventaServiceImpl.registerSell(ventaRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(venta);
     }
     @Tag(name = "VENTA GET ALL", description = "Operaciones relacionadas con obtener todas las ventas ")
@@ -45,7 +45,7 @@ public class VentaController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
     public ResponseEntity<List<VentaResponseDTO>> getSales() {
-        return ResponseEntity.ok(ventaServiceImpl.findCurrentUserVentas());
+        return ResponseEntity.ok(ventaServiceImpl.getAll());
     }
 
     @Tag(name = "VENTAS FILTER", description = "Operaciones relacionadas con registrar filtrar las ventas ")
@@ -54,7 +54,7 @@ public class VentaController {
     public ResponseEntity<List<VentaResponseDTO>>findByFilter(@RequestBody VentaFiltroDTO filter, Authentication authentication){
         String username = authentication.getName();
         String role = authentication.getAuthorities().stream().findFirst().map(auth -> auth.getAuthority().replace("ROLE_","")).orElse("");
-        List<VentaResponseDTO> ventaList = ventaServiceImpl.findByFilter(filter, username, role);
+        List<VentaResponseDTO> ventaList = ventaServiceImpl.findByFilter(filter);
         return ResponseEntity.ok(ventaList);
     }
 

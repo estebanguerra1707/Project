@@ -67,17 +67,4 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
     Page<Producto> findAll(Specification<Producto> spec, Pageable pageable);
 
-    @Query("""
-      select p
-      from Producto p
-        join p.productCategory c
-        join c.businessType bt
-      where p.active = true
-        and bt.id = :btId
-        and (:branchId is null or p.sucursal.id = :branchId)
-      order by p.name asc
-    """)
-    List<Producto> findAllForBusinessTypeAndOptionalBranch(@Param("btId") Long businessTypeId,
-                                                           @Param("branchId") Long branchId);
-
 }
