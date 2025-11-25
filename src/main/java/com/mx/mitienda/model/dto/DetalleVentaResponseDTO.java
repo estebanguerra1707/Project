@@ -9,6 +9,12 @@ import java.time.LocalDateTime;
 public class DetalleVentaResponseDTO {
     private Long productId;
     private String productName;
+    private String sku;
+    private Long branchId;
+    private String branchName;
+    private Long businessTypeId;
+    private String businessTypeName;
+    private String codigoBarras;
     private Integer quantity;
     private BigDecimal unitPrice;
     private BigDecimal subTotal;

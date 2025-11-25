@@ -1,5 +1,6 @@
 package com.mx.mitienda.service;
 
+import com.mx.mitienda.model.Sucursal;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -11,4 +12,5 @@ public class UserContext {
     private final Long businessTypeId;
     private final String email;
     private final boolean isAdmin;
+    private final Sucursal branch;
 }

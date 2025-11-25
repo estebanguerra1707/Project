@@ -1,6 +1,10 @@
 package com.mx.mitienda.repository;
 
 import com.mx.mitienda.model.DevolucionVentas;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Range;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -40,6 +44,8 @@ public interface DevolucionVentasRepository extends JpaRepository<DevolucionVent
     BigDecimal sumGananciaPerdidaPorDevoluciones(@Param("inicio") LocalDateTime inicio,
                                                  @Param("fin") LocalDateTime fin,
                                                  @Param("branchId") Long branchId);
+
+    Page<DevolucionVentas> findAll(Specification<DevolucionVentas> spec, Pageable pageable);
 }
 
 

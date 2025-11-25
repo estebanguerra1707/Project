@@ -12,7 +12,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 
@@ -34,13 +36,21 @@ public class CompraMapper {
 
     public Compra toEntity(CompraRequestDTO compraRequestDTO, String userName) {
 
-        Long businessTypeId = authenticatedUserService.getCurrentBusinessTypeId();
-        Long branchId = authenticatedUserService.getCurrentBranchId();
-
-        Compra compra = new Compra();
-
         Usuario usuario = usuarioRepository.findByEmailAndActiveTrue(userName)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado: " + userName));
+
+        boolean isSuperAdmin = authenticatedUserService.isSuperAdmin();
+        // 🔹 Si es SUPER_ADMIN → usa los valores que vienen en el request
+        // 🔹 Si no lo es → toma los del usuario autenticado
+        Long branchId = isSuperAdmin
+                ? compraRequestDTO.getBranchId()
+                : authenticatedUserService.getCurrentBranchId();
+
+        Long businessTypeId = isSuperAdmin
+                ? sucursalRepository.findByIdAndActiveTrue(branchId)
+                .map(s -> s.getBusinessType().getId())
+                .orElseThrow(() -> new NotFoundException("La sucursal no tiene tipo de negocio asignado"))
+                : authenticatedUserService.getCurrentBusinessTypeId();
 
         Proveedor proveedor = proveedorRepository.findByIdAndActiveTrue(compraRequestDTO.getProviderId())
                 .orElseThrow(() -> new NotFoundException("Proveedor no alineado con el producto"));
@@ -54,29 +64,29 @@ public class CompraMapper {
         BusinessType businessType = businessTypeRepository.findByIdAndActiveTrue(businessTypeId)
                 .orElseThrow(() -> new NotFoundException("Tipo de negocio no encontrado"));
 
-        boolean asociado = proveedorSucursalRepository
-                .existsByProveedorIdAndSucursalId(proveedor.getId(), sucursal.getId());
-        if (!asociado) {
-            throw new IllegalArgumentException("El proveedor no está asociado a tu sucursal.");
+        // 🔸 Solo validamos la asociación proveedor-sucursal si no es SUPER_ADMIN
+        if (!isSuperAdmin) {
+            boolean asociado = proveedorSucursalRepository
+                    .existsByProveedorIdAndSucursalId(proveedor.getId(), sucursal.getId());
+            if (!asociado) {
+                throw new IllegalArgumentException("El proveedor no está asociado a tu sucursal.");
+            }
         }
 
+        Compra compra = new Compra();
         compra.setProveedor(proveedor);
         compra.setBranch(sucursal);
         compra.setUsuario(usuario);
         compra.setActive(true);
         compra.setPurchaseDate(compraRequestDTO.getPurchaseDate());
         compra.setPaymentMethod(paymentMethod);
-
-        if (paymentMethod.getName().equalsIgnoreCase(EFECTIVO.name().toLowerCase())) {
-            compra.setAmountPaid(compraRequestDTO.getAmountPaid());
-        } else {
-            compra.setAmountPaid(BigDecimal.ZERO);
-        }
+        compra.setAmountPaid(compraRequestDTO.getAmountPaid());
 
         if (compra.getAmountPaid() == null) {
             throw new IllegalArgumentException("Debes indicar el monto pagado");
         }
 
+        // 🔹 Construcción de detalles con validación de tipo de negocio
         List<DetalleCompra> details = compraRequestDTO.getDetails().stream().map(detalleDTO -> {
             Producto producto = productoRepository.findByIdAndActiveTrue(detalleDTO.getProductId())
                     .orElseThrow(() -> new NotFoundException("Producto no encontrado"));
@@ -90,14 +100,15 @@ public class CompraMapper {
                         sucursal.getName()
                 ));
             }
+
             DetalleCompra detail = new DetalleCompra();
             detail.setCompra(compra);
             detail.setProduct(producto);
             detail.setQuantity(detalleDTO.getQuantity());
             detail.setUnitPrice(producto.getPurchasePrice());
-            detail.setSubTotal(producto.getPurchasePrice().multiply(BigDecimal.valueOf(detalleDTO.getQuantity())));
+            detail.setSubTotal(producto.getPurchasePrice()
+                    .multiply(BigDecimal.valueOf(detalleDTO.getQuantity())));
             detail.setActive(true);
-
             return detail;
         }).collect(Collectors.toList());
 
@@ -119,6 +130,7 @@ public class CompraMapper {
         }
 
         return compra;
+
     }
     public CompraResponseDTO toResponse(Compra compra) {
         CompraResponseDTO compraResponseDTO = new CompraResponseDTO();
@@ -133,14 +145,24 @@ public class CompraMapper {
         compraResponseDTO.setUserId(compra.getUsuario().getId());
         compraResponseDTO.setUserName(compra.getUsuario().getUsername());
         compraResponseDTO.setAmountInWords(NumberToWordsConverter.convert(compra.getTotalAmount()));
-        List<DetalleCompraResponseDTO> details = compra.getDetails().stream().map(detail->{
-            DetalleCompraResponseDTO detalleCompraResponseDTO = new DetalleCompraResponseDTO();
-            detalleCompraResponseDTO.setProductName(detail.getProduct().getName());
-            detalleCompraResponseDTO.setQuantity(detail.getQuantity());
-            detalleCompraResponseDTO.setUnitPrice(detail.getUnitPrice());
-            detalleCompraResponseDTO.setSubTotal(detail.getSubTotal());
-            return detalleCompraResponseDTO;
-        }).toList();
+        List<DetalleCompraResponseDTO> details = Optional.ofNullable(compra.getDetails())
+                .orElse(Collections.emptyList())
+                .stream()
+                .map(detail -> {
+                    DetalleCompraResponseDTO detalleCompraResponseDTO = new DetalleCompraResponseDTO();
+                    detalleCompraResponseDTO.setBranchId(detail.getProduct().getBranch().getId());
+                    detalleCompraResponseDTO.setBranchName(detail.getProduct().getBranch().getName());
+                    detalleCompraResponseDTO.setBusinessTypeId(detail.getProduct().getBusinessType().getId());
+                    detalleCompraResponseDTO.setBusinessTypeName(detail.getProduct().getBusinessType().getName());
+                    detalleCompraResponseDTO.setSku(detail.getProduct().getSku());
+                    detalleCompraResponseDTO.setCodigoBarras(detail.getProduct().getCodigoBarras());
+                    detalleCompraResponseDTO.setProductName(detail.getProduct().getName());
+                    detalleCompraResponseDTO.setQuantity(detail.getQuantity());
+                    detalleCompraResponseDTO.setUnitPrice(detail.getUnitPrice());
+                    detalleCompraResponseDTO.setSubTotal(detail.getSubTotal());
+                    return detalleCompraResponseDTO;
+                })
+                .toList();
     compraResponseDTO.setDetails(details);
     return compraResponseDTO;
     }

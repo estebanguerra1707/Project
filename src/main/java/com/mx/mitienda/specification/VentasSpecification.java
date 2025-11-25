@@ -11,10 +11,11 @@ import java.time.LocalTime;
 
 public class VentasSpecification {
 
-    public static Specification<Venta> hasClient(String nombreCliente){
-        return((root, query, criteriaBuilder) ->
-                nombreCliente == null?null:
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("client").get("name")), "%" + nombreCliente.toLowerCase() + "%"));
+    public static Specification<Venta> hasClientId(Long clientId) {
+        return (root, query, cb) -> {
+            if (clientId == null) return null;
+            return cb.equal(root.get("client").get("id"), clientId);
+        };
     }
 
     public static Specification<Venta> dateBetween(LocalDateTime start, LocalDateTime end ){
@@ -99,12 +100,14 @@ public class VentasSpecification {
         };
     }
 
-    public static Specification<Venta> isActive(Boolean active){
-        if (active == null) return null;
-        return (root, query, criteriaBuilder) ->
-                criteriaBuilder.isTrue(root.get("active"));
+    public static Specification<Venta> isActive(Boolean active) {
+        return (root, query, cb) -> {
+            if (active == null) return null; // No aplicar filtro
+            return active
+                    ? cb.isTrue(root.get("active"))
+                    : cb.isFalse(root.get("active")); // ← AQUÍ ESTÁ LA CLAVE
+        };
     }
-
     public static Specification<Venta> userName(String userName){
         return ((root, query, criteriaBuilder) -> criteriaBuilder.equal(criteriaBuilder.lower(root.get("usuario").get("username")),userName.toLowerCase()));
     }

@@ -68,4 +68,11 @@ public class ProductCategoryController {
         return categoryService.findByBusinessTypeAsList(businessTypeId);
     }
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN', 'SUPER_ADMIN)")
+    public ResponseEntity<Void>  deleteCategory(@PathVariable("id") Long id) {
+        categoryService.disableCategory(id);
+        return ResponseEntity.noContent().build();
+    }
+
 }

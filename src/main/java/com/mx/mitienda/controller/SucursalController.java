@@ -1,10 +1,12 @@
 package com.mx.mitienda.controller;
 
+import com.mx.mitienda.model.dto.UpdateSucursalDTO;
 import com.mx.mitienda.model.dto.SucursalDTO;
 import com.mx.mitienda.model.dto.SucursalResponseDTO;
 import com.mx.mitienda.service.ISucursalService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +26,7 @@ public class SucursalController {
     @Tag(name = "Sucursal SAVE", description = "Operaciones relacionadas con salvar sucursal")
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
-    public ResponseEntity<SucursalResponseDTO>  create(@RequestBody SucursalDTO dto) {
+    public ResponseEntity<SucursalResponseDTO>  create(@Valid @RequestBody SucursalDTO dto) {
         SucursalResponseDTO response =  iSucursal.create(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -32,8 +34,8 @@ public class SucursalController {
     @Tag(name = "Sucursal UPDATE", description = "Operaciones relacionadas con actualizar sucursal")
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
-    public ResponseEntity<SucursalResponseDTO>  update(@PathVariable Long id, @RequestBody SucursalDTO dto) {
-        return ResponseEntity.ok(iSucursal.update(id, dto));
+    public ResponseEntity<SucursalResponseDTO>  update(@RequestBody UpdateSucursalDTO dto) {
+        return ResponseEntity.ok(iSucursal.update(dto));
     }
 
     @Tag(name = "Sucursal DISABLE", description = "Operaciones relacionadas con inhabilitar sucursal")

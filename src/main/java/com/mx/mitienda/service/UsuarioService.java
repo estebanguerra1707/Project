@@ -4,6 +4,7 @@ package com.mx.mitienda.service;
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.mapper.UserMapper;
 import com.mx.mitienda.model.Usuario;
+import com.mx.mitienda.model.dto.UpdateUserDTO;
 import com.mx.mitienda.model.dto.UsuarioDTO;
 import com.mx.mitienda.model.dto.UsuarioResponseDTO;
 import com.mx.mitienda.repository.UsuarioRepository;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,8 @@ public class UsuarioService implements UserDetailsService {
 
     private final UsuarioRepository usuarioRepository;
     private final UserMapper usuarioMapper;
+    private final PasswordEncoder passwordEncoder;
+
 
     @Transactional(readOnly = true)
     public List<UsuarioResponseDTO> getAll() {
@@ -48,12 +52,24 @@ public class UsuarioService implements UserDetailsService {
 
     }
     @Transactional
-    public UsuarioResponseDTO updateUser(Long id, UsuarioDTO usuarioDTO) {
+    public UsuarioResponseDTO updateUser(Long id, UpdateUserDTO usuarioDTO) {
         Usuario usuario = usuarioRepository.findById(id)
             .orElseThrow(() -> new NotFoundException("Usuario no encontrado con id: " + id));
 
         usuarioMapper.updateEntity(usuario, usuarioDTO);
 
+        if (usuarioDTO.getNewPassword() != null && !usuarioDTO.getNewPassword().isBlank()) {
+
+            if (usuarioDTO.getCurrentPassword() == null || usuarioDTO.getCurrentPassword().isBlank()) {
+                throw new RuntimeException("Debes ingresar la contraseña actual");
+            }
+
+            if (!passwordEncoder.matches(usuarioDTO.getCurrentPassword(), usuario.getPassword())) {
+                throw new RuntimeException("La contraseña actual es incorrecta");
+            }
+
+            usuario.setPassword(passwordEncoder.encode(usuarioDTO.getNewPassword()));
+        }
         usuarioRepository.save(usuario);
         Usuario fresh = usuarioRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado después de actualizar"));

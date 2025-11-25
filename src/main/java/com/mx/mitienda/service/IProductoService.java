@@ -17,4 +17,5 @@ public interface IProductoService {
     ProductoResponseDTO updateProduct(ProductoDTO updatedProduct, Long id);
     Page<ProductoResponseDTO> buscarAvanzado(ProductoFiltroDTO filtro, Pageable pageable);
     ProductoResponseDTO buscarPorCodigoBarras(String codigoBarras);
+    List<ProductoResponseDTO> getProductsByBranch(Long branchId);
 }

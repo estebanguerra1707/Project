@@ -7,5 +7,4 @@ public class InventarioAlertaFiltroDTO {
 private String productname;
 private Long branchId;
 private Boolean stocKCritico;
-
 }

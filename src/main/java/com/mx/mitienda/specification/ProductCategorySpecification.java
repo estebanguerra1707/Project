@@ -31,5 +31,7 @@ public class ProductCategorySpecification {
             return cb.and(preds.toArray(new Predicate[0]));
         };
     }
-
+    public static Specification<ProductCategory> isActive() {
+        return (root, query, cb) -> cb.isTrue(root.get("activo")); // o "active"
+    }
 }

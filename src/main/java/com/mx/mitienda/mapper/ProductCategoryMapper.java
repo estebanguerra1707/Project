@@ -9,6 +9,8 @@ import com.mx.mitienda.repository.BusinessTypeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+
 @Component
 @RequiredArgsConstructor
 public class ProductCategoryMapper {
@@ -23,6 +25,8 @@ public class ProductCategoryMapper {
             dto.setBusinessTypeId(category.getBusinessType().getId());
             dto.setBusinessTypeName(category.getBusinessType().getName());
         }
+        dto.setIsActive(category.getActivo());
+        dto.setFecha_creacion(category.getFecha_creacion());
         return dto;
     }
     public ProductCategory toEntity(ProductCategoryDTO productCategoryDTO) {
@@ -40,7 +44,8 @@ public class ProductCategoryMapper {
         ProductCategory category = new ProductCategory();
         category.setName(productCategoryDTO.getName());
         category.setBusinessType(businessType);
-
+        category.setActivo(true);
+        category.setFecha_creacion(LocalDateTime.now());
         return category;
 
     }
@@ -55,6 +60,7 @@ public class ProductCategoryMapper {
                     .orElseThrow(() -> new NotFoundException("Tipo de negocio no encontrado"));
             existing.setBusinessType(businessType);
         }
+        existing.setFecha_creacion(LocalDateTime.now());
         return existing;
     }
 }

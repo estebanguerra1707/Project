@@ -6,6 +6,13 @@ import java.math.BigDecimal;
 
 @Data
 public class DetalleCompraResponseDTO {
+    private Long id;
+    private Long branchId;
+    private String branchName;
+    private Long businessTypeId;
+    private String businessTypeName;
+    private String codigoBarras;
+    private String sku;
     private String productName;
     private Integer quantity;
     private BigDecimal unitPrice;

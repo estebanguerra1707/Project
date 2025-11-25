@@ -38,14 +38,25 @@ public class VentasMapper {
 
     public Venta toEntity(VentaRequestDTO ventasRequestDTO, String username) {
 
-        Long branchId = authenticatedUserService.getCurrentBranchId();
-        Long businessTypeId = authenticatedUserService.getCurrentBusinessTypeId();
+        boolean isSuperAdmin = authenticatedUserService.isSuperAdmin();
+        // 🔹 Si es SUPER_ADMIN → usa los valores que vienen en el request
+        // 🔹 Si no lo es → toma los del usuario autenticado
+        Long branchId = isSuperAdmin
+                ? ventasRequestDTO.getBranchId()
+                : authenticatedUserService.getCurrentBranchId();
+        Long businessTypeId = isSuperAdmin
+                ? sucursalRepository.findByIdAndActiveTrue(branchId)
+                .map(s -> s.getBusinessType().getId())
+                .orElseThrow(() -> new NotFoundException("La sucursal no tiene tipo de negocio asignado"))
+                : authenticatedUserService.getCurrentBusinessTypeId();
+        Cliente cliente;
 
-        BusinessType businessType = businessTypeRepository.findByIdAndActiveTrue(businessTypeId)
-                .orElseThrow(() -> new NotFoundException("Tipo de negocio no encontrado"));
-
-        Cliente cliente = clienteRepository.findByIdAndActiveTrue(ventasRequestDTO.getClientId())
-                .orElseThrow(() -> new NotFoundException("Cliente no encontrado, intenta registrarlo"));
+        if (ventasRequestDTO.getClientId() != null && ventasRequestDTO.getClientId() > 0) {
+            cliente = clienteRepository.findByIdAndActiveTrue(ventasRequestDTO.getClientId())
+                    .orElseThrow(() -> new NotFoundException("Cliente no encontrado"));
+        } else {
+            throw new IllegalArgumentException("Debe seleccionar un cliente");
+        }
 
         Usuario usuario = usuarioService.getByUsername(username)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
@@ -65,9 +76,7 @@ public class VentasMapper {
         venta.setActive(true);
         venta.setPaymentMethod(paymentMethod);
 
-        BigDecimal amountPaid = paymentMethod.getName().equalsIgnoreCase(EFECTIVO.name())
-                ? ventasRequestDTO.getAmountPaid()
-                : BigDecimal.ZERO;
+        BigDecimal amountPaid = ventasRequestDTO.getAmountPaid();
         if (EFECTIVO.name().equalsIgnoreCase(paymentMethod.getName()) &&
                 (amountPaid == null || amountPaid.compareTo(BigDecimal.ZERO) == 0)) {
             throw new IllegalArgumentException("La cantidad a pagar no puede estar en ceros para pagos en "+ EFECTIVO.name());
@@ -84,7 +93,7 @@ public class VentasMapper {
                 throw new NotFoundException(String.format(
                         "El producto '%s' no pertenece al tipo de negocio '%s' de la sucursal '%s'",
                         producto.getName(),
-                        businessType.getName(),
+                        businessTypeRepository.findByIdAndActiveTrue(businessTypeId).map(BusinessType::getName),
                         sucursal.getName()
                 ));
             }
@@ -99,7 +108,7 @@ public class VentasMapper {
             detalle.setProduct(producto);
             detalle.setQuantity(cantidad);
             detalle.setUnitPrice(producto.getSalePrice());
-            detalle.setSubTotal(producto.getPurchasePrice().multiply(BigDecimal.valueOf(cantidad)));
+            detalle.setSubTotal(producto.getSalePrice().multiply(BigDecimal.valueOf(cantidad)));
             detalle.setActive(true);
             return detalle;
         }).collect(Collectors.toList());
@@ -136,10 +145,17 @@ public class VentasMapper {
         ventaResponseDTO.setChangeAmount(venta.getChangeAmount());
         ventaResponseDTO.setAmountPaid(venta.getAmountPaid());
         ventaResponseDTO.setUserName(venta.getUsuario().getUsername());
+        ventaResponseDTO.setActive(venta.getActive());
 
         List<DetalleVentaResponseDTO> details = venta.getDetailsList().stream().map(detail->{
             DetalleVentaResponseDTO detalleVentaResponseDTO = new DetalleVentaResponseDTO();
             detalleVentaResponseDTO.setProductId(detail.getProduct().getId());
+            detalleVentaResponseDTO.setSku(detail.getProduct().getSku());
+            detalleVentaResponseDTO.setBranchId(detail.getProduct().getBranch().getId());
+            detalleVentaResponseDTO.setBranchName(detail.getProduct().getBranch().getName());
+            detalleVentaResponseDTO.setBusinessTypeId(detail.getProduct().getBusinessType().getId());
+            detalleVentaResponseDTO.setBusinessTypeName(detail.getProduct().getBusinessType().getName());
+            detalleVentaResponseDTO.setCodigoBarras(detail.getProduct().getCodigoBarras());
             detalleVentaResponseDTO.setProductName(detail.getProduct().getName());
             detalleVentaResponseDTO.setQuantity(detail.getQuantity());
             detalleVentaResponseDTO.setUnitPrice(detail.getUnitPrice());

@@ -7,6 +7,7 @@ import com.mx.mitienda.util.enums.Rol;
 import com.mx.mitienda.repository.SucursalRepository;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -16,6 +17,10 @@ public abstract class UserAuthMapping {
     @Autowired
     protected SucursalRepository sucursalRepository;
 
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "username", source = "email")
+    @Mapping(target = "active", constant = "true")
+    @Mapping(target = "branch", ignore = true)
     public abstract Usuario toEntity(RegisterRequestDTO dto);
 
     @AfterMapping

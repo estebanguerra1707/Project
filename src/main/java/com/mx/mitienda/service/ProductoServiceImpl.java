@@ -33,7 +33,6 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
 
     private final ProductoRepository productoRepository;
     private final ProductoMapper productoMapper;
-    private final UsuarioRepository usuarioRepository;
     private final ProductCategoryRepository productCategoryRepository;
 
     private static final Map<String, String> SORT_ALIAS = Map.of(
@@ -56,7 +55,6 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
         super(authenticatedUserService); // 👈 pasa la dependencia al BaseService
         this.productoRepository = productoRepository;
         this.productoMapper = productoMapper;
-        this.usuarioRepository = usuarioRepository;
         this.productCategoryRepository = productCategoryRepository;
     }
 
@@ -153,9 +151,14 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
     public Page<ProductoResponseDTO> buscarAvanzado(ProductoFiltroDTO productDTO, Pageable pageable) {
         var ctx = ctx();
 
+        // 🧩 Usuarios normales: filtran solo por su tipo de negocio
         if (!ctx.isSuperAdmin()) {
-            productDTO.setBranchId(ctx.getBranchId());
+            productDTO.setBusinessTypeId(ctx.getBusinessTypeId());
         }
+
+        // 🧩 SUPER_ADMIN:
+        // Puede mandar businessTypeId directamente desde el frontend
+        // Ya NO necesitas derivarlo desde la sucursal porque Producto tiene businessType directo
 
         Specification<Producto> spec = ProductoSpecBuilder.fromDTO(productDTO);
         Page<Producto> page = productoRepository.findAll(spec, pageable);
@@ -174,6 +177,14 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
 
     private boolean isSuperAdmin(Usuario u) {
         return u != null && u.getRole() == Rol.SUPER_ADMIN; // ajusta si tu Rol es String
+    }
+
+    @Override
+    public List<ProductoResponseDTO> getProductsByBranch(Long branchId) {
+        return productoRepository.findByBranchIdAndActiveTrue(branchId)
+                .stream()
+                .map(productoMapper::toResponse)
+                .toList();
     }
 
 }

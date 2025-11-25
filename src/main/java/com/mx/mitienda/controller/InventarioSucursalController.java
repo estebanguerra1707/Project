@@ -1,14 +1,12 @@
 package com.mx.mitienda.controller;
 
 import com.mx.mitienda.model.InventarioSucursal;
-import com.mx.mitienda.model.dto.CompraResponseDTO;
-import com.mx.mitienda.model.dto.InventarioSucursalRequestDTO;
-import com.mx.mitienda.model.dto.InventarioSucursalResponseDTO;
-import com.mx.mitienda.model.dto.MovimientoStockDTO;
+import com.mx.mitienda.model.dto.*;
 import com.mx.mitienda.service.IInventarioSucursalService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -25,13 +23,13 @@ public class InventarioSucursalController {
     private final IInventarioSucursalService inventarioSucursalService;
 
     @GetMapping("/sucursal/{sucursalId}")
-    @PreAuthorize("hasRole('ADMIN', 'SUPER_ADMIN')")
+   @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public  ResponseEntity<List<InventarioSucursalResponseDTO>> getInventarioSucursal(@PathVariable Long sucursalId) {
         return ResponseEntity.ok(inventarioSucursalService.getProductosEnSucursal(sucursalId));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<InventarioSucursalResponseDTO> actualizarInventario(
             @PathVariable Long id,
             @RequestBody InventarioSucursalRequestDTO dto
@@ -42,19 +40,19 @@ public class InventarioSucursalController {
 
 
     @GetMapping("/producto/{productoId}")
-    @PreAuthorize("hasRole('ADMIN', 'SUPER_ADMIN')")
+   @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public  ResponseEntity<List<InventarioSucursalResponseDTO>> getInventarioProducto(@PathVariable Long productoId) {
         return ResponseEntity.ok(inventarioSucursalService.getProducto(productoId));
     }
 
     @GetMapping("/sucursal/{sucursalId}/producto/{productId}")
-    @PreAuthorize("hasRole('ADMIN', 'SUPER_ADMIN')")
-    public  ResponseEntity<List<InventarioSucursalResponseDTO>> getInventarioProductoSucursal(@PathVariable Long sucursalId, @PathVariable Long productId) {
+   @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public  ResponseEntity<InventarioSucursalResponseDTO> getInventarioProductoSucursal(@PathVariable Long sucursalId, @PathVariable Long productId) {
         return ResponseEntity.ok(inventarioSucursalService.getProductoEnSucursal(sucursalId, productId));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN', 'SUPER_ADMIN')")
+   @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<InventarioSucursalResponseDTO> createInventario(@RequestBody InventarioSucursalRequestDTO inventarioSucursalRequestDTO) {
         return ResponseEntity.ok(inventarioSucursalService.create(inventarioSucursalRequestDTO));
     }
@@ -73,9 +71,12 @@ public class InventarioSucursalController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
-    public List<InventarioSucursalResponseDTO> getByBusinessType() {
-        return inventarioSucursalService.findByBranchAndBusinessType();
+    @PostMapping("/search")
+    @PreAuthorize("hasAnyRole('ADMIN','VENDOR','SUPER_ADMIN')")
+    public Page<InventarioSucursalResponseDTO> search(
+            @RequestBody InventarioGeneralfiltroDTO inventarioGeneralfiltroDTO,
+            org.springframework.data.domain.Pageable pageable
+    ) {
+        return inventarioSucursalService.search(inventarioGeneralfiltroDTO, pageable);
     }
 }

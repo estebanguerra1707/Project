@@ -6,5 +6,6 @@ import lombok.Data;
 public class ProductCategoryDTO {
     private String name;
     private Long businessTypeId;
+    private boolean isActive;
 
 }

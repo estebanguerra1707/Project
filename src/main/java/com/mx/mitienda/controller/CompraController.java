@@ -10,6 +10,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,8 +39,12 @@ public class CompraController {
 
 
     private Long effectiveBranch(Long branchIdFromQuery) {
-        if (authenticatedUserService.isSuperAdmin() && branchIdFromQuery != null) {
-            return branchIdFromQuery;
+        if (authenticatedUserService.isSuperAdmin()) {
+
+            if (branchIdFromQuery != null) {
+                return branchIdFromQuery;
+            }
+            return null;
         }
         return authenticatedUserService.getCurrentBranchId();
     }
@@ -53,16 +61,29 @@ public class CompraController {
 
     @Tag(name = "COMPRA GET ALL", description = "Operaciones relacionadas con obtener todas las compras ")
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN)")
-    public ResponseEntity<List<CompraResponseDTO>> getPurchases() {
-        return ResponseEntity.ok(compraServiceImpl.findCurrentUserCompras());
+    @PreAuthorize("hasAnyRole('ADMIN','VENDOR','SUPER_ADMIN')")
+    public ResponseEntity<Page<CompraResponseDTO>> getPurchases(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Long branchId
+    ) {
+        Long effectiveBranchId = effectiveBranch(branchId);
+        Page<CompraResponseDTO> compras =
+                compraServiceImpl.findByBranchPaginated(effectiveBranchId, page, size);
+
+        return ResponseEntity.ok(compras);
     }
 
     @Tag(name = "COMPRA GET ALL", description = "Operaciones relacionadas con obtener todas las compras ")
     @PostMapping("/search")
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN)")
-    public ResponseEntity<List<CompraResponseDTO>> search(@RequestBody CompraFiltroDTO filtro) {
-        return ResponseEntity.ok(compraServiceImpl.advancedSearch(filtro));
+    public ResponseEntity<Page<CompraResponseDTO>> search(  @RequestParam(defaultValue = "0") int page,
+                                                            @RequestParam(defaultValue = "10") int size,
+                                                            @RequestBody CompraFiltroDTO filtro
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "purchaseDate"));
+        Page<CompraResponseDTO> comprasResponse = compraServiceImpl.advancedSearch(filtro, pageable);
+        return ResponseEntity.ok(comprasResponse);
     }
 
     @Tag(name = "COMPRA GET BY ID", description = "Operaciones relacionadas con obtener todas las compras ")
@@ -74,9 +95,22 @@ public class CompraController {
 
     @PostMapping("/devolucion")
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN)")
-    public ResponseEntity<DevolucionComprasReponseDTO> devoluciones( @Valid @RequestBody DevolucionComprasRequestDTO devolucionComprasRequestDTO,
-                                                                     Authentication authentication) {
-        return ResponseEntity.ok(devolucionComprasService.procesarDevolucion(devolucionComprasRequestDTO,authentication));
+    public ResponseEntity<DevolucionComprasReponseDTO> devoluciones( @Valid @RequestBody DevolucionComprasRequestDTO devolucionComprasRequestDTO) {
+        return ResponseEntity.ok(devolucionComprasService.procesarDevolucion(devolucionComprasRequestDTO));
+    }
+
+    @PostMapping("/devolucion/search")
+    @PreAuthorize("hasAnyRole('ADMIN','VENDOR','SUPER_ADMIN')")
+    public ResponseEntity<Page<FiltroDevolucionComprasResponseDTO>> searchDevoluciones(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestBody DevolucionComprasFiltroDTO filtro
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "fecha"));
+        Page<FiltroDevolucionComprasResponseDTO> resp =
+                devolucionComprasService.advancedSearch(filtro, pageable);
+
+        return ResponseEntity.ok(resp);
     }
 
     @GetMapping("/total")

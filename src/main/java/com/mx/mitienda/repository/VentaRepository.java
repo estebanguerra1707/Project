@@ -2,10 +2,14 @@ package com.mx.mitienda.repository;
 
 import com.mx.mitienda.model.Venta;
 import com.mx.mitienda.model.dto.DevolucionVentasRequestDTO;
+import com.mx.mitienda.model.dto.VentaFiltroDTO;
 import io.micrometer.common.KeyValues;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Range;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -16,7 +20,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface VentaRepository extends JpaRepository<Venta, Long> {
+public interface VentaRepository extends JpaRepository<Venta, Long>, JpaSpecificationExecutor<Venta> {
     List<Venta> findByActiveTrue();
     Optional<Venta> findByIdAndActiveTrue(Long id);
     List<Venta> findByUsuario_UsernameAndActiveTrue(String username);
@@ -57,4 +61,13 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
                                @Param("branchId") Long branchId);
 
     List<Venta>  findByBranch_IdAndActiveTrue(Long branchId);
+    @Query("""
+    SELECT v FROM Venta v
+    LEFT JOIN FETCH v.detailsList d
+    LEFT JOIN FETCH d.product p
+    LEFT JOIN FETCH p.productCategory c
+    LEFT JOIN FETCH p.provider pr
+    WHERE v.id = :id
+""")
+    Optional<Venta> findByIdWithDetails(@Param("id") Long id);
 }

@@ -61,7 +61,7 @@ public class UsuarioController {
     @Tag(name = "USUARIOS UPDATE", description = "Actualizar usuario con DTO limpio")
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    public ResponseEntity<UsuarioResponseDTO> update(@PathVariable Long id, @RequestBody UsuarioDTO usuarioDTO) {
+    public ResponseEntity<UsuarioResponseDTO> update(@PathVariable Long id, @RequestBody UpdateUserDTO usuarioDTO) {
         return ResponseEntity.ok(usuarioService.updateUser(id, usuarioDTO));
     }
     @GetMapping("/sucursal/{branchId}")

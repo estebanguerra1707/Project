@@ -1,6 +1,5 @@
 package com.mx.mitienda.service;
 
-import com.mx.mitienda.exception.ForbiddenException;
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.exception.PdfGenerationException;
 import com.mx.mitienda.mapper.DetalleVentaMapper;
@@ -13,10 +12,11 @@ import com.mx.mitienda.model.dto.VentaResponseDTO;
 import com.mx.mitienda.repository.*;
 import com.mx.mitienda.service.base.BaseService;
 import com.mx.mitienda.util.VentaSpecBuilder;
-import com.mx.mitienda.util.enums.Rol;
 import com.mx.mitienda.util.enums.TipoMovimiento;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -90,7 +90,7 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
     //es lo mismo que crear un DTO
     private record Totales(BigDecimal brutas, BigDecimal netas, BigDecimal gananciaNeta) {}
 
-
+    @Override
     @Transactional //si falla o hay unea excepcion en cualquier lugar del metodo, se hace rollback de todo
     public VentaResponseDTO registerSell(VentaRequestDTO request) {
         Venta venta = ventaMapper.toEntity(request, ctx().getEmail());
@@ -137,7 +137,8 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
         generateSaleOutput(venta, request.getIsPrinted(), request.getEmailList());
         return ventaMapper.toResponse(ventaRepository.save(venta));
     }
-
+    @Override
+    @Transactional(readOnly = true)
     public List<VentaResponseDTO> getAll() {
         UserContext ctx = ctx();
         if (ctx.isSuperAdmin()) {
@@ -152,12 +153,15 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
                     .collect(Collectors.toList());
         }
     }
-
-    public List<VentaResponseDTO> findByFilter(VentaFiltroDTO filterDTO) {
+    @Override
+    @Transactional(readOnly = true)
+    public Page<VentaResponseDTO> findByFilter(VentaFiltroDTO filterDTO, int page, int size) {
         UserContext ctx = ctx();
 
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+
         VentaSpecBuilder builder = new VentaSpecBuilder()
-                .client(filterDTO.getClientName())
+                .client(filterDTO.getClienteId())
                 .dateBetween(filterDTO.getStartDate(), filterDTO.getEndDate())
                 .totalMajorTo(filterDTO.getMin())
                 .totalMinorTo(filterDTO.getMax())
@@ -167,19 +171,19 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
                 .sellPerMonthYear(filterDTO.getMonth(), filterDTO.getYear())
                 .byPaymentMethod(filterDTO.getPaymentMethodId())
                 .withId(filterDTO.getId());
+
         Specification<Venta> spec = builder.build();
 
+        // Si NO es super admin → solo su branch
         if (!ctx.isSuperAdmin()) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("branch").get("id"), ctx.getBranchId()));
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("branch").get("id"), ctx.getBranchId()));
         }
 
-        Sort sort = Sort.by(Sort.Direction.ASC, "totalAmount");
-        return ventaRepository.findAll(spec, sort)
-                .stream()
-                .map(ventaMapper::toResponse)
-                .collect(Collectors.toList());
+        return ventaRepository.findAll(spec, pageable)
+                .map(ventaMapper::toResponse);
     }
-
+    @Override
     public List<DetalleVentaResponseDTO> getDetailsPerSale(Long idVenta) {
         UserContext ctx = ctx();
 
@@ -194,14 +198,22 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
                 .map(detalleVentaMapper::toResponse)
                 .collect(Collectors.toList());
     }
-
+    @Override
+    @Transactional(readOnly = true)
     public VentaResponseDTO getById(Long id) {
         Venta venta =  ventaRepository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new NotFoundException("Venta no encontrada"));
         return ventaMapper.toResponse(venta);
     }
-
-
+    @Override
+    @Transactional
+    public void deleteById(Long id) {
+        Venta venta = ventaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Venta no encontrada"));
+        venta.setActive(false);
+        ventaRepository.save(venta);
+    }
+    @Override
     public byte[] generateTicketPdf(Long idVenta) {
         Venta venta = ventaRepository.findById(idVenta)
                 .orElseThrow(() -> new RuntimeException("Venta no encontrada"));
@@ -225,6 +237,8 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
             throw new PdfGenerationException("Error generando PDF de la venta", e);
         }
     }
+
+    @Override
     public List<VentaResponseDTO> findCurrentUserVentas() {
         UserContext ctx = ctx();
         return ventaRepository.findByBranchAndBusinessType(ctx.getBranchId(), ctx.getBusinessTypeId())
@@ -343,6 +357,8 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
         LocalDateTime fin = finDelDia(hasta);
         return calcularTotales(inicio, fin).netas();
     }
+
+
 
     private void generateSaleOutput(Venta venta, Boolean printed, List<String> emailList) {
         byte[] pdfBytes = generatePdfService.generatePdf(VENTA_CODE, venta.getId(), printed != null && printed);

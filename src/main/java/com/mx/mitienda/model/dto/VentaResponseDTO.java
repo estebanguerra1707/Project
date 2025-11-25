@@ -19,5 +19,6 @@ public class VentaResponseDTO {
     private BigDecimal changeAmount;
     private String amountInWords;
     private String userName;
+    private Boolean active;
 
 }

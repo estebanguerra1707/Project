@@ -1,8 +1,7 @@
 package com.mx.mitienda.specification;
 
 import com.mx.mitienda.model.Producto;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
@@ -54,9 +53,22 @@ public class ProductoSpecification {
     /** Stock disponible: true => stock > 0, false => stock = 0 */
     public static Specification<Producto> withStockAvailable(Boolean available) {
         if (available == null) return null;
-        return available
-                ? (root, query, cb) -> cb.greaterThan(root.get("stock"), 0)
-                : (root, query, cb) -> cb.equal(root.get("stock"), 0);
+
+        return (Root<Producto> root, CriteriaQuery<?> query, CriteriaBuilder cb) -> {
+            // 👇 hacemos JOIN con InventarioSucursal
+            Join<Object, Object> inventario = root.join("inventariosSucursal", JoinType.LEFT);
+
+            if (available) {
+                // productos con stock mayor a 0
+                return cb.greaterThan(inventario.get("stock"), 0);
+            } else {
+                // productos con stock igual a 0 o null
+                return cb.or(
+                        cb.equal(inventario.get("stock"), 0),
+                        cb.isNull(inventario.get("stock"))
+                );
+            }
+        };
     }
 
     /**
@@ -170,6 +182,15 @@ public class ProductoSpecification {
 
             return cb.and(ps.toArray(new Predicate[0]));
         };
+    }
+
+    public static Specification<Producto> nameOrBarcodeLike(String q) {
+        if (q == null || q.isBlank()) return null;
+        String like = "%" + q.trim().toLowerCase() + "%";
+        return (root, query, cb) -> cb.or(
+                cb.like(cb.lower(root.get("name")), like),
+                cb.like(cb.lower(root.get("codigoBarras")), like)
+        );
     }
 
 }

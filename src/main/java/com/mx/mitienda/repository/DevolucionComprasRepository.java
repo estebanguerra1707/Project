@@ -1,6 +1,9 @@
 package com.mx.mitienda.repository;
 
 import com.mx.mitienda.model.DevolucionCompras;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -51,4 +54,6 @@ public interface DevolucionComprasRepository extends JpaRepository<DevolucionCom
     List<Object[]> countPorMes(@Param("branchId") Long branchId,
                                @Param("start") LocalDateTime start,
                                @Param("end")   LocalDateTime end);
+
+    Page<DevolucionCompras> findAll(Specification<DevolucionCompras> spec, Pageable pageable);
 }

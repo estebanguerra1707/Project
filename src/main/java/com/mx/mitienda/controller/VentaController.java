@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -34,7 +35,7 @@ public class VentaController {
 
     @Tag(name = "VENTAS registrar venta", description = "Operaciones relacionadas con registrar todas las ventas ")
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<VentaResponseDTO> registerSell(@RequestBody VentaRequestDTO ventaRequest, Authentication authentication){
         String username = authentication.getName();
         VentaResponseDTO venta = ventaServiceImpl.registerSell(ventaRequest);
@@ -43,37 +44,44 @@ public class VentaController {
     @Tag(name = "VENTA GET ALL", description = "Operaciones relacionadas con obtener todas las ventas ")
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<List<VentaResponseDTO>> getSales() {
         return ResponseEntity.ok(ventaServiceImpl.getAll());
     }
 
     @Tag(name = "VENTAS FILTER", description = "Operaciones relacionadas con registrar filtrar las ventas ")
     @PostMapping("/filter")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
-    public ResponseEntity<List<VentaResponseDTO>>findByFilter(@RequestBody VentaFiltroDTO filter, Authentication authentication){
-        String username = authentication.getName();
-        String role = authentication.getAuthorities().stream().findFirst().map(auth -> auth.getAuthority().replace("ROLE_","")).orElse("");
-        List<VentaResponseDTO> ventaList = ventaServiceImpl.findByFilter(filter);
-        return ResponseEntity.ok(ventaList);
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
+    public ResponseEntity<Page<VentaResponseDTO>>findByFilter(  @RequestBody VentaFiltroDTO filter,
+                                                                @RequestParam(defaultValue = "0") int page,
+                                                                @RequestParam(defaultValue = "10") int size){
+        Page<VentaResponseDTO> result = ventaServiceImpl.findByFilter(filter, page, size);
+        return ResponseEntity.ok(result);
     }
 
     @Tag(name = "VENTAS ID", description = "Operaciones relacionadas con obtener venta por id")
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<VentaResponseDTO> getById(@PathVariable Long id){
         return ResponseEntity.ok(ventaServiceImpl.getById(id));
     }
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<Void> deleteVenta(@PathVariable Long id) {
+        ventaServiceImpl.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @Tag(name = "VENTAS detalles", description = "Operaciones relacionadas con detalle venta")
     @GetMapping("/{id}/detail")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<List<DetalleVentaResponseDTO>> getDetallesPorVenta(@PathVariable Long id) {
         return ResponseEntity.ok(ventaServiceImpl.getDetailsPerSale(id));
     }
 
     @GetMapping("/ganancias")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<ReporteGananciasDTO> obtenerResumen() {
         return ResponseEntity.ok(new ReporteGananciasDTO(
                 ventaServiceImpl.obtenerGananciaHoy(),
@@ -83,7 +91,7 @@ public class VentaController {
     }
 
     @GetMapping("/ganancia-dia")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<GanaciaDiaDTO> getGananciaDia(@RequestParam("fecha") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         BigDecimal ganancia = ventaServiceImpl.obtenerGananciaPorDia(fecha);
         return ResponseEntity.ok(new GanaciaDiaDTO(fecha, ganancia));
@@ -91,12 +99,12 @@ public class VentaController {
 
 
     @PostMapping("/ganancia-rango")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<BigDecimal> getGananciaPorRango(@RequestBody GananciaPorFechaDTO gananciaPorFechaDTO) {
         return ResponseEntity.ok(ventaServiceImpl.obtenerGananciaPorRango(gananciaPorFechaDTO.getStartDate(), gananciaPorFechaDTO.getEndDate()));
     }
     @PostMapping("/ganancia-diaria-rango")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<List<GanaciaDiaDTO>> getGananciaDiariaRango(@RequestBody GananciaPorFechaDTO gananciaPorFechaDTO) {
         Map<LocalDate, BigDecimal> datos = ventaServiceImpl.obtenerGananciasPorDiaEnRango(gananciaPorFechaDTO.getStartDate(), gananciaPorFechaDTO.getEndDate());
 
@@ -110,7 +118,7 @@ public class VentaController {
 
     // 1) Ganancia (neta) por venta específica (considerando devoluciones)
     @GetMapping("/ganancia/{ventaId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<BigDecimal> obtenerGananciaPorVenta(@PathVariable Long ventaId) {
         BigDecimal ganancia = ventaServiceImpl.obtenerGananciaPorVenta(ventaId);
         return ResponseEntity.ok(ganancia);
@@ -118,7 +126,7 @@ public class VentaController {
 
     // 2) Ventas BRUTAS por rango [desde, hasta]
     @GetMapping("/brutas")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<BigDecimal> obtenerVentasBrutasPorRango(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
@@ -129,7 +137,7 @@ public class VentaController {
 
     // 3) Ventas NETAS por rango [desde, hasta] (resta importes devueltos)
     @GetMapping("/netas")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<BigDecimal> obtenerVentasNetasPorRango(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
@@ -140,18 +148,30 @@ public class VentaController {
 
 
     @PostMapping("/devolucion")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<DevolucionVentasResponseDTO> devolverVenta(
-            @Valid @RequestBody DevolucionVentasRequestDTO devolucionVentasRequestDTO,
-            Authentication authentication) {
-        return ResponseEntity.ok(devolucionVentasService.procesarDevolucion(devolucionVentasRequestDTO, authentication));
+            @Valid @RequestBody DevolucionVentasRequestDTO devolucionVentasRequestDTO) {
+        return ResponseEntity.ok(devolucionVentasService.procesarDevolucion(devolucionVentasRequestDTO));
     }
 
+    @Tag(name = "DEVOLUCIONES FILTER", description = "Filtrar devoluciones de ventas")
+    @PostMapping("/filterDevoluciones")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
+    public ResponseEntity<Page<FiltroDevolucionVentasResponseDTO>> filterDevoluciones(
+            @Valid @RequestBody DevolucionesVentasFiltroDTO filter,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Page<FiltroDevolucionVentasResponseDTO> result =
+                devolucionVentasService.findByFilter(filter, page, size);
+
+        return ResponseEntity.ok(result);
+    }
     @GetMapping(
             value = "/{ventaId}/ticket",
             produces = MediaType.APPLICATION_PDF_VALUE
     )
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<byte[]> getTicketVenta(@PathVariable Long ventaId) {
 
         byte[] pdf = ventaServiceImpl.generateTicketPdf(ventaId);
@@ -161,6 +181,5 @@ public class VentaController {
                 .header("Content-Disposition", "inline; filename=ticket.pdf")
                 .body(pdf);
     }
-
 
 }

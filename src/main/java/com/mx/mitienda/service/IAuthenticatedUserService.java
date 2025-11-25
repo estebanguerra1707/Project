@@ -12,5 +12,5 @@ public interface IAuthenticatedUserService {
     boolean isSuperAdmin();
     boolean isAdmin();
     UserContext getUserContext();
-
+    boolean isVendor();
 }

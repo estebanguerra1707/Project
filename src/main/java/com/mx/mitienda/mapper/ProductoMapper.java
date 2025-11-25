@@ -59,6 +59,7 @@ public class ProductoMapper {
         producto.setSku(productoDTO.getSku());
         producto.setDescription(productoDTO.getDescription());
         producto.setPurchasePrice(productoDTO.getPurchasePrice());
+        producto.setSalePrice(productoDTO.getSalePrice());
         producto.setActive(true);
         producto.setProductCategory(category);
         producto.setProvider(proveedor);
@@ -76,6 +77,7 @@ public class ProductoMapper {
         response.setSku(producto.getSku());
         response.setDescription(producto.getDescription());
         response.setPurchasePrice(producto.getPurchasePrice());
+        response.setSalePrice(producto.getSalePrice());
         response.setCategoryId(producto.getProductCategory().getId());
         response.setCategoryName(producto.getProductCategory().getName());
         response.setProviderId(producto.getProvider().getId());
@@ -123,6 +125,9 @@ public class ProductoMapper {
         }
         if (productoDTO.getPurchasePrice() != null) {
             existing.setPurchasePrice(productoDTO.getPurchasePrice());
+        }
+        if (productoDTO.getSalePrice() != null) {
+            existing.setSalePrice(productoDTO.getSalePrice());
         }
         if (productoDTO.getCategoryId() != null) {
             ProductCategory cat = productCategoryRepository.findById(productoDTO.getCategoryId())

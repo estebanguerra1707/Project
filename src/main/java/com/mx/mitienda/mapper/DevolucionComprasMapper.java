@@ -42,25 +42,42 @@ public interface DevolucionComprasMapper {
 
     // interface DevolucionComprasMapper (MapStruct)
     @Mappings({
-            @Mapping(target = "id",            ignore = true),                     // <- evita ambigüedad de "id"
-            @Mapping(target = "compra",        source = "compra"),                 // <- explícito
-            @Mapping(target = "usuario",       source = "usuario"),                // <- explícito
-            @Mapping(target = "branch",        source = "branch"),                 // <- explícito (resuelve "branch")
-            @Mapping(target = "fecha",         expression = "java(LocalDateTime.now())"),
-            @Mapping(target = "motivo",        source = "request.motivo"),
-            @Mapping(target = "tipoDevolucion",
-                    expression = "java( (request.getCantidad()!=null && request.getCantidad().equals(cantidadComprada)) ? TipoDevolucion.TOTAL : TipoDevolucion.PARCIAL )"),
-            @Mapping(target = "montoDevuelto",
-                    expression = "java( detalleCompra.getUnitPrice().multiply(BigDecimal.valueOf(request.getCantidad())) )"),
-            @Mapping(target = "detalles",      ignore = true)                      // lo llenamos en @AfterMapping
+            @Mapping(target = "id", ignore = true),
+            @Mapping(target = "compra", source = "compra"),
+            @Mapping(target = "usuario", source = "usuario"),
+            @Mapping(target = "branch", source = "branch"),
+
+            // Fecha del sistema
+            @Mapping(target = "fecha", expression = "java(LocalDateTime.now())"),
+
+            @Mapping(target = "motivo", source = "request.motivo"),
+
+            // TOTAL o PARCIAL según la cantidad devuelta
+            @Mapping(
+                    target = "tipoDevolucion",
+                    expression =
+                            "java(request.getCantidad() != null && " +
+                                    "detalleCompra.getQuantity().equals(request.getCantidad()) ? " +
+                                    "com.mx.mitienda.util.enums.TipoDevolucion.TOTAL : " +
+                                    "com.mx.mitienda.util.enums.TipoDevolucion.PARCIAL)"
+            ),
+
+            // Monto devuelto = unitPrice * cantidad devuelta
+            @Mapping(
+                    target = "montoDevuelto",
+                    expression =
+                            "java(detalleCompra.getUnitPrice()" +
+                                    ".multiply(java.math.BigDecimal.valueOf(request.getCantidad())))"
+            ),
+
+            // Se llena en el @AfterMapping
+            @Mapping(target = "detalles", ignore = true)
     })
     DevolucionCompras toEntity(DevolucionComprasRequestDTO request,
                                Compra compra,
                                DetalleCompra detalleCompra,
                                Usuario usuario,
-                               Sucursal branch,
-                               Integer cantidadComprada);
-
+                               Sucursal branch);
 
     @AfterMapping
     default void fillDetalles(@MappingTarget DevolucionCompras devolucionCompras,

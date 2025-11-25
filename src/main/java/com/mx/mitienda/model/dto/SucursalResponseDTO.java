@@ -11,4 +11,5 @@ public class SucursalResponseDTO {
     private Boolean active;
     private Long businessTypeId;
     private String businessTypeName;
+    private Boolean isAlertaStockCritico;
 }

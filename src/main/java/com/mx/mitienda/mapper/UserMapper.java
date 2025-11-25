@@ -3,6 +3,7 @@ package com.mx.mitienda.mapper;
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.model.Sucursal;
 import com.mx.mitienda.model.Usuario;
+import com.mx.mitienda.model.dto.UpdateUserDTO;
 import com.mx.mitienda.model.dto.UsuarioDTO;
 import com.mx.mitienda.model.dto.UsuarioResponseDTO;
 import com.mx.mitienda.repository.SucursalRepository;
@@ -10,6 +11,7 @@ import com.mx.mitienda.repository.UsuarioRepository;
 import com.mx.mitienda.util.enums.Rol;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.mapstruct.Mapping;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -74,25 +76,25 @@ public class UserMapper {
         return  dto;
     }
 
-    public void  updateEntity(Usuario current, UsuarioDTO updated) {
+    public void updateEntity(Usuario current, UpdateUserDTO updated) {
+
         if (updated.getUsername() != null) {
             current.setUsername(updated.getUsername());
         }
+
         if (updated.getEmail() != null) {
             current.setEmail(updated.getEmail());
         }
-        if (updated.getPassword() != null) {
-            current.setPassword(passwordEncoder.encode(updated.getPassword()));
-        }
+
         if (updated.getRole() != null) {
             current.setRole(updated.getRole());
         }
+
         if (updated.getBranchId() != null) {
             Sucursal branch = sucursalRepository.findById(updated.getBranchId())
                     .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada: " + updated.getBranchId()));
             current.setBranch(branch);
         }
-
     }
 
     public void validateCreateDTO(UsuarioDTO usuarioDTO) {

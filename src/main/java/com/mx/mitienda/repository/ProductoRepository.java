@@ -1,5 +1,6 @@
 package com.mx.mitienda.repository;
 
+import com.mx.mitienda.model.Compra;
 import com.mx.mitienda.model.ProductCategory;
 import com.mx.mitienda.model.Producto;
 import org.springframework.data.domain.Page;
@@ -21,6 +22,8 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     List<Producto> findByActiveTrueAndProductCategory_BusinessType_Id(Long businessTypeId, Sort sort);
     List<Producto> findByActiveTrue();
     Optional<Producto> findByIdAndActiveTrue(Long id);
+    Optional<Producto> findByCodigoBarrasAndActiveTrue(String codigo);
+
     List<Producto> findByActiveTrue(Sort sort);
     @Query("""
     SELECT p FROM Producto p
@@ -66,5 +69,5 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     );
 
     Page<Producto> findAll(Specification<Producto> spec, Pageable pageable);
-
+    List<Producto> findByBranchIdAndActiveTrue(Long branchId);
 }

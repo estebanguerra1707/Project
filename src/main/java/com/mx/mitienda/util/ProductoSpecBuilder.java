@@ -111,6 +111,13 @@ public class ProductoSpecBuilder {
         return this;
     }
 
+    public ProductoSpecBuilder barcodeOrName(String q) {
+        if (q != null && !q.isBlank()) {
+            builder.and(ProductoSpecification.nameOrBarcodeLike(q));
+        }
+        return this;
+    }
+
 
     public Specification<Producto> build() {
         return builder.build();
@@ -120,6 +127,7 @@ public class ProductoSpecBuilder {
     public static Specification<Producto> fromDTO(ProductoFiltroDTO dto) {
         return new ProductoSpecBuilder()
                 .distinct()
+                .barcodeOrName(dto.getBarcodeName())
                 .idEquals(dto.getId())
                 .active(dto.getActive())
                 .name(dto.getName())
@@ -129,7 +137,6 @@ public class ProductoSpecBuilder {
                 .inCategoryId(dto.getCategoryId())
                 .withoutCategory(dto.getWithoutCategory())
                 .inBusinessTypeId(dto.getBusinessTypeId())
-                // Elige exacto o like según tu caso de uso (dejo 'like' por usabilidad)
                 .barcodeLike(dto.getCodigoBarras())
                 .build();
     }

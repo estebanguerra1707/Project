@@ -17,13 +17,25 @@ public class CompraSpecBuilder {
         return this;
     }
 
-    public CompraSpecBuilder supplier(String supplier){
-        builder.and(CompraSpecification.supplier(supplier));
+    public CompraSpecBuilder supplier(Long supplierId){
+        builder.and(CompraSpecification.supplier(supplierId));
+        return this;
+    }
+    public CompraSpecBuilder byId(Long purchaseId){
+        builder.and(CompraSpecification.byId(purchaseId));
         return this;
     }
 
-    public CompraSpecBuilder dateBetween(LocalDateTime start, LocalDateTime end){
-        builder.and(CompraSpecification.dateBetween(start, end));
+    public CompraSpecBuilder dateBetween(LocalDateTime start, LocalDateTime end) {
+        if (start == null && end == null) {
+            return this;
+        }
+
+        // Normalizamos las fechas al rango completo del día
+        LocalDateTime startDateTime = start;
+        LocalDateTime endDateTime   = end;
+
+        builder.and(CompraSpecification.dateBetween(startDateTime, endDateTime));
         return this;
     }
 

@@ -12,7 +12,7 @@ public class ProductoDTO {
     private Long categoryId; // ← ahora usamos ID
     private String description;
     private BigDecimal purchasePrice;
-    private Integer stock;
+    private BigDecimal salePrice;
     private Long providerId;
     private LocalDateTime updatedDate;
     private String codigoBarras;

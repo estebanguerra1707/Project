@@ -7,6 +7,7 @@ import com.mx.mitienda.service.MailService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +21,7 @@ public class EnvioCorreoPdfController {
     private final IGeneratePdfService generatePdfService;
     private final MailService mailService;
 
-    @GetMapping("/{transactionType}/{id}")
+    @PostMapping("/{transactionType}/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @Tag(name = " ENVIO DE CORREO", description = "Operaciones relacionadas con ENVIO DE CORREO")
 
@@ -35,5 +36,18 @@ public class EnvioCorreoPdfController {
                 transactionType + "_ticket.pdf");
 
         return ResponseEntity.ok("Correo enviado con PDF adjunto");
+    }
+
+    @GetMapping("/{transactionType}/{id}")
+    public ResponseEntity<byte[]> printCompraTicket(
+            @PathVariable String transactionType,
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "false") Boolean isPrinted
+    ) {
+        byte[] pdf = generatePdfService.generatePdf(transactionType, id, isPrinted);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, "application/pdf")
+                .body(pdf);
     }
 }

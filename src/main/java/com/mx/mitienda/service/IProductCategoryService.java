@@ -17,5 +17,5 @@ public interface IProductCategoryService {
      List<ProductCategoryResponseDTO> getByCurrentUserBusinessType();
      List<ProductCategoryResponseDTO> getActualCatalog();
     List<ProductCategoryResponseDTO> findByBusinessTypeAsList(Long businessTypeId);
-
+    void disableCategory(Long id);
 }

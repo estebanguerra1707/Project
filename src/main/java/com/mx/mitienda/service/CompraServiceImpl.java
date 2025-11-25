@@ -13,7 +13,11 @@ import com.mx.mitienda.util.CompraSpecBuilder;
 import com.mx.mitienda.util.enums.TipoMovimiento;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
@@ -90,6 +94,7 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
 
 
     @Override
+    @Transactional
     public CompraResponseDTO getById(Long idPurchase){
         UserContext ctx = ctx();
         Compra compra;
@@ -101,6 +106,7 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
                     .orElseThrow(() -> new NotFoundException(
                             "La compra no se ha encontrado dentro de la sucursal asignada al usuario logueado"));
         }
+        compra.getDetails().size();
         return compraMapper.toResponse(compra);
 
     }
@@ -185,22 +191,26 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
     }
 
     @Override
-    public List<CompraResponseDTO> advancedSearch(CompraFiltroDTO compraDTO){
+    @Transactional(readOnly = true)
+    public Page<CompraResponseDTO> advancedSearch(CompraFiltroDTO compraDTO, Pageable pageable) {
         Specification<Compra> spec = new CompraSpecBuilder()
                 .active(compraDTO.getActive())
-                .supplier(compraDTO.getSupplier())
+                .supplier(compraDTO.getSupplierId())
                 .dateBetween(compraDTO.getStart(), compraDTO.getEnd())
                 .totalMajorTo(compraDTO.getMin())
                 .totalMinorTo(compraDTO.getMax())
                 .searchPerDayMonthYear(compraDTO.getDay(), compraDTO.getMonth(), compraDTO.getYear())
+                .byId(compraDTO.getPurchaseId())
                 .build();
 
-        Sort sort = Sort.by(Sort.Direction.ASC, "totalAmount");
+        // 🔹 Usa el método con paginación
+        Page<Compra> compras = compraRepository.findAll(spec, pageable);
 
+        // 🔹 Forzar carga de los detalles dentro de la sesión activa
+        compras.forEach(c -> Hibernate.initialize(c.getDetails()));
 
-        return compraRepository.findAll(spec, sort).stream()
-                .map(compraMapper::toResponse)
-                .collect(Collectors.toList());
+        // 🔹 Mapea y devuelve como Page<CompraResponseDTO>
+        return compras.map(compraMapper::toResponse);
     }
 
     @Override
@@ -237,4 +247,25 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
     }
 
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CompraResponseDTO> findByBranchPaginated(Long branchId, int page, int size) {
+        UserContext ctx = ctx();
+        Pageable pageable = PageRequest.of(page, size, Sort.by("purchaseDate").descending());
+        Page<Compra> comprasPage;
+
+        // 🔹 Si es SUPER_ADMIN -> muestra todas las compras activas (ordenadas)
+        if (ctx.isSuperAdmin()) {
+            comprasPage = compraRepository.findAllWithDetails(pageable);
+        }
+        // 🔹 Si es ADMIN o VENDOR -> filtra por la sucursal del usuario
+        else {
+            if (branchId == null) {
+                throw new IllegalArgumentException("El usuario no tiene una sucursal asignada");
+            }
+            comprasPage = compraRepository.findByBranchIdAndActiveTrue(branchId, pageable);
+        }
+
+        return comprasPage.map(compraMapper::toResponse);
+    }
 }

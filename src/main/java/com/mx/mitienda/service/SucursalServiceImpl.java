@@ -4,12 +4,10 @@ import com.mx.mitienda.exception.ForbiddenException;
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.mapper.SucursalMapper;
 import com.mx.mitienda.model.Sucursal;
-import com.mx.mitienda.model.Usuario;
+import com.mx.mitienda.model.dto.UpdateSucursalDTO;
 import com.mx.mitienda.model.dto.SucursalDTO;
 import com.mx.mitienda.model.dto.SucursalResponseDTO;
 import com.mx.mitienda.repository.SucursalRepository;
-import com.mx.mitienda.repository.UsuarioRepository;
-import com.mx.mitienda.util.enums.Rol;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,7 +26,8 @@ public class SucursalServiceImpl implements ISucursalService {
     @Transactional
     @Override
     public SucursalResponseDTO create(SucursalDTO sucursalDTO) {
-        if (sucursalRepository.existsByNameIgnoreCaseAndAddressIgnoreCaseAndActiveTrue(sucursalDTO.getName(),sucursalDTO.getAddress())){
+        if (sucursalRepository.existsByNameIgnoreCaseAndAddressIgnoreCaseAndActiveTrueAndBusinessType_Id(sucursalDTO.getName(),
+                sucursalDTO.getAddress(), sucursalDTO.getBusinessTypeId())){
             throw new RuntimeException("Esta sucursal ya existe");
         }
         Sucursal sucursal = sucursalMapper.toEntity(sucursalDTO);
@@ -37,8 +36,8 @@ public class SucursalServiceImpl implements ISucursalService {
 
     @Transactional
     @Override
-    public SucursalResponseDTO update(Long id, SucursalDTO sucursalDTO) {
-        Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(id).orElseThrow(()->new NotFoundException("La sucursal no fue encontrada"));
+    public SucursalResponseDTO update(UpdateSucursalDTO sucursalDTO) {
+        Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(sucursalDTO.getId()).orElseThrow(()->new NotFoundException("La sucursal no fue encontrada"));
         if (sucursalDTO.getName() != null && !sucursalDTO.getName().isBlank()) {
             sucursal.setName(sucursalDTO.getName());
         }
@@ -91,7 +90,7 @@ public class SucursalServiceImpl implements ISucursalService {
         if(!authenticatedUserService.isSuperAdmin()){
             throw new ForbiddenException("El usuario no tiene permisos para ver sucursales de este tipo.");
         }
-        return sucursalRepository.findByBusinessType_Id(businessTypeId)
+        return sucursalRepository.findByBusinessType_IdAndActiveTrueOrderByIdAsc(businessTypeId)
                 .stream()
                 .map(sucursalMapper::toResponse)
                 .collect(Collectors.toList());

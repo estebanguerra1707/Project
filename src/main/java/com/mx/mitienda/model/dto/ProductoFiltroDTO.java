@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 @Data
 public class ProductoFiltroDTO {
     private Boolean active;
+    private String barcodeName;
     private String name;
     private BigDecimal min;
     private BigDecimal max;

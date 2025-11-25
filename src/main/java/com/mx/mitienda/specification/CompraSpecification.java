@@ -1,7 +1,10 @@
 package com.mx.mitienda.specification;
 
 import com.mx.mitienda.model.Compra;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
@@ -14,18 +17,38 @@ public class CompraSpecification {
         return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("active"), active);
     }
 
-    public static Specification<Compra> supplier(String supplier){
-        if(supplier== null || supplier.isBlank()) return null;
-        return (root, query, criteriaBuilder) -> criteriaBuilder.like(criteriaBuilder.lower(root.get("proveedor")),"%" + supplier.toLowerCase() + "%");
-    }
+    public static Specification<Compra> supplier(Long supplierId){
+        if(supplierId== null) return null;
+        return (Root<Compra> root, CriteriaQuery<?> query, CriteriaBuilder cb) ->
+                cb.equal(root.get("proveedor").get("id"), supplierId);    }
 
-    public static Specification<Compra> dateBetween(LocalDateTime start, LocalDateTime end){
-        if(start == null && end == null) return null;
-        if(start!=null && end!=null)
-                return (root, query, criteriaBuilder) -> criteriaBuilder.between(root.get("purchase_date"), start, end);
-        if(start !=null)
-                return (root, query, criteriaBuilder) -> criteriaBuilder.greaterThanOrEqualTo(root.get("purchase_date"), start);
-        return (root, query, criteriaBuilder) -> criteriaBuilder.lessThanOrEqualTo(root.get("purchase_date"), end);
+    public static Specification<Compra> byId(Long purchaseId){
+        if(purchaseId==null) return null;
+        return (root, query, cb) ->
+                cb.equal(root.get("id"), purchaseId);
+    }
+    public static Specification<Compra> dateBetween(LocalDateTime start, LocalDateTime end) {
+        if (start == null && end == null) return null;
+
+        // Normalizamos los límites del rango
+        LocalDateTime normalizedStart = (start != null) ? start.toLocalDate().atStartOfDay() : null;
+        LocalDateTime normalizedEnd = (end != null) ? end.toLocalDate().atTime(23, 59, 59, 999_999_999) : null;
+
+        final LocalDateTime finalStart = normalizedStart;
+        final LocalDateTime finalEnd = normalizedEnd;
+
+        if (finalStart != null && finalEnd != null) {
+            return (Root<Compra> root, CriteriaQuery<?> query, CriteriaBuilder cb) ->
+                    cb.between(root.get("purchaseDate"), finalStart, finalEnd);
+        }
+
+        if (finalStart != null) {
+            return (Root<Compra> root, CriteriaQuery<?> query, CriteriaBuilder cb) ->
+                    cb.greaterThanOrEqualTo(root.get("purchaseDate"), finalStart);
+        }
+
+        return (Root<Compra> root, CriteriaQuery<?> query, CriteriaBuilder cb) ->
+                cb.lessThanOrEqualTo(root.get("purchaseDate"), finalEnd);
     }
 
     public static Specification<Compra> totalMajorTo(BigDecimal min){

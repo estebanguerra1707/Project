@@ -15,8 +15,8 @@ public class VentaSpecBuilder {
         return this;//al regresarlo se pueden seguir llamando metodos sobre VentaSpecBuilder
     }
 
-    public VentaSpecBuilder client(String client){
-        builder.and(VentasSpecification.hasClient(client));
+    public VentaSpecBuilder client(Long client){
+        builder.and(VentasSpecification.hasClientId(client));
         return this;//al regresarlo se pueden seguir llamando metodos sobre VentaSpecBuilder
     }
 

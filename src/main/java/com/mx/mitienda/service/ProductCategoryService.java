@@ -27,6 +27,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -67,8 +68,10 @@ public class ProductCategoryService implements IProductCategoryService{
 
         Specification<ProductCategory> spec =
                 ProductCategorySpecification.byFilters(enforcedBusinessTypeId, filtro);
+        Specification<ProductCategory> onlyActive =
+                spec.and(ProductCategorySpecification.isActive());
 
-        Page<ProductCategory> page = categoryRepository.findAll(spec, safePageable);
+        Page<ProductCategory> page = categoryRepository.findAll(onlyActive, safePageable);
         return page.map(productCategoryMapper::toResponse);
     }
 
@@ -140,4 +143,13 @@ public class ProductCategoryService implements IProductCategoryService{
                 .collect(Collectors.toList());
     }
 
+
+    @Override
+    public void disableCategory(Long businessTypeId) {
+        ProductCategory existing = categoryRepository.findById(businessTypeId)
+                .orElseThrow(() -> new NotFoundException("Categoría no encontrada"));
+        existing.setFecha_creacion(LocalDateTime.now());
+        existing.setActivo(false);
+        categoryRepository.save(existing);
+    }
 }

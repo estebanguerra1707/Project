@@ -1,12 +1,18 @@
 package com.mx.mitienda.model.dto;
 
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
 public class SucursalDTO {
-    private String name;
-    private String address;
+    @NotBlank private String name;
+    @NotBlank private String address;
+    @NotBlank
     private String phone;
-    private Boolean isAlertaStockCritico;
+    private Boolean isAlertaStockCritico = Boolean.FALSE;
+    @NotNull
+    @Min(1)
     private Long businessTypeId;
 }

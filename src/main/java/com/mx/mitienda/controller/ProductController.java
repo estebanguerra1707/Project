@@ -87,4 +87,11 @@ public class ProductController {
         // Puede además mandar businessTypeId para acotar por tipo de negocio.
         return productService.buscarAvanzado(filtro, pageable);
     }
+
+    @Tag(name = "PRODUCTS BY BRANCH", description = "Obtiene productos filtrados por sucursal")
+    @GetMapping("/by-branch/{branchId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
+    public ResponseEntity<List<ProductoResponseDTO>> getByBranch(@PathVariable Long branchId) {
+        return ResponseEntity.ok(productService.getProductsByBranch(branchId));
+    }
 }

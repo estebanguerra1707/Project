@@ -6,7 +6,5 @@ import java.util.List;
 
 @Data
 public class EnvioCorreoDTO {
-
     private List<String> emailList;
-
 }

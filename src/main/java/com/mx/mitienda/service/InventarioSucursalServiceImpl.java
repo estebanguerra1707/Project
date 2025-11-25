@@ -2,17 +2,12 @@ package com.mx.mitienda.service;
 
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.mapper.InventarioSucursalMapper;
-import com.mx.mitienda.model.BusinessType;
-import com.mx.mitienda.model.InventarioSucursal;
-import com.mx.mitienda.model.Sucursal;
-import com.mx.mitienda.model.Usuario;
-import com.mx.mitienda.model.dto.InventarioAlertaFiltroDTO;
-import com.mx.mitienda.model.dto.InventarioAlertasDTO;
-import com.mx.mitienda.model.dto.InventarioSucursalRequestDTO;
-import com.mx.mitienda.model.dto.InventarioSucursalResponseDTO;
+import com.mx.mitienda.model.*;
+import com.mx.mitienda.model.dto.*;
 import com.mx.mitienda.repository.BusinessTypeRepository;
 import com.mx.mitienda.repository.InventarioSucursalRepository;
 import com.mx.mitienda.repository.SucursalRepository;
+import com.mx.mitienda.service.base.BaseService;
 import com.mx.mitienda.specification.InventarioSucursalSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,8 +22,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
-public class InventarioSucursalServiceImpl  implements IInventarioSucursalService{
+public class InventarioSucursalServiceImpl extends BaseService implements IInventarioSucursalService{
 
     private final InventarioSucursalRepository inventarioSucursalRepository;
     private final InventarioSucursalMapper inventarioSucursalMapper;
@@ -36,13 +30,22 @@ public class InventarioSucursalServiceImpl  implements IInventarioSucursalServic
     private final SucursalRepository sucursalRepository;
     private final BusinessTypeRepository businessTypeRepository;
 
+    public InventarioSucursalServiceImpl(InventarioSucursalRepository inventarioSucursalRepository, InventarioSucursalMapper inventarioSucursalMapper, AuthenticatedUserServiceImpl authenticatedUserService, SucursalRepository sucursalRepository, BusinessTypeRepository businessTypeRepository) {
+        super(authenticatedUserService);
+        this.inventarioSucursalRepository = inventarioSucursalRepository;
+        this.inventarioSucursalMapper = inventarioSucursalMapper;
+        this.authenticatedUserService = authenticatedUserService;
+        this.sucursalRepository = sucursalRepository;
+        this.businessTypeRepository = businessTypeRepository;
+    }
+
     @Override
-    public List<InventarioSucursalResponseDTO> getProductoEnSucursal(Long sucursalId, Long productId) {
-        List<InventarioSucursal> inventarioSucursalList = inventarioSucursalRepository.findByBranch_IdAndProduct_IdOrderByBranch_Id(sucursalId, productId);
-        if (inventarioSucursalList.isEmpty()) {
-            throw new NotFoundException("No hay inventario para este producto en esta sucursal");
-        }
-        return inventarioSucursalList.stream().map(inventarioSucursalMapper::toResponse).toList();
+    public InventarioSucursalResponseDTO getProductoEnSucursal(Long sucursalId, Long productId) {
+        var inv = inventarioSucursalRepository
+                .findByBranchIdAndProductId(sucursalId, productId)
+                .orElseThrow(() -> new NotFoundException("No hay inventario para este producto en esta sucursal"));
+
+        return inventarioSucursalMapper.toResponse(inv);
     }
 
     @Override
@@ -53,9 +56,20 @@ public class InventarioSucursalServiceImpl  implements IInventarioSucursalServic
 
     @Override
     public List<InventarioSucursalResponseDTO> getProducto(Long productId) {
-        List<InventarioSucursal> inventarioList = inventarioSucursalRepository.findByProduct_Id(productId);
-        return inventarioList.stream().map(inventarioSucursalMapper::toResponse)
-        .collect(Collectors.toList());
+        UserContext ctx = ctx();
+        if (ctx.isSuperAdmin()) {
+            // SUPER_ADMIN ve TODAS las sucursales
+            List<InventarioSucursal> list = inventarioSucursalRepository.findByProduct_Id(productId);
+            return list.stream().map(inventarioSucursalMapper::toResponse).toList();
+        }
+
+        Long branchId = authenticatedUserService.getCurrentBranchId();
+
+        InventarioSucursal inv = inventarioSucursalRepository
+                .findByProduct_IdAndBranch_Id(productId, branchId)
+                .orElseThrow(() -> new NotFoundException("No hay inventario para ese producto en tu sucursal"));
+
+        return List.of(inventarioSucursalMapper.toResponse(inv));
     }
 
     @Transactional
@@ -121,7 +135,6 @@ public class InventarioSucursalServiceImpl  implements IInventarioSucursalServic
                 .orElseThrow(() -> new NotFoundException("Tipo de negocio no encontrado"));
 
         List<InventarioSucursal> inventario = inventarioSucursalRepository.findByBranchAndBusinessType(sucursal.getId(), businessType.getId());
-
         if (inventario.isEmpty()) {
             throw new NotFoundException(String.format(
                     "No hay inventario disponible para la sucursal '%s' con tipo de negocio '%s'",
@@ -129,7 +142,6 @@ public class InventarioSucursalServiceImpl  implements IInventarioSucursalServic
                     businessType.getName()
             ));
         }
-
         return inventario.stream()
                 .map(inventarioSucursalMapper::toResponse)
                 .collect(Collectors.toList());
@@ -140,12 +152,40 @@ public class InventarioSucursalServiceImpl  implements IInventarioSucursalServic
     public InventarioSucursalResponseDTO actualizarInventario(Long id, InventarioSucursalRequestDTO inventarioSucursalRequestDTO) {
         InventarioSucursal inventario = inventarioSucursalRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Inventario no encontrado con id: " + id));
-
         inventarioSucursalMapper.updateEntity(inventario, inventarioSucursalRequestDTO);
-
-
         return inventarioSucursalMapper.toResponse(inventarioSucursalRepository.save(inventario));
     }
 
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<InventarioSucursalResponseDTO> search(
+            InventarioGeneralfiltroDTO inventarioGeneralfiltroDTO,
+            Pageable pageable
+    ) {
+        boolean isSuper = authenticatedUserService.isSuperAdmin();
+
+        Long effectiveBranchId;
+        Long effectiveBTId;
+
+        if (isSuper) {
+            // SUPER_ADMIN puede elegir libremente filtros desde el frontend
+            effectiveBranchId = inventarioGeneralfiltroDTO.getBranchId();
+            effectiveBTId = inventarioGeneralfiltroDTO.getBusinessTypeId();
+        } else {
+            // ADMIN / VENDOR → forzar datos de sesión
+            effectiveBranchId = authenticatedUserService.getCurrentBranchId();
+            effectiveBTId = authenticatedUserService.getBusinessTypeIdFromSession();
+        }
+        inventarioGeneralfiltroDTO.setBranchId(effectiveBranchId);
+        inventarioGeneralfiltroDTO.setBusinessTypeId(effectiveBTId);
+        // ✅ Usa la Specification específica para búsqueda general
+        Specification<InventarioSucursal> spec =
+                InventarioSucursalSpecification.searchGeneral((inventarioGeneralfiltroDTO));
+
+        Page<InventarioSucursal> page = inventarioSucursalRepository.findAll(spec, pageable);
+
+        return page.map(inventarioSucursalMapper::toResponse);
+    }
 
 }

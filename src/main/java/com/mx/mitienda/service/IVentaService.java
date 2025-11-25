@@ -4,6 +4,7 @@ import com.mx.mitienda.model.dto.DetalleVentaResponseDTO;
 import com.mx.mitienda.model.dto.VentaFiltroDTO;
 import com.mx.mitienda.model.dto.VentaRequestDTO;
 import com.mx.mitienda.model.dto.VentaResponseDTO;
+import org.springframework.data.domain.Page;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,9 +14,10 @@ import java.util.Map;
 public interface IVentaService {
    VentaResponseDTO registerSell(VentaRequestDTO request);
    List<VentaResponseDTO> getAll();
-   List<VentaResponseDTO> findByFilter(VentaFiltroDTO filterDTO);
+   Page<VentaResponseDTO> findByFilter(VentaFiltroDTO filterDTO, int page, int size);
    List<DetalleVentaResponseDTO> getDetailsPerSale(Long id);
    VentaResponseDTO getById(Long id);
+   void deleteById(Long id);
    byte[] generateTicketPdf(Long idVenta);
    List<VentaResponseDTO> findCurrentUserVentas();
    BigDecimal obtenerGananciaHoy();
