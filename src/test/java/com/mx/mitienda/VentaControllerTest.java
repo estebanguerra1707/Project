@@ -41,7 +41,7 @@ class VentaControllerTest {
         venta.setSaleDate(LocalDateTime.now());
         venta.setTotalAmount(BigDecimal.valueOf(100));
 
-        Mockito.when(ventaService.getAll(null, null)).thenReturn(List.of(venta));
+        Mockito.when(ventaService.getAll()).thenReturn(List.of(venta));
 
         mockMvc.perform(MockMvcRequestBuilders.get("/ventas")
                         .contentType(MediaType.APPLICATION_JSON))

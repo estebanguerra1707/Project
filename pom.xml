@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.mx.mitienda</groupId>
 	<artifactId>demo</artifactId>
-	<version>1.0.27</version>
+	<version>1.0.29</version>
 	<name>demo</name>
 	<description>Demo project for Spring Boot</description>
 	<url/>
@@ -198,6 +198,19 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>9.22.2</version>
+                <configuration>
+                    <url>jdbc:postgresql://localhost:5433/mitienda</url>
+                    <user>adminesteban</user>
+                    <password>Num-1720-mazda3</password>
+                    <schemas>
+                        <schema>public</schema>
+                    </schemas>
+                </configuration>
             </plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
