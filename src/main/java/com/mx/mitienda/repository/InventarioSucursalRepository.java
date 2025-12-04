@@ -58,4 +58,5 @@ public interface InventarioSucursalRepository extends JpaRepository<InventarioSu
             @Param("onlyCritical") boolean onlyCritical,
             Pageable pageable
     );
+    long countByBranchIdAndStockCriticoTrue(Long branchId);
 }

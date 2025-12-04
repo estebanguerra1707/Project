@@ -135,10 +135,32 @@ public class AuthController {
         return "Autenticado como: " + authentication.getName();
     }
 
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(@RequestBody Map<String, String> request) {
+
+        String refreshToken = request.get("refreshToken");
+
+        if (refreshToken == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "missing_refresh_token"));
+        }
+
+        if (!jwtService.isValidRefreshToken(refreshToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "invalid_refresh_token"));
+        }
+
+        String email = jwtService.getEmailUser(refreshToken);
+        UserDetails user = usuarioService.loadUserByUsername(email);
+
+        String newAccess = jwtService.generateAccessToken(new HashMap<>(), user);
+
+        return ResponseEntity.ok(Map.of(
+                "accessToken", newAccess
+        ));
+    }
+
     private Map<String, Object> buildAuthResponse(UsuarioResponseDTO usuario, UserDetails userDetails) {
-        System.out.println("Rol: " + usuario.getRole());
-        System.out.println("Email: " + usuario.getEmail());
-        System.out.println("Id: " + usuario.getId());
 
         Map<String, Object> claims = Map.of(
                 "rol", usuario.getRole(),
@@ -146,14 +168,20 @@ public class AuthController {
                 "id", usuario.getId()
         );
 
-        String token = jwtService.generateToken(claims, userDetails);
+        String accessToken = jwtService.generateAccessToken(claims, userDetails);
+        String refreshToken = jwtService.generateRefreshToken(userDetails);
 
-        return Map.of(
-                "token", token,
-                "username", usuario.getUsername(),
-                "email", usuario.getEmail(),
-                "rol", usuario.getRole(),
-                "id", usuario.getId()
-        );
+        Map<String, Object> body = new HashMap<>();
+        body.put("accessToken", accessToken);
+        body.put("refreshToken", refreshToken);
+        body.put("username", usuario.getUsername());
+        body.put("email", usuario.getEmail());
+        body.put("rol", usuario.getRole());
+        body.put("id", usuario.getId());
+        body.put("branchId", usuario.getBranchId());        // <- ajusta al nombre real del getter
+        body.put("businessType", usuario.getBusinessType()); // <- idem
+        body.put("branchName", usuario.getBranchName());    // si lo tienes
+
+        return body;
     }
 }

@@ -18,7 +18,7 @@ public class PasswordResetToken {
 
     private String token;
     private LocalDateTime expiryDate;
-
+    private boolean used = false;
     @OneToOne
     @JoinColumn(name = "usuario_id", referencedColumnName = "id")
     private Usuario usuario;

@@ -65,24 +65,45 @@ public class CompraController {
     public ResponseEntity<Page<CompraResponseDTO>> getPurchases(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long branchId
+            @RequestParam(required = false) Long branchId,
+            @RequestParam(defaultValue = "id,asc") String sort
     ) {
         Long effectiveBranchId = effectiveBranch(branchId);
+
         Page<CompraResponseDTO> compras =
-                compraServiceImpl.findByBranchPaginated(effectiveBranchId, page, size);
+                compraServiceImpl.findByBranchPaginated(effectiveBranchId, page, size, sort);
 
         return ResponseEntity.ok(compras);
     }
 
     @Tag(name = "COMPRA GET ALL", description = "Operaciones relacionadas con obtener todas las compras ")
     @PostMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN)")
-    public ResponseEntity<Page<CompraResponseDTO>> search(  @RequestParam(defaultValue = "0") int page,
-                                                            @RequestParam(defaultValue = "10") int size,
-                                                            @RequestBody CompraFiltroDTO filtro
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
+    public ResponseEntity<Page<CompraResponseDTO>> search(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String sort,
+            @RequestBody CompraFiltroDTO filtro
     ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "purchaseDate"));
-        Page<CompraResponseDTO> comprasResponse = compraServiceImpl.advancedSearch(filtro, pageable);
+
+        Sort sortObj = Sort.by(Sort.Direction.ASC, "purchaseDate"); // valor por defecto
+
+        if (sort != null && !sort.isBlank()) {
+            String[] parts = sort.split(",");
+            String field = parts[0];                    // id
+            Sort.Direction direction =
+                    parts.length > 1
+                            ? Sort.Direction.fromString(parts[1]) // asc o desc
+                            : Sort.Direction.ASC;
+
+            sortObj = Sort.by(direction, field);
+        }
+
+        Pageable pageable = PageRequest.of(page, size, sortObj);
+
+        Page<CompraResponseDTO> comprasResponse =
+                compraServiceImpl.advancedSearch(filtro, pageable);
+
         return ResponseEntity.ok(comprasResponse);
     }
 

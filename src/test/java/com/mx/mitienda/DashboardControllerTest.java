@@ -32,7 +32,7 @@ class DashboardControllerTest {
         InventarioAlertasDTO alerta = new InventarioAlertasDTO();
         alerta.setProductName("Lápiz");
 
-        when(dashboardService.getTopProductos(null, null, null)).thenReturn((List<TopProductoDTO>) alerta);
+        when(dashboardService.getTopProductos(null, null, null, null)).thenReturn((List<TopProductoDTO>) alerta);
 
         mockMvc.perform(get("/dashboard/stock-critico"))
                 .andExpect(status().isOk())

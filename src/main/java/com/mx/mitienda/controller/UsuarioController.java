@@ -81,15 +81,19 @@ public class UsuarioController {
 
     @Operation(summary = "Enviar enlace de recuperación")
     @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(@RequestBody EmailDTO emailDTO) {
-        passwordResetService.createToken(emailDTO.getEmail());
+    public ResponseEntity<String> forgotPassword(@RequestBody EmailDTO emailDTO,
+                                                 HttpServletRequest request) {
+        passwordResetService.createToken(emailDTO.getEmail(), request.getRemoteAddr());
         return ResponseEntity.ok("Se ha enviado el enlace para restablecer la contraseña");
     }
 
     @Operation(summary = "Restablecer contraseña con token")
     @PostMapping("/reset-password")
-    public ResponseEntity<String> resetPassword(@RequestBody ResetPasswordDTO dto) {
-        passwordResetService.resetPassword(dto.getToken(), dto.getNewPassword());
+    public ResponseEntity<String> resetPassword(
+            @RequestParam String token,
+            @RequestBody ResetPasswordDTO dto
+    ) {
+        passwordResetService.resetPassword(token, dto.getNewPassword());
         return ResponseEntity.ok("Contraseña actualizada correctamente");
     }
 

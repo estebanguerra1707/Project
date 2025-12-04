@@ -28,8 +28,11 @@ public class JwtService {
 
     private static final Logger log = LoggerFactory.getLogger(JwtService.class);
 
-    @Value("${JWT_EXPIRATION_MS:3600000}") // 1h por default si no está
+    @Value("${JWT_EXPIRATION_MS:3600000}")
     private long expirationMs;
+
+    @Value("${JWT_REFRESH_EXPIRATION_MS:604800000}")
+    private long refreshExpirationMs;
 
     private Key signingKey;
     private final JwtSecretProvider secretProvider;
@@ -118,6 +121,38 @@ public class JwtService {
             System.out.println(" El token expiró en: " + expiration);
         }
         return expired;
+    }
+
+    public String generateAccessToken(Map<String, Object> claims, UserDetails userDetails) {
+        Date now = new Date();
+        Date exp = new Date(now.getTime() + expirationMs);
+
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(userDetails.getUsername())
+                .setIssuedAt(now)
+                .setExpiration(exp)
+                .signWith(signingKey, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public String generateRefreshToken(UserDetails userDetails) {
+        Date now = new Date();
+        Date exp = new Date(now.getTime() + refreshExpirationMs);
+
+        return Jwts.builder()
+                .setSubject(userDetails.getUsername())
+                .setIssuedAt(now)
+                .setExpiration(exp)
+                .signWith(signingKey, SignatureAlgorithm.HS256)
+                .compact();
+    }
+    public boolean isValidRefreshToken(String token) {
+        try {
+            return !isExpired(token);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
 }

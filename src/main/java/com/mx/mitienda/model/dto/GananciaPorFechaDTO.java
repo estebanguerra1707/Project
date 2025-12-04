@@ -8,4 +8,5 @@ import java.time.LocalDate;
 public class GananciaPorFechaDTO {
     private LocalDate startDate;
     private LocalDate endDate;
+    private Long branchId;
 }

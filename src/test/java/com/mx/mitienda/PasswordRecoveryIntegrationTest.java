@@ -17,6 +17,6 @@ public class PasswordRecoveryIntegrationTest {
 
     @Test
     void shouldSendResetTokenEmail() {
-        assertDoesNotThrow(() -> passwordResetService.createToken("admin@example.com"));
+        assertDoesNotThrow(() -> passwordResetService.createToken("admin@example.com", null));
     }
 }

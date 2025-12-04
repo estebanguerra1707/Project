@@ -1,9 +1,6 @@
 package com.mx.mitienda.service;
 
-import com.mx.mitienda.model.dto.DetalleVentaResponseDTO;
-import com.mx.mitienda.model.dto.VentaFiltroDTO;
-import com.mx.mitienda.model.dto.VentaRequestDTO;
-import com.mx.mitienda.model.dto.VentaResponseDTO;
+import com.mx.mitienda.model.dto.*;
 import org.springframework.data.domain.Page;
 
 import java.math.BigDecimal;
@@ -12,21 +9,37 @@ import java.util.List;
 import java.util.Map;
 
 public interface IVentaService {
-   VentaResponseDTO registerSell(VentaRequestDTO request);
-   List<VentaResponseDTO> getAll();
-   Page<VentaResponseDTO> findByFilter(VentaFiltroDTO filterDTO, int page, int size);
-   List<DetalleVentaResponseDTO> getDetailsPerSale(Long id);
-   VentaResponseDTO getById(Long id);
-   void deleteById(Long id);
-   byte[] generateTicketPdf(Long idVenta);
-   List<VentaResponseDTO> findCurrentUserVentas();
-   BigDecimal obtenerGananciaHoy();
-   BigDecimal obtenerGananciaSemana();
-   BigDecimal obtenerGananciaMes();
-   BigDecimal obtenerGananciaPorDia(LocalDate dia);
-   BigDecimal obtenerGananciaPorRango(LocalDate desde, LocalDate hasta);
-   Map<LocalDate, BigDecimal> obtenerGananciasPorDiaEnRango(LocalDate desde, LocalDate hasta);
-   BigDecimal obtenerGananciaPorVenta(Long ventaId);
-   BigDecimal obtenerVentasBrutasPorRango(LocalDate desde, LocalDate hasta);
-   BigDecimal obtenerVentasNetasPorRango(LocalDate desde, LocalDate hasta);
+    VentaResponseDTO registerSell(VentaRequestDTO request);
+
+    List<VentaResponseDTO> getAll();
+
+    Page<VentaResponseDTO> findByFilter(VentaFiltroDTO filterDTO, int page, int size);
+
+    List<DetalleVentaResponseDTO> getDetailsPerSale(Long id);
+
+    VentaResponseDTO getById(Long id);
+
+    void deleteById(Long id);
+
+    byte[] generateTicketPdf(Long idVenta);
+
+    List<VentaResponseDTO> findCurrentUserVentas();
+
+    BigDecimal obtenerGananciaHoy(Long branchId);
+
+    BigDecimal obtenerGananciaSemana(Long branchId);
+
+    BigDecimal obtenerGananciaMes(Long branchId);
+
+    BigDecimal obtenerGananciaPorDia(LocalDate dia, Long branchId);
+
+    BigDecimal obtenerGananciaPorRango(GananciaPorFechaDTO gananciaPorFechaDTO);
+
+    Map<LocalDate, BigDecimal> obtenerGananciasPorDiaEnRango(GananciaPorFechaDTO gananciaPorFechaDTO);
+
+    BigDecimal obtenerGananciaPorVenta(Long ventaId, Long branchId);
+
+    BigDecimal obtenerVentasBrutasPorRango(GananciaPorFechaDTO gananciaPorFechaDTO);
+
+    BigDecimal obtenerVentasNetasPorRango(GananciaPorFechaDTO gananciaPorFechaDTO);
 }

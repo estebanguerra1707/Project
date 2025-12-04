@@ -38,6 +38,8 @@ public class SecurityConfig {
                         // Actuator: health abierto, demás con rol ACTUATOR
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/usuarios/forgot-password").permitAll()
+                        .requestMatchers("/usuarios/reset-password").permitAll()
                         .requestMatchers("/actuator/**").hasRole("ACTUATOR")
                         // Públicos según tu helper
                         .requestMatchers(request -> Utils.isPublic(request.getRequestURI())).permitAll()

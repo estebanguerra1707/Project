@@ -70,4 +70,6 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
     Page<Producto> findAll(Specification<Producto> spec, Pageable pageable);
     List<Producto> findByBranchIdAndActiveTrue(Long branchId);
+
+    long countByBranchId(Long branchId);
 }

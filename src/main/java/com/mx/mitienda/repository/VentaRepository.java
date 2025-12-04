@@ -15,7 +15,9 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 
@@ -70,4 +72,31 @@ public interface VentaRepository extends JpaRepository<Venta, Long>, JpaSpecific
     WHERE v.id = :id
 """)
     Optional<Venta> findByIdWithDetails(@Param("id") Long id);
+
+    @Query("""
+    SELECT v
+    FROM Venta v
+    LEFT JOIN FETCH v.detailsList d
+    WHERE v.id = :ventaId
+      AND (:branchId IS NULL OR v.branch.id = :branchId)
+""")
+    Optional<Venta> findByIdWithDetails(
+            @Param("ventaId") Long ventaId,
+            @Param("branchId") Long branchId
+    );
+
+    long countByBranchIdAndSaleDateBetween(Long branchId, LocalDateTime start, LocalDateTime end);
+
+    @Query("""
+    SELECT COALESCE(SUM((d.unitPrice - p.purchasePrice) * d.quantity), 0)
+    FROM Venta v
+    JOIN v.detailsList d
+    JOIN d.product p
+    WHERE v.branch.id = :branchId
+      AND v.saleDate BETWEEN :startDate AND :endDate
+      AND v.active = true
+""")
+    BigDecimal sumGananciaNetaByMonth(@Param("branchId") Long branchId,
+                                      @Param("startDate") LocalDateTime startDate,
+                                      @Param("endDate") LocalDateTime endDate);
 }

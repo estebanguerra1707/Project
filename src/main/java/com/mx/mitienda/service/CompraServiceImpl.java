@@ -249,16 +249,39 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<CompraResponseDTO> findByBranchPaginated(Long branchId, int page, int size) {
+    public Page<CompraResponseDTO> findByBranchPaginated(Long branchId, int page, int size, String sort) {
+
         UserContext ctx = ctx();
-        Pageable pageable = PageRequest.of(page, size, Sort.by("purchaseDate").descending());
+
+        // -----------------------------
+        // 🔹 PARSEAR SORT "campo,direccion"
+        // -----------------------------
+        String sortField = "purchaseDate";
+        Sort.Direction direction = Sort.Direction.DESC; // default
+
+        if (sort != null && !sort.trim().isEmpty()) {
+            String[] parts = sort.split(",");
+            sortField = parts[0];
+
+            if (parts.length > 1) {
+                direction = "asc".equalsIgnoreCase(parts[1])
+                        ? Sort.Direction.ASC
+                        : Sort.Direction.DESC;
+            }
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
         Page<Compra> comprasPage;
 
-        // 🔹 Si es SUPER_ADMIN -> muestra todas las compras activas (ordenadas)
+        // -----------------------------
+        // 🔹 SUPER_ADMIN → ve todo
+        // -----------------------------
         if (ctx.isSuperAdmin()) {
             comprasPage = compraRepository.findAllWithDetails(pageable);
         }
-        // 🔹 Si es ADMIN o VENDOR -> filtra por la sucursal del usuario
+        // -----------------------------
+        // 🔹 ADMIN / VENDOR → filtra por sucursal
+        // -----------------------------
         else {
             if (branchId == null) {
                 throw new IllegalArgumentException("El usuario no tiene una sucursal asignada");

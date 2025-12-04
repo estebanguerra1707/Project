@@ -16,4 +16,5 @@ public class UsuarioResponseDTO {
     private boolean active;
     private Long branchId;
     private String branchName;
+    private String businessType;
 }
