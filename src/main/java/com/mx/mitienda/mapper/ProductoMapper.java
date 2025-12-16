@@ -75,6 +75,7 @@ public class ProductoMapper {
         response.setId(producto.getId());
         response.setName(producto.getName());
         response.setSku(producto.getSku());
+        response.setCodigoBarras(producto.getCodigoBarras());
         response.setDescription(producto.getDescription());
         response.setPurchasePrice(producto.getPurchasePrice());
         response.setSalePrice(producto.getSalePrice());
@@ -119,6 +120,9 @@ public class ProductoMapper {
         }
         if (productoDTO.getSku() != null && !productoDTO.getSku().isBlank()) {
             existing.setSku(productoDTO.getSku());
+        }
+        if (productoDTO.getCodigoBarras() != null && !productoDTO.getCodigoBarras().isBlank()) {
+            existing.setCodigoBarras(productoDTO.getCodigoBarras());
         }
         if (productoDTO.getDescription() != null && !productoDTO.getDescription().isBlank()) {
             existing.setDescription(productoDTO.getDescription());

@@ -1,145 +1,89 @@
--- =========================
---  V2 - SEED CATALOGOS (IDEMPOTENTE Y ROBUSTO A NOMBRES DE COLUMNA)
---  Inserta business_type y product_category detectando nombres (nombre/name, activo/active, codigo/code)
--- =========================
+-- ==============================================================
+-- V2__seed_data.sql
+-- Seed inicial para Mi Tienda
+-- ==============================================================
 
--- BUSINESS_TYPE
-DO $$
-DECLARE
-  col_name   text;
-  col_active text;
-  col_code   text;
-  sql_stmt   text;
-BEGIN
-  -- Detecta columnas
-  IF EXISTS (SELECT 1 FROM information_schema.columns
-             WHERE table_schema='public' AND table_name='business_type' AND column_name='nombre') THEN
-    col_name := 'nombre';
-  ELSIF EXISTS (SELECT 1 FROM information_schema.columns
-                WHERE table_schema='public' AND table_name='business_type' AND column_name='name') THEN
-    col_name := 'name';
-  ELSE
-    RAISE EXCEPTION 'business_type: no encuentro columna nombre/name';
-  END IF;
+SET search_path TO public;
 
-  IF EXISTS (SELECT 1 FROM information_schema.columns
-             WHERE table_schema='public' AND table_name='business_type' AND column_name='activo') THEN
-    col_active := 'activo';
-  ELSIF EXISTS (SELECT 1 FROM information_schema.columns
-                WHERE table_schema='public' AND table_name='business_type' AND column_name='active') THEN
-    col_active := 'active';
-  ELSE
-    RAISE EXCEPTION 'business_type: no encuentro columna activo/active';
-  END IF;
+-- ==============================================================
+-- 1. MÉTODOS DE PAGO
+-- ==============================================================
 
-  IF EXISTS (SELECT 1 FROM information_schema.columns
-             WHERE table_schema='public' AND table_name='business_type' AND column_name='codigo') THEN
-    col_code := 'codigo';
-  ELSIF EXISTS (SELECT 1 FROM information_schema.columns
-                WHERE table_schema='public' AND table_name='business_type' AND column_name='code') THEN
-    col_code := 'code';
-  ELSE
-    RAISE EXCEPTION 'business_type: no encuentro columna codigo/code';
-  END IF;
+INSERT INTO metodo_pago (name, activo)
+VALUES
+  ('EFECTIVO', TRUE),
+  ('TARJETA', TRUE),
+  ('TRANSFERENCIA', TRUE)
+ON CONFLICT (name) DO NOTHING;
 
-  -- Inserta filas idempotentes
-  sql_stmt := format($f$
-    INSERT INTO public.business_type (id, %1$I, %2$I, %3$I) VALUES
-      (7, 'Refaccionaria', true, 'REFACCIONARIA'),
-      (1, 'Papeleria',     true, 'PAPELERIA'),
-      (2, 'Abarrotes',     true, 'ABARROTES'),
-      (3, 'Ferreteria',    true, 'FERRETERIA'),
-      (8, 'Farmacia',      true, 'FARMACIA')
-    ON CONFLICT (id) DO NOTHING;
-  $f$, col_name, col_active, col_code);
+-- ==============================================================
+-- 2. TIPOS DE NEGOCIO
+-- ==============================================================
 
-  EXECUTE sql_stmt;
-END $$;
+INSERT INTO business_type (name, active, code)
+VALUES
+    ('Papelería', TRUE, 'PAP'),
+    ('Abarrotes', TRUE, 'ABA'),
+    ('Ferretería', TRUE, 'FER'),
+    ('Farmacia', TRUE, 'FAR'),
+    ('Refaccionaria', TRUE, 'REF')
+ON CONFLICT (name) DO NOTHING;
 
--- PRODUCT_CATEGORY
-DO $$
-DECLARE
-  col_name text;
-  sql_stmt text;
-BEGIN
-  -- Detecta columna nombre/name
-  IF EXISTS (SELECT 1 FROM information_schema.columns
-             WHERE table_schema='public' AND table_name='product_category' AND column_name='nombre') THEN
-    col_name := 'nombre';
-  ELSIF EXISTS (SELECT 1 FROM information_schema.columns
-                WHERE table_schema='public' AND table_name='product_category' AND column_name='name') THEN
-    col_name := 'name';
-  ELSE
-    RAISE EXCEPTION 'product_category: no encuentro columna nombre/name';
-  END IF;
+-- ==============================================================
+-- 3. CATEGORÍAS BASE POR TIPO DE NEGOCIO
+-- ==============================================================
 
-  -- Inserta filas (asumimos business_type_id se llama igual)
-  sql_stmt := format($f$
-    INSERT INTO public.product_category (id, %1$I, business_type_id) VALUES
-      (1,  'Cuadernos',   1),
-      (2,  'Plumas',      1),
-      (27, 'Analgesicos', 8)
-    ON CONFLICT (id) DO NOTHING;
-  $f$, col_name);
+-- Papelería
+INSERT INTO product_category (name, activo, business_type_id)
+SELECT 'Útiles Escolares', TRUE, id FROM business_type WHERE code = 'PAP'
+ON CONFLICT (name, business_type_id) DO NOTHING;
 
-  EXECUTE sql_stmt;
-END $$;
+INSERT INTO product_category (name, activo, business_type_id)
+SELECT 'Arte y Manualidades', TRUE, id FROM business_type WHERE code = 'PAP'
+ON CONFLICT (name, business_type_id) DO NOTHING;
 
--- ===== AJUSTE DINÁMICO DE SECUENCIAS =====
-DO $$
-DECLARE
-  seq_name text;
-  seq_qualified text;
-  tbl_name text;
-  next_sql text;
-BEGIN
-  FOR seq_name IN
-    SELECT unnest(ARRAY[
-      'business_type_id_seq',
-      'product_category_id_seq',
-      'cliente_id_seq',
-      'compra_id_seq',
-      'detalle_compra_id_seq',
-      'detalle_devolucion_compras_id_seq',
-      'detalle_devolucion_ventas_id_seq',
-      'detalle_venta_id_seq',
-      'devolucion_compras_id_seq',
-      'devolucion_ventas_id_seq',
-      'forma_farmaceutica_id_seq',
-      'historial_movimiento_id_seq',
-      'inventario_farmacia_id_seq',
-      'inventario_sucursal_id_seq',
-      'payment_method_id_seq',
-      'principio_activo_id_seq',
-      'product_detail_id_seq',
-      'producto_farmacia_id_seq',
-      'producto_id_seq',
-      'proveedor_id_seq',
-      'proveedor_sucursal_id_seq',
-      'sucursal_id_seq',
-      'unidad_medida_id_seq',
-      'usuario_id_seq',
-      'venta_id_seq'
-    ])
-  LOOP
-    IF EXISTS (
-      SELECT 1
-      FROM pg_class c
-      JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE n.nspname = 'public' AND c.relkind = 'S' AND c.relname = seq_name
-    ) THEN
-      seq_qualified := format('public.%I', seq_name);
-      tbl_name := replace(seq_name, '_id_seq', '');
-      IF EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'public' AND table_name = tbl_name AND column_name = 'id'
-      ) THEN
-        next_sql := format(
-          'SELECT setval(''%s'', COALESCE((SELECT MAX(id) FROM public.%I), 1), true);',
-          seq_qualified, tbl_name
-        );
-        EXECUTE next_sql;
-      END IF;
-    END IF;
-  END LOOP;
-END $$;
+-- Abarrotes
+INSERT INTO product_category (name, activo, business_type_id)
+SELECT 'Abarrotes Generales', TRUE, id FROM business_type WHERE code = 'ABA'
+ON CONFLICT (name, business_type_id) DO NOTHING;
+
+-- Ferretería
+INSERT INTO product_category (name, activo, business_type_id)
+SELECT 'Herramientas', TRUE, id FROM business_type WHERE code = 'FER'
+ON CONFLICT (name, business_type_id) DO NOTHING;
+
+-- Farmacia
+INSERT INTO product_category (name, activo, business_type_id)
+SELECT 'Medicamentos', TRUE, id FROM business_type WHERE code = 'FAR'
+ON CONFLICT (name, business_type_id) DO NOTHING;
+
+INSERT INTO product_category (name, activo, business_type_id)
+SELECT 'Material de Curación', TRUE, id FROM business_type WHERE code = 'FAR'
+ON CONFLICT (name, business_type_id) DO NOTHING;
+
+-- Refaccionaria
+INSERT INTO product_category (name, activo, business_type_id)
+SELECT 'Filtros', TRUE, id FROM business_type WHERE code = 'REF'
+ON CONFLICT (name, business_type_id) DO NOTHING;
+
+INSERT INTO product_category (name, activo, business_type_id)
+SELECT 'Aceites', TRUE, id FROM business_type WHERE code = 'REF'
+ON CONFLICT (name, business_type_id) DO NOTHING;
+
+-- ==============================================================
+-- 4. SUCURSAL PRINCIPAL
+-- ==============================================================
+
+INSERT INTO sucursal (name, address, phone, active, alerta_stock_critico, business_type_id)
+SELECT 'Sucursal Principal', 'Sin dirección', '0000000000', TRUE, FALSE, id
+FROM business_type WHERE code = 'REF'
+ON CONFLICT (name) DO NOTHING;
+
+-- ==============================================================
+-- 5. PROVEEDOR GENÉRICO
+-- ==============================================================
+
+INSERT INTO proveedor (name, contact, email, active)
+VALUES
+    ('Generico', 'Contacto 1', 'proveedor1@mail.com', TRUE)
+ON CONFLICT (name) DO NOTHING;

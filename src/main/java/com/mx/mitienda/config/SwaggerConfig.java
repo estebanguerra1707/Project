@@ -19,7 +19,7 @@ public class SwaggerConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Mi Tienda API")
+                        .title("Mi Inventario API")
                         .version("1.0")
                         .description("Documentación de API para punto de venta"))
                 .addSecurityItem(new SecurityRequirement().addList("bearerAuth"));

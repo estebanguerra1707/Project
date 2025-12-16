@@ -52,7 +52,7 @@ public class CompraController {
 
     @Tag(name = "COMPRA SAVE", description = "Operaciones relacionadas con SALVAR compra ")
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<CompraResponseDTO> save(@RequestBody CompraRequestDTO compra, Authentication authentication) {
         String username = authentication.getName(); // <-- viene del token
         CompraResponseDTO saved = compraServiceImpl.save(compra, authentication);
@@ -174,7 +174,13 @@ public class CompraController {
         Long effectiveBranchId = effectiveBranch(branchId);
         return devolucionComprasService.contarPorMes(desde, hasta, effectiveBranchId);
     }
-
+    @Tag(name = "COMPRA DELETE", description = "Borrado lógico de una compra")
+    @DeleteMapping("/{purchaseId}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    public ResponseEntity<String> deleteCompra(@PathVariable Long purchaseId) {
+        compraServiceImpl.deleteLogical(purchaseId);
+        return ResponseEntity.ok("Compra eliminada correctamente");
+    }
 
 
 }

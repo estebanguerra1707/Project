@@ -19,4 +19,5 @@ public interface ICompraService {
     Page<CompraResponseDTO> advancedSearch(CompraFiltroDTO compraDTO, Pageable pageable);
     List<CompraResponseDTO> findCurrentUserCompras();
     Page<CompraResponseDTO> findByBranchPaginated(Long branchId, int page, int size, String sort);
+    void deleteLogical(Long id);
 }

@@ -1,5 +1,6 @@
 package com.mx.mitienda.service;
 
+import com.mx.mitienda.exception.BadRequestException;
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.mapper.CompraMapper;
 import com.mx.mitienda.model.*;
@@ -244,6 +245,63 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
         }
         if (Boolean.TRUE.equals(isPrinted)) log.info("::Generando ticket térmico para compra::{}", compraGuardada.getId());
         if (emailList != null && !emailList.isEmpty()) log.info("::Enviando PDF de compra a:: {}", emailList);
+    }
+
+    @Override
+    @Transactional
+    public void deleteLogical (Long id) {
+
+        UserContext ctx = ctx();
+        Compra compra;
+
+        if (!ctx.isSuperAdmin()) {
+            throw new BadRequestException("NO puede borrar compras");
+        }
+
+            compra = compraRepository.findByIdAndActiveTrue(id)
+                    .orElseThrow(() -> new NotFoundException("Compra no encontrada"));
+
+        if (!compra.getActive()) {
+            return;
+        }
+
+        compra.setActive(false);
+
+        for (DetalleCompra detalle : compra.getDetails()) {
+
+            Long productId = detalle.getProduct().getId();
+            Long branchId = compra.getBranch().getId();
+
+            InventarioSucursal inventario = inventarioSucursalRepository
+                    .findByProduct_IdAndBranch_Id(productId, branchId)
+                    .orElse(null);
+
+            if (inventario != null) {
+                int before = inventario.getStock();
+                int after = before - detalle.getQuantity();
+
+                inventario.setStock(after);
+                inventario.setStockCritico(
+                        inventario.getMinStock() != null && after < inventario.getMinStock()
+                );
+                inventario.setLastUpdatedBy(ctx.getEmail());
+                inventario.setLastUpdatedDate(LocalDateTime.now());
+
+                inventarioSucursalRepository.save(inventario);
+
+                // Registrar movimiento de salida por borrado
+                historialMovimientosService.registrarMovimiento(
+                        inventario,
+                        TipoMovimiento.SALIDA,
+                        detalle.getQuantity(),
+                        before,
+                        after,
+                        "Eliminación de compra #" + compra.getId()
+                );
+            }
+        }
+
+        compraRepository.save(compra);
     }
 
 

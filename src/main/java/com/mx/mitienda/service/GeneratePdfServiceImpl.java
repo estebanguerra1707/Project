@@ -44,7 +44,7 @@ public class GeneratePdfServiceImpl implements IGeneratePdfService {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
 // Comunes para ambos
-        context.setVariable("storeName", "Mi Tienda");
+        context.setVariable("storeName", "Mi Inventario");
         String baseUrl = null;
         try {
             baseUrl = Paths.get("src/main/resources/static/").toUri().toURL().toString();
