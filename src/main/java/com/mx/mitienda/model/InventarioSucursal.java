@@ -1,5 +1,6 @@
 package com.mx.mitienda.model;
 
+import com.mx.mitienda.util.enums.InventarioOwnerType;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -26,6 +27,10 @@ public class InventarioSucursal {
 
     @Column(name = "stock_critico")
     private Boolean stockCritico = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "owner_type", nullable = false)
+    private InventarioOwnerType ownerType = InventarioOwnerType.PROPIO;
 
     @LastModifiedBy
     @Column(name = "last_updated_by")

@@ -79,12 +79,9 @@ public class ProductController {
             @RequestBody ProductoFiltroDTO filtro,
             @PageableDefault(size = 20) Pageable pageable // default; se puede sobreescribir con query params
     ) {
-        // Usuario normal: siempre “forzar” su branch
         if (!authenticatedUserService.isSuperAdmin()) {
             filtro.setBranchId(authenticatedUserService.getCurrentBranchId());
         }
-        // SUPER_ADMIN: si no manda branchId, se busca en TODAS las sucursales (branchId = null).
-        // Puede además mandar businessTypeId para acotar por tipo de negocio.
         return productService.buscarAvanzado(filtro, pageable);
     }
 

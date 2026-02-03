@@ -1,6 +1,7 @@
 package com.mx.mitienda.model.dto;
 
 import com.mx.mitienda.model.Compra;
+import com.mx.mitienda.util.enums.InventarioOwnerType;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -9,5 +10,6 @@ import java.math.BigDecimal;
 public class DetalleCompraRequestDTO {
     private Long productId;
     private Integer quantity;
+    private InventarioOwnerType ownerType;
 }
 

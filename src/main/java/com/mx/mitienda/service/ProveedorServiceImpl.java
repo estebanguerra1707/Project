@@ -39,87 +39,241 @@ public class ProveedorServiceImpl implements IProveedorService{
 
     @Transactional(readOnly = true)
     @Override
-    public List<ProveedorResponseDTO> getAll(){
-        boolean isSuper = authenticatedUserService.isSuperAdmin();
-        if (isSuper) {
-            log.info("SUPER_ADMIN solicitó todos los proveedores");
-            return proveedorRepository.findAll().stream()
-                    .map(proveedorMapper::toResponse)
-                    .toList();
-        }
-        Long branchId = authenticatedUserService.getCurrentBranchId();
-        if (branchId == null) {
-            throw new ForbiddenException("No se pudo determinar la sucursal actual del usuario.");
+    public List<ProveedorResponseDTO> getAll() {
+
+        List<Proveedor> proveedores;
+
+        if (authenticatedUserService.isSuperAdmin()) {
+            proveedores = proveedorRepository.findAllByActiveTrue();
+        } else {
+            Long branchId = authenticatedUserService.getCurrentBranchId();
+            if (branchId == null) {
+                throw new ForbiddenException("No se pudo determinar la sucursal del usuario.");
+            }
+
+            proveedores = proveedorSucursalRepository.findProveedoresActivosBySucursalId(branchId);
         }
 
-        log.info("Usuario no super: branchId={}", branchId);
-        return proveedorRepository.findBySucursalId(branchId).stream()
-                .map(proveedorMapper::toResponse)
+        if (proveedores.isEmpty()) return List.of();
+
+        List<Long> proveedorIds = proveedores.stream()
+                .map(Proveedor::getId)
                 .toList();
 
+        List<ProveedorSucursal> relaciones =
+                proveedorSucursalRepository.findByProveedorIdIn(proveedorIds);
+
+        return proveedores.stream()
+                .map(p -> {
+                    List<ProveedorSucursal> rels = relaciones.stream()
+                            .filter(ps -> ps.getProveedor().getId().equals(p.getId()))
+                            .toList();
+
+                    return proveedorMapper.toResponse(p, rels);
+                })
+                .toList();
     }
+
     @Transactional(readOnly = true)
     @Override
     public List<ProveedorResponseDTO> getByBusinessType(Long businessTypeId) {
-        return proveedorRepository.findByBusinessTypeId(businessTypeId).stream()
-                .map(proveedorMapper::toResponse)
+        List<Proveedor> proveedores =
+                proveedorRepository.findByBusinessTypeId(businessTypeId);
+        if (proveedores.isEmpty()) {
+            return List.of();
+        }
+        List<Long> proveedorIds = proveedores.stream()
+                .map(Proveedor::getId)
+                .toList();
+        List<ProveedorSucursal> relaciones =
+                proveedorSucursalRepository.findByProveedorIdIn(proveedorIds);
+
+        return proveedores.stream()
+                .map(proveedor -> {
+                    List<ProveedorSucursal> relsProveedor = relaciones.stream()
+                            .filter(ps -> ps.getProveedor().getId().equals(proveedor.getId()))
+                            .toList();
+
+                    return proveedorMapper.toResponse(proveedor, relsProveedor);
+                })
                 .toList();
     }
+    @Override
     @Transactional(readOnly = true)
-    @Override
-    public List<ProveedorResponseDTO> getActualCatalog() {
-        Long branchId = authenticatedUserService.getCurrentBranchId();
-        if (branchId == null) throw new ForbiddenException("Tu sucursal no tiene tipo de negocio asignado.");
-        return proveedorSucursalRepository.findProveedoresBySucursalId(branchId)
-                .stream().map(proveedorMapper::toResponse).toList();
-    }
+    public ProveedorResponseDTO getById(Long idProveedor) {
 
-    @Override
-    public ProveedorResponseDTO getById(Long idProveedor){
-        Long branchId = authenticatedUserService.getCurrentBranchId();
-        return proveedorSucursalService.getProveedorBySucursalAndActiveTrue(branchId, idProveedor);
-    }
+        // 1️⃣ Proveedor base
+        Proveedor proveedor = proveedorRepository
+                .findByIdAndActiveTrue(idProveedor)
+                .orElseThrow(() -> new NotFoundException("Proveedor no encontrado"));
 
-    @Override
-    public ProveedorResponseDTO save(ProveedorDTO proveedorDTO){
-        proveedorRepository.findByEmailAndNameAndActiveTrue(proveedorDTO.getEmail(), proveedorDTO.getName())
-                .ifPresent(p-> {throw new DuplicateProveedorException("Proveedor ya existe con ese correo y nombre, intenta con otro");
-        });
-        Proveedor proveedor =  proveedorMapper.toEntity(proveedorDTO);
-        Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(proveedorDTO.getBranchId())
-                .orElseThrow(() -> new NotFoundException("Sucursal no encontrada"));
+        // 2️⃣ Todas sus relaciones
+        List<ProveedorSucursal> relaciones =
+                proveedorSucursalRepository.findByProveedorId(idProveedor);
 
-        asociarProveedorASucursalSiNoExiste(proveedor, sucursal);
-
-        Proveedor saved = proveedorRepository.save(proveedor);
-        return proveedorMapper.toResponse(saved);
-    }
-
-    @Override
-    public ProveedorResponseDTO update(Long id, ProveedorDTO proveedorDTO) {
-
-        Proveedor existing = proveedorRepository.findByIdAndActiveTrue(id).orElseThrow(()-> new NotFoundException("Proveedor con Id no encontrado"));
-
-        if (proveedorDTO.getName() != null) {
-            existing.setName(proveedorDTO.getName());
+        if (relaciones.isEmpty()) {
+            throw new NotFoundException("Proveedor sin sucursales asignadas");
         }
-        if (proveedorDTO.getContact() != null) {
-            existing.setContact(proveedorDTO.getContact());
+
+        // 3️⃣ Si NO es super admin → filtrar a su sucursal
+        if (!authenticatedUserService.isSuperAdmin()) {
+
+            Long branchId = authenticatedUserService.getCurrentBranchId();
+            if (branchId == null) {
+                throw new ForbiddenException("Sucursal no determinada");
+            }
+
+            relaciones = relaciones.stream()
+                    .filter(ps -> ps.getSucursal().getId().equals(branchId))
+                    .toList();
+
+            if (relaciones.isEmpty()) {
+                throw new NotFoundException("Proveedor no asociado a tu sucursal");
+            }
         }
-        if(proveedorDTO.getEmail()!=null){
-            existing.setEmail(proveedorDTO.getEmail());
-        }
-        Proveedor saved = proveedorRepository.save(existing);
-        return proveedorMapper.toResponse(saved);
+
+        // 4️⃣ Mapper centralizado (Proveedor + relaciones)
+        return proveedorMapper.toResponse(proveedor, relaciones);
     }
 
+    @Transactional
+    @Override
+    public ProveedorResponseDTO save(ProveedorDTO dto) {
+
+        // 1) Si ya existe ACTIVO => duplicado
+        proveedorRepository
+                .findByEmailAndNameAndActiveTrue(dto.getEmail(), dto.getName())
+                .ifPresent(p -> { throw new DuplicateProveedorException("Proveedor ya existe"); });
+
+        if (dto.getBranchIds() == null || dto.getBranchIds().isEmpty()) {
+            throw new IllegalArgumentException("El proveedor debe tener al menos una sucursal");
+        }
+
+        // 2) Si existe INACTIVO => reactivar y actualizar
+        Proveedor proveedor = proveedorRepository
+                .findByEmailAndName(dto.getEmail(), dto.getName())
+                .filter(p -> !p.getActive())
+                .orElse(null);
+
+        Proveedor saved;
+
+        if (proveedor != null) {
+            // Reactivar + actualizar datos
+            proveedor.setActive(true);
+            proveedor.setName(dto.getName());
+            proveedor.setEmail(dto.getEmail());
+            proveedor.setContact(dto.getContact());
+
+            saved = proveedorRepository.save(proveedor);
+
+            // Asegurar relaciones con sucursales (sin duplicar)
+            for (Long branchId : dto.getBranchIds()) {
+                Sucursal sucursal = sucursalRepository
+                        .findByIdAndActiveTrue(branchId)
+                        .orElseThrow(() -> new NotFoundException("Sucursal no encontrada"));
+
+                // Reutiliza tu helper para no duplicar ProveedorSucursal
+                asociarProveedorASucursalSiNoExiste(saved, sucursal);
+            }
+
+        } else {
+            // 3) No existe => crear normal
+            Proveedor nuevo = proveedorMapper.toEntity(dto);
+            saved = proveedorRepository.save(nuevo);
+
+            for (Long branchId : dto.getBranchIds()) {
+                Sucursal sucursal = sucursalRepository
+                        .findByIdAndActiveTrue(branchId)
+                        .orElseThrow(() -> new NotFoundException("Sucursal no encontrada"));
+
+                ProveedorSucursal ps = new ProveedorSucursal();
+                ps.setProveedor(saved);
+                ps.setSucursal(sucursal);
+                proveedorSucursalRepository.save(ps);
+            }
+        }
+
+        // 4) Respuesta con relaciones actuales
+        List<ProveedorSucursal> relaciones =
+                proveedorSucursalRepository.findByProveedorId(saved.getId());
+
+        return proveedorMapper.toResponse(saved, relaciones);
+    }
+
+    @Override
+    @Transactional
+    public ProveedorResponseDTO update(Long id, ProveedorDTO dto) {
+
+        Proveedor proveedor = proveedorRepository
+                .findById(id)
+                .orElseThrow(() -> new NotFoundException("Proveedor no encontrado"));
+
+        if (!proveedor.getActive()) {
+            proveedor.setActive(true);
+        }
+
+        String newName  = dto.getName()  != null ? dto.getName()  : proveedor.getName();
+        String newEmail = dto.getEmail() != null ? dto.getEmail() : proveedor.getEmail();
+
+        if (newName != null && newEmail != null) {
+            proveedorRepository
+                    .findByEmailAndNameAndIdNotAndActiveTrue(newEmail, newName, id)
+                    .ifPresent(p -> {
+                        throw new DuplicateProveedorException("Proveedor ya existe");
+                    });
+        }
+
+        if (dto.getName() != null) proveedor.setName(dto.getName());
+        if (dto.getContact() != null) proveedor.setContact(dto.getContact());
+        if (dto.getEmail() != null) proveedor.setEmail(dto.getEmail());
+
+        proveedorRepository.save(proveedor);
+
+        // 🔥 SOLO SUPER ADMIN puede tocar sucursales
+        if (authenticatedUserService.isSuperAdmin() && dto.getBranchIds() != null) {
+
+            List<ProveedorSucursal> actuales =
+                    proveedorSucursalRepository.findByProveedorId(proveedor.getId());
+
+            List<Long> actualesIds = actuales.stream()
+                    .map(ps -> ps.getSucursal().getId())
+                    .toList();
+
+            List<Long> nuevasIds = dto.getBranchIds();
+
+            // eliminar las que ya no vienen
+            actuales.stream()
+                    .filter(ps -> !nuevasIds.contains(ps.getSucursal().getId()))
+                    .forEach(proveedorSucursalRepository::delete);
+
+            // agregar las nuevas
+            nuevasIds.stream()
+                    .filter(idSucursal -> !actualesIds.contains(idSucursal))
+                    .forEach(idSucursal -> {
+                        Sucursal sucursal = sucursalRepository
+                                .findByIdAndActiveTrue(idSucursal)
+                                .orElseThrow(() -> new NotFoundException("Sucursal no encontrada"));
+
+                        ProveedorSucursal ps = new ProveedorSucursal();
+                        ps.setProveedor(proveedor);
+                        ps.setSucursal(sucursal);
+                        proveedorSucursalRepository.save(ps);
+                    });
+        }
+
+        List<ProveedorSucursal> relaciones =
+                proveedorSucursalRepository.findByProveedorId(proveedor.getId());
+
+        return proveedorMapper.toResponse(proveedor, relaciones);
+    }
+
+    @Transactional
     @Override
     public void disable(Long id) {
         Proveedor proveedor = proveedorRepository.findByIdAndActiveTrue(id).orElseThrow(()-> new NotFoundException("Proveedor con Id no encontrado"));
         proveedor.setActive(false);
         proveedorRepository.save(proveedor);
     }
-
 
     private void asociarProveedorASucursalSiNoExiste(Proveedor proveedor, Sucursal sucursal) {
         boolean isProveedorSucursal = proveedorSucursalRepository

@@ -1,6 +1,7 @@
 package com.mx.mitienda.model.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.mx.mitienda.util.enums.InventarioOwnerType;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -26,5 +27,8 @@ public class ProductoResponseDTO {
     private String codigoBarras;
     private Long branchId;
     private String branchName;
+    private Integer stock;
     private Boolean active;
+    private InventarioOwnerType inventarioOwnerType;
+    private Boolean usaInventarioPorDuenio;
 }

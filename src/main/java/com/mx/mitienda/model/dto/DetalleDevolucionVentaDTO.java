@@ -1,5 +1,6 @@
 package com.mx.mitienda.model.dto;
 
+import com.mx.mitienda.util.enums.InventarioOwnerType;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -10,4 +11,5 @@ public class DetalleDevolucionVentaDTO {
     private String productName;
     private Integer cantidadDevuelta;
     private BigDecimal precioUnitario;
+    private InventarioOwnerType inventarioOwnerType;
 }

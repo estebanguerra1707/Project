@@ -12,4 +12,5 @@ public class SucursalResponseDTO {
     private Long businessTypeId;
     private String businessTypeName;
     private Boolean isAlertaStockCritico;
+    private Boolean usaInventarioPorDuenio;
 }

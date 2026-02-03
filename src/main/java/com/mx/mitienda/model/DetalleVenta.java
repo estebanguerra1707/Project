@@ -2,6 +2,7 @@ package com.mx.mitienda.model;
 
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.mx.mitienda.util.enums.InventarioOwnerType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,6 +31,10 @@ public class DetalleVenta {
     private Integer cantidadDevuelta;
 
     private Boolean active;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "owner_type")
+    private InventarioOwnerType ownerType;
 
     @ManyToOne
     @JsonBackReference

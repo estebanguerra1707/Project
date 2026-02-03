@@ -1,7 +1,7 @@
 package com.mx.mitienda.repository;
 
 import com.mx.mitienda.model.Compra;
-import io.micrometer.common.KeyValues;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -55,4 +55,5 @@ WHERE (:#{#spec} IS NULL OR :#{#spec} = :#{#spec})
 
     @EntityGraph(attributePaths = {"details", "proveedor", "paymentMethod"})
     Page<Compra> findAll(Specification<Compra> spec, Pageable pageable);
+
 }

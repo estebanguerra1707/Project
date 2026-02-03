@@ -22,6 +22,15 @@ public class InventarioSucursalSpecification {
             if(inventarioAlertaFiltroDTO.getBranchId()!=null){
                 predicate = cb.and(predicate, cb.equal(root.get("branch").get("id"), inventarioAlertaFiltroDTO.getBranchId()));
             }
+            if (Boolean.TRUE.equals(inventarioAlertaFiltroDTO.getUsaInventarioPorDuenio())
+                    && inventarioAlertaFiltroDTO.getOwnerType() != null) {
+
+                predicate = cb.and(
+                        predicate,
+                        cb.equal(root.get("ownerType"), inventarioAlertaFiltroDTO.getOwnerType())
+                );
+            }
+
             return  predicate;
         };
     }
@@ -57,6 +66,12 @@ public class InventarioSucursalSpecification {
                                 cb.like(cb.lower(root.get("product").get("name")), like),
                                 cb.like(root.get("product").get("id").as(String.class), like)
                         ));
+            }
+            if (inventarioGeneralfiltroDTO.getOwnerType() != null) {
+                predicate = cb.and(
+                        predicate,
+                        cb.equal(root.get("ownerType"), inventarioGeneralfiltroDTO.getOwnerType())
+                );
             }
 
             // 🔹 Orden por fecha de actualización descendente

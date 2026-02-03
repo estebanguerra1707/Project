@@ -137,6 +137,7 @@ public class ProductoSpecBuilder {
                 .inCategoryId(dto.getCategoryId())
                 .withoutCategory(dto.getWithoutCategory())
                 .inBusinessTypeId(dto.getBusinessTypeId())
+                .inBranchId(dto.getBranchId())
                 .barcodeLike(dto.getCodigoBarras())
                 .build();
     }

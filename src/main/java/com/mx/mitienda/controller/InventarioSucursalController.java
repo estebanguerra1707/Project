@@ -3,6 +3,7 @@ package com.mx.mitienda.controller;
 import com.mx.mitienda.model.InventarioSucursal;
 import com.mx.mitienda.model.dto.*;
 import com.mx.mitienda.service.IInventarioSucursalService;
+import com.mx.mitienda.util.enums.InventarioOwnerType;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -23,9 +24,14 @@ public class InventarioSucursalController {
     private final IInventarioSucursalService inventarioSucursalService;
 
     @GetMapping("/sucursal/{sucursalId}")
-   @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public  ResponseEntity<List<InventarioSucursalResponseDTO>> getInventarioSucursal(@PathVariable Long sucursalId) {
-        return ResponseEntity.ok(inventarioSucursalService.getProductosEnSucursal(sucursalId));
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<List<InventarioSucursalResponseDTO>> getInventarioSucursal(
+            @PathVariable Long sucursalId,
+            @RequestParam(required = false) InventarioOwnerType ownerType
+    ) {
+        return ResponseEntity.ok(
+                inventarioSucursalService.getProductosEnSucursal(sucursalId, ownerType)
+        );
     }
 
     @PutMapping("/{id}")
@@ -40,15 +46,28 @@ public class InventarioSucursalController {
 
 
     @GetMapping("/producto/{productoId}")
-   @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public  ResponseEntity<List<InventarioSucursalResponseDTO>> getInventarioProducto(@PathVariable Long productoId) {
-        return ResponseEntity.ok(inventarioSucursalService.getProducto(productoId));
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<List<InventarioSucursalResponseDTO>> getInventarioProducto(
+            @PathVariable Long productoId,
+            @RequestParam(required = false) InventarioOwnerType ownerType
+    ) {
+        return ResponseEntity.ok(
+                inventarioSucursalService.getProducto(productoId, ownerType)
+        );
     }
 
     @GetMapping("/sucursal/{sucursalId}/producto/{productId}")
-   @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public  ResponseEntity<InventarioSucursalResponseDTO> getInventarioProductoSucursal(@PathVariable Long sucursalId, @PathVariable Long productId) {
-        return ResponseEntity.ok(inventarioSucursalService.getProductoEnSucursal(sucursalId, productId));
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<InventarioSucursalResponseDTO> getInventarioProductoSucursal(
+            @PathVariable Long sucursalId,
+            @PathVariable Long productId
+    ) {
+        return ResponseEntity.ok(
+                inventarioSucursalService.getProductoEnSucursal(
+                        sucursalId,
+                        productId
+                )
+        );
     }
 
     @PostMapping
@@ -59,15 +78,27 @@ public class InventarioSucursalController {
 
     @PostMapping("/aumentar")
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
-    public ResponseEntity<Void> aumentarStock(@RequestBody MovimientoStockDTO movimientoStockDTO){
-        inventarioSucursalService.aumentarStock(movimientoStockDTO.getProductId(), movimientoStockDTO.getCantidad());
+    public ResponseEntity<Void> aumentarStock(
+            @RequestBody MovimientoStockDTO dto
+    ) {
+        inventarioSucursalService.aumentarStock(
+                dto.getProductId(),
+                dto.getCantidad(),
+                dto.getOwnerType()
+        );
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/disminuir")
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
-    public ResponseEntity<Void> disminuirStock(@RequestBody MovimientoStockDTO movimiento) {
-        inventarioSucursalService.disminuirStock(movimiento.getProductId(), movimiento.getCantidad());
+    public ResponseEntity<Void> disminuirStock(
+            @RequestBody MovimientoStockDTO dto
+    ) {
+        inventarioSucursalService.disminuirStock(
+                dto.getProductId(),
+                dto.getCantidad(),
+                dto.getOwnerType()
+        );
         return ResponseEntity.ok().build();
     }
 

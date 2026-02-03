@@ -109,6 +109,7 @@ public class CompraMapper {
             detail.setSubTotal(producto.getPurchasePrice()
                     .multiply(BigDecimal.valueOf(detalleDTO.getQuantity())));
             detail.setActive(true);
+            detail.setOwnerType(detalleDTO.getOwnerType());
             return detail;
         }).collect(Collectors.toList());
 
@@ -150,6 +151,7 @@ public class CompraMapper {
                 .stream()
                 .map(detail -> {
                     DetalleCompraResponseDTO detalleCompraResponseDTO = new DetalleCompraResponseDTO();
+                    detalleCompraResponseDTO.setId(detail.getId());
                     detalleCompraResponseDTO.setBranchId(detail.getProduct().getBranch().getId());
                     detalleCompraResponseDTO.setBranchName(detail.getProduct().getBranch().getName());
                     detalleCompraResponseDTO.setBusinessTypeId(detail.getProduct().getBusinessType().getId());
@@ -160,6 +162,8 @@ public class CompraMapper {
                     detalleCompraResponseDTO.setQuantity(detail.getQuantity());
                     detalleCompraResponseDTO.setUnitPrice(detail.getUnitPrice());
                     detalleCompraResponseDTO.setSubTotal(detail.getSubTotal());
+                    detalleCompraResponseDTO.setInventarioOwnerType(detail.getOwnerType());
+                    detalleCompraResponseDTO.setUsaInventarioPorDuenio(detail.getCompra().getBranch().getUsaInventarioPorDuenio());
                     return detalleCompraResponseDTO;
                 })
                 .toList();

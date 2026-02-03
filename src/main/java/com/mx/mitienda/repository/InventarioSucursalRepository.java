@@ -1,6 +1,7 @@
 package com.mx.mitienda.repository;
 
 import com.mx.mitienda.model.InventarioSucursal;
+import com.mx.mitienda.util.enums.InventarioOwnerType;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,8 +17,7 @@ import java.util.Optional;
 
 public interface InventarioSucursalRepository extends JpaRepository<InventarioSucursal, Long>,
         JpaSpecificationExecutor<InventarioSucursal> {
-   @Lock(LockModeType.PESSIMISTIC_WRITE)
-   Optional<InventarioSucursal> findByProduct_IdAndBranch_Id(Long IdProduct, Long idBranch);
+   List<InventarioSucursal> findByProduct_IdAndBranch_Id(Long IdProduct, Long idBranch);
     Optional<InventarioSucursal> findByBranchIdAndProductId(Long branchId, Long productId);
     List<InventarioSucursal> findByBranch_Id(Long branchId);
    List<InventarioSucursal> findByProduct_Id(Long productId);
@@ -59,4 +59,16 @@ public interface InventarioSucursalRepository extends JpaRepository<InventarioSu
             Pageable pageable
     );
     long countByBranchIdAndStockCriticoTrue(Long branchId);
+
+    Optional<InventarioSucursal> findByProduct_IdAndBranch_IdAndOwnerType(
+            Long productId,
+            Long branchId,
+            InventarioOwnerType ownerType
+    );
+
+    List<InventarioSucursal> findByBranch_IdAndOwnerType(
+            Long branchId,
+            InventarioOwnerType ownerType
+    );
+
 }

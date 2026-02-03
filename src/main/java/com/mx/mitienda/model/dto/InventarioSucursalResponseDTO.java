@@ -1,5 +1,6 @@
 package com.mx.mitienda.model.dto;
 
+import com.mx.mitienda.util.enums.InventarioOwnerType;
 import lombok.Data;
 import lombok.Locked;
 
@@ -19,4 +20,6 @@ public class InventarioSucursalResponseDTO {
     private LocalDateTime lastUpdated;
     private String updatedBy;
     private Boolean isStockCritico;
+    private InventarioOwnerType ownerType;
+
 }

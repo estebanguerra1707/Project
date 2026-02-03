@@ -9,4 +9,5 @@ public class ClienteFiltroDTO {
     private String name;
     private String email;
     private String phone;
+    private Long branchId;
 }

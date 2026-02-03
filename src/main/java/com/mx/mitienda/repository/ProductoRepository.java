@@ -20,56 +20,102 @@ import java.util.Optional;
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
     //Esto crea CRUD automático (findAll, save, deleteById, etc.) para la entidad Producto.
     List<Producto> findByActiveTrueAndProductCategory_BusinessType_Id(Long businessTypeId, Sort sort);
+
     List<Producto> findByActiveTrue();
+
     Optional<Producto> findByIdAndActiveTrue(Long id);
+
     Optional<Producto> findByCodigoBarrasAndActiveTrue(String codigo);
 
     List<Producto> findByActiveTrue(Sort sort);
+
     @Query("""
-    SELECT p FROM Producto p
-    LEFT JOIN FETCH p.productDetail
-    WHERE p.id = :id
-    AND p.active = true
-    AND EXISTS (
-        SELECT 1 FROM InventarioSucursal i
-        WHERE i.product = p
-        AND i.branch.id = :branchId
-    )
-""")
+                SELECT p FROM Producto p
+                LEFT JOIN FETCH p.productDetail
+                WHERE p.id = :id
+                AND p.active = true
+                AND EXISTS (
+                    SELECT 1 FROM InventarioSucursal i
+                    WHERE i.product = p
+                    AND i.branch.id = :branchId
+                )
+            """)
     Optional<Producto> findActiveWithDetailByIdAndSucursal(
             @Param("id") Long id,
             @Param("branchId") Long branchId
     );
+
     @Query("""
-    SELECT p FROM Producto p
-    JOIN p.productCategory c
-    JOIN c.businessType bt
-    WHERE bt.id = :businessTypeId
-    AND EXISTS (
-        SELECT 1 FROM InventarioSucursal i
-        WHERE i.product = p AND i.branch.id = :branchId
-    )
-    ORDER BY p.id
-""")
+                SELECT p FROM Producto p
+                JOIN p.productCategory c
+                JOIN c.businessType bt
+                WHERE bt.id = :businessTypeId
+                AND EXISTS (
+                    SELECT 1 FROM InventarioSucursal i
+                    WHERE i.product = p AND i.branch.id = :branchId
+                )
+                ORDER BY p.id
+            """)
     List<Producto> findByBranchAndBusinessType(Long branchId, Long businessTypeId);
-    boolean existsByCodigoBarrasAndProductCategory_BusinessType_Id(String codigoBarras, Long businessTypeId);
-    boolean existsBySkuAndProductCategory_BusinessType_Id(String sku, Long businessTypeId);
-    boolean existsByNameIgnoreCaseAndProductCategory_BusinessType_Id(String name, Long businessTypeId);
+
+    boolean existsByCodigoBarrasAndProductCategory_BusinessType_IdAndActiveTrue(
+            String codigoBarras, Long businessTypeId);
+    boolean existsBySkuAndProductCategory_BusinessType_IdAndActiveTrue(
+            String sku, Long businessTypeId);
+    boolean existsByNameIgnoreCaseAndProductCategory_BusinessType_IdAndActiveTrue(
+            String name, Long businessTypeId);
+
+
+    Optional<Producto> findByCodigoBarrasAndProductCategory_BusinessType_IdAndActiveFalse(
+            String codigoBarras, Long businessTypeId);
+
+    Optional<Producto> findBySkuAndProductCategory_BusinessType_IdAndActiveFalse(
+            String sku, Long businessTypeId);
+
+    Optional<Producto> findByNameIgnoreCaseAndProductCategory_BusinessType_IdAndActiveFalse(
+            String name, Long businessTypeId);
+
     @Query("""
-    SELECT p FROM Producto p
-    JOIN p.productCategory pc
-    JOIN pc.businessType bt
-    WHERE p.codigoBarras = :codigoBarras
-      AND bt.id = :businessTypeId
-      AND p.active = true
-""")
+                SELECT p FROM Producto p
+                JOIN p.productCategory pc
+                JOIN pc.businessType bt
+                WHERE p.codigoBarras = :codigoBarras
+                  AND bt.id = :businessTypeId
+                  AND p.active = true
+            """)
     Optional<Producto> findByCodigoBarrasAndBusinessTypeId(
             @Param("codigoBarras") String codigoBarras,
             @Param("businessTypeId") Long businessTypeId
     );
 
     Page<Producto> findAll(Specification<Producto> spec, Pageable pageable);
+
     List<Producto> findByBranchIdAndActiveTrue(Long branchId);
 
     long countByBranchId(Long branchId);
+
+    @Query("""
+SELECT 
+  p as producto,
+  COALESCE(SUM(i.stock), 0) as stock,
+  s.usaInventarioPorDuenio as usaInventarioPorDuenio
+FROM Producto p
+JOIN p.productCategory pc
+JOIN pc.businessType bt
+JOIN Sucursal s ON s.id = :branchId
+LEFT JOIN InventarioSucursal i
+  ON i.product = p
+ AND i.branch.id = s.id
+WHERE p.active = true
+  AND bt.id = :businessTypeId
+GROUP BY p, s.usaInventarioPorDuenio
+""")
+    Page<Object[]> findProductosConStock(
+            @Param("branchId") Long branchId,
+            @Param("businessTypeId") Long businessTypeId,
+            Pageable pageable
+    );
+
+    Optional<Producto> findByCodigoBarrasAndBusinessTypeIdAndActiveTrue(String codigoBarras, Long businessTypeId);
+
 }

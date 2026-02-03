@@ -98,6 +98,6 @@ public class DevolucionComprasSpecification {
     public static Specification<DevolucionCompras> branch(Long branchId){
         return (root, q, cb) ->
                 branchId == null ? null :
-                        cb.equal(root.get("sucursal").get("id"), branchId);
+                        cb.equal(root.get("branch").get("id"), branchId);
     }
 }

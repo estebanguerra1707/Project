@@ -11,7 +11,6 @@ public interface IProveedorService {
     ProveedorResponseDTO save(ProveedorDTO proveedorDTO);
     ProveedorResponseDTO update(Long id, ProveedorDTO proveedorDTO);
     void disable(Long id);
-    List<ProveedorResponseDTO> getActualCatalog();
     List<ProveedorResponseDTO> getByBusinessType(Long businessTypeId);
 
 }

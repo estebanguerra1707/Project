@@ -8,6 +8,8 @@ import com.mx.mitienda.model.dto.CompraRequestDTO;
 import com.mx.mitienda.model.dto.CompraResponseDTO;
 import com.mx.mitienda.repository.*;
 import com.mx.mitienda.service.base.BaseService;
+import com.mx.mitienda.util.enums.BusinessTypeEnum;
+import com.mx.mitienda.util.enums.InventarioOwnerType;
 import com.mx.mitienda.util.enums.Rol;
 import com.mx.mitienda.model.dto.CompraFiltroDTO;
 import com.mx.mitienda.util.CompraSpecBuilder;
@@ -45,8 +47,8 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
     private final ProductoRepository productoRepository;
     private final IGeneratePdfService generatePdfService;
     private final MailService mailService;
-    private final DetalleDevolucionComprasRepository detalleDevolucionComprasRepository;
-    private final DevolucionComprasRepository devolucionComprasRepository;
+    private final SucursalRepository sucursalRepository;
+
 
     @Value("${alertas.stock.email.destinatario}")
     private String destinatario;
@@ -62,7 +64,8 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
             IGeneratePdfService generatePdfService,
             MailService mailService,
             DetalleDevolucionComprasRepository detalleDevolucionComprasRepository,
-            DevolucionComprasRepository devolucionComprasRepository
+            DevolucionComprasRepository devolucionComprasRepository,
+            SucursalRepository sucursalRepository
     ) {
         super(authenticatedUserService);
         this.compraRepository = compraRepository;
@@ -73,8 +76,7 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
         this.productoRepository = productoRepository;
         this.generatePdfService = generatePdfService;
         this.mailService = mailService;
-        this.detalleDevolucionComprasRepository = detalleDevolucionComprasRepository;
-        this.devolucionComprasRepository = devolucionComprasRepository;
+        this.sucursalRepository = sucursalRepository;
     }
 
     public List<CompraResponseDTO> getAll(String username, String role){
@@ -116,11 +118,24 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
     @Transactional
     public CompraResponseDTO save(CompraRequestDTO compraRequestDTO, Authentication auth) {
 
+        UserContext ctx = ctx();
+
+        Long branchIdEfectivo = ctx.isSuperAdmin()
+                ? compraRequestDTO.getBranchId()
+                : ctx.getBranchId();
+
+        if (branchIdEfectivo == null) {
+            throw new BadRequestException("No se pudo determinar la sucursal para la compra");
+        }
+
+        Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(branchIdEfectivo)
+                .orElseThrow(() -> new NotFoundException("No se ha encontrado la sucursal"));
+
         String username = auth.getName();
         boolean esVendor = auth.getAuthorities().stream()
                 .anyMatch(a -> "ROLE_VENDOR".equals(a.getAuthority()));
 
-        LocalDateTime hoy = LocalDateTime.now();
+        LocalDate hoy = LocalDate.now();
         if (esVendor) {
             if (compraRequestDTO.getPurchaseDate() == null ||
                     !compraRequestDTO.getPurchaseDate().toLocalDate().equals(hoy)) {
@@ -131,45 +146,77 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
         Compra compra = compraMapper.toEntity(compraRequestDTO, username);
         Compra compraGuardada = compraRepository.saveAndFlush(compra);
 
-        // Primero validamos y actualizamos inventarios
         for (DetalleCompra detalle : compraGuardada.getDetails()) {
-            Producto producto = productoRepository.findById(detalle.getProduct().getId())
-                    .orElseThrow(() -> new NotFoundException("Producto no encontrado"));
+            Producto producto = productoRepository.findByIdAndActiveTrue(detalle.getProduct().getId())
+                    .orElseThrow(() -> new BadRequestException("Producto no disponible o inactivo"));
 
-            InventarioSucursal inventarioSucursal = inventarioSucursalRepository
-                    .findByProduct_IdAndBranch_Id(producto.getId(), compraGuardada.getBranch().getId())
-                    .orElseGet(() -> {
-                        InventarioSucursal inv = new InventarioSucursal();
-                        inv.setProduct(producto);
-                        inv.setBranch(compraGuardada.getBranch());
-                        inv.setStock(0);
-                        return inv;
-                    });
+            boolean usaInventarioPorDuenio =
+                    Boolean.TRUE.equals(sucursal.getUsaInventarioPorDuenio());
+
+            InventarioOwnerType ownerType;
+
+            if (usaInventarioPorDuenio) {
+                if (detalle.getOwnerType() == null) {
+                    throw new BadRequestException(
+                            "Debe especificar si el inventario es PROPIO o CONSIGNADO para el producto "
+                                    + producto.getName()
+                    );
+                }
+                ownerType = detalle.getOwnerType();
+            } else {
+                ownerType = InventarioOwnerType.PROPIO;
+            }
+
+            InventarioSucursal inventarioSucursal =
+                    inventarioSucursalRepository
+                            .findByProduct_IdAndBranch_IdAndOwnerType(
+                                    producto.getId(),
+                                    sucursal.getId(),
+                                    ownerType
+                            )
+                            .orElseGet(() -> {
+                                // CREACIÓN EXPLÍCITA DE INVENTARIO
+                                InventarioSucursal nuevo = new InventarioSucursal();
+                                nuevo.setProduct(producto);
+                                nuevo.setBranch(sucursal);
+                                nuevo.setOwnerType(ownerType);
+                                nuevo.setStock(0);
+                                nuevo.setMinStock(1);
+                                nuevo.setMaxStock(10);
+                                nuevo.setLastUpdatedDate(LocalDateTime.now());
+                                nuevo.setLastUpdatedBy(ctx.getEmail());
+                                nuevo.setStockCritico(false);
+                                return nuevo;
+                            });
+
 
             int stockAnterior = Optional.ofNullable(inventarioSucursal.getStock()).orElse(0);
             int stockNuevo = stockAnterior + detalle.getQuantity();
 
             Integer max = inventarioSucursal.getMaxStock();
             if (max != null && stockNuevo > max) {
-                throw new IllegalArgumentException("La compra excede el inventario máximo permitido para el producto: "
-                        + producto.getName());
+                throw new IllegalArgumentException(
+                        "La compra excede el inventario máximo permitido para el producto: "
+                                + producto.getName()
+                );
             }
 
             inventarioSucursal.setStock(stockNuevo);
             inventarioSucursal.setStockCritico(
-                    inventarioSucursal.getMinStock() != null && stockNuevo < inventarioSucursal.getMinStock()
+                    inventarioSucursal.getMinStock() != null
+                            && stockNuevo < inventarioSucursal.getMinStock()
             );
             inventarioSucursal.setLastUpdatedBy(username);
             inventarioSucursal.setLastUpdatedDate(LocalDateTime.now());
+
             inventarioSucursalRepository.save(inventarioSucursal);
 
-            // Notificación (si realmente quieres notificar cuando sigue crítico tras la compra)
+
             if (Boolean.TRUE.equals(inventarioSucursal.getStockCritico())
-                    && Boolean.TRUE.equals(inventarioSucursal.getBranch().getAlertaStockCritico())) {
+                    && Boolean.TRUE.equals(sucursal.getAlertaStockCritico())) {
                 alertaCorreoService.notificarStockCritico(inventarioSucursal);
-            } else {
-                log.info("La sucursal no tiene alerta de stock crítico por correo o no aplica.");
             }
+
 
             historialMovimientosService.registrarMovimiento(
                     inventarioSucursal,
@@ -177,13 +224,18 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
                     detalle.getQuantity(),
                     stockAnterior,
                     stockNuevo,
-                    "Compra #" + compraGuardada.getId());
+                    "Compra #" + compraGuardada.getId()
+            );
         }
-        //envio por correo
-        generatePurchaseEmail(compraGuardada, compraRequestDTO.getEmailList(), compraRequestDTO.isPrinted());
+
+        generatePurchaseEmail(
+                compraGuardada,
+                compraRequestDTO.getEmailList(),
+                compraRequestDTO.isPrinted()
+        );
+
         return compraMapper.toResponse(compraGuardada);
     }
-
     @Override
     public void inactivePurchase(Long id) {
         Compra compra = compraRepository.findById(id).orElseThrow(()-> new NotFoundException("Compra no encontrada"));
@@ -202,6 +254,7 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
                 .totalMinorTo(compraDTO.getMax())
                 .searchPerDayMonthYear(compraDTO.getDay(), compraDTO.getMonth(), compraDTO.getYear())
                 .byId(compraDTO.getPurchaseId())
+                .excludeIfAnyInactiveProduct()
                 .build();
 
         // 🔹 Usa el método con paginación
@@ -249,36 +302,54 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
 
     @Override
     @Transactional
-    public void deleteLogical (Long id) {
+    public void deleteLogical(Long id) {
 
         UserContext ctx = ctx();
         Compra compra;
-
         if (!ctx.isSuperAdmin()) {
-            throw new BadRequestException("NO puede borrar compras");
+            throw new BadRequestException("No puede borrar compras");
         }
-
-            compra = compraRepository.findByIdAndActiveTrue(id)
-                    .orElseThrow(() -> new NotFoundException("Compra no encontrada"));
+        compra = compraRepository.findByIdAndActiveTrue(id)
+                .orElseThrow(() -> new NotFoundException("Compra no encontrada"));
 
         if (!compra.getActive()) {
             return;
         }
-
         compra.setActive(false);
 
         for (DetalleCompra detalle : compra.getDetails()) {
 
             Long productId = detalle.getProduct().getId();
+            productoRepository.findByIdAndActiveTrue(productId)
+                    .orElseThrow(() -> new BadRequestException(
+                            "No se puede eliminar la compra: contiene un producto inactivo (ID " + productId + ")"
+                    ));
             Long branchId = compra.getBranch().getId();
+            InventarioOwnerType ownerType =
+                    detalle.getOwnerType() != null
+                            ? detalle.getOwnerType()
+                            : InventarioOwnerType.PROPIO;
 
             InventarioSucursal inventario = inventarioSucursalRepository
-                    .findByProduct_IdAndBranch_Id(productId, branchId)
+                    .findByProduct_IdAndBranch_IdAndOwnerType(
+                            productId,
+                            branchId,
+                            ownerType
+                    )
                     .orElse(null);
 
             if (inventario != null) {
+
                 int before = inventario.getStock();
                 int after = before - detalle.getQuantity();
+
+                // 🔒 Seguridad: evitar stock negativo
+                if (after < 0) {
+                    throw new BadRequestException(
+                            "Eliminación inválida: el stock quedaría negativo para el producto "
+                                    + detalle.getProduct().getName()
+                    );
+                }
 
                 inventario.setStock(after);
                 inventario.setStockCritico(
@@ -289,7 +360,7 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
 
                 inventarioSucursalRepository.save(inventario);
 
-                // Registrar movimiento de salida por borrado
+                // 🧾 Registrar movimiento
                 historialMovimientosService.registrarMovimiento(
                         inventario,
                         TipoMovimiento.SALIDA,

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -173,7 +174,7 @@ class DevolucionVentasServiceImplTest {
                 .thenReturn(1);
 
         when(inventarioRepo.findByProduct_IdAndBranch_Id(5L, 1L))
-                .thenReturn(Optional.of(inventario));
+                .thenReturn(List.of(inventario));
 
         DevolucionVentas devolucion = new DevolucionVentas();
         devolucion.setDetalles(java.util.List.of(new DetalleDevolucionVentas()));
@@ -208,7 +209,7 @@ class DevolucionVentasServiceImplTest {
         req.setCantidad(2);
 
         when(inventarioRepo.findByProduct_IdAndBranch_Id(5L, 1L))
-                .thenReturn(Optional.of(inventario));
+                .thenReturn(List.of(inventario));
 
         DevolucionVentas devolucion = new DevolucionVentas();
         devolucion.setDetalles(java.util.List.of(new DetalleDevolucionVentas()));

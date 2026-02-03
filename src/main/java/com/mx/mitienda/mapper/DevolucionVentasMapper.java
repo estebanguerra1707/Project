@@ -37,6 +37,7 @@ public class DevolucionVentasMapper {
         detalleDevolucionVentaDTO.setProductName(detalle.getProducto().getName());
         detalleDevolucionVentaDTO.setCantidadDevuelta(detalle.getCantidadDevuelta());
         detalleDevolucionVentaDTO.setPrecioUnitario(detalle.getPrecioUnitario());
+        detalleDevolucionVentaDTO.setInventarioOwnerType(detalle.getDetalleVenta().getOwnerType());
         return detalleDevolucionVentaDTO;
     }
 }

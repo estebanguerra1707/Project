@@ -9,6 +9,7 @@ import com.mx.mitienda.model.dto.*;
 import com.mx.mitienda.repository.*;
 import com.mx.mitienda.service.base.BaseService;
 import com.mx.mitienda.util.VentaSpecBuilder;
+import com.mx.mitienda.util.enums.InventarioOwnerType;
 import com.mx.mitienda.util.enums.TipoMovimiento;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -95,41 +96,92 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
         Venta ventaGuardada = ventaRepository.save(venta);
 
         for (DetalleVenta detalle : ventaGuardada.getDetailsList()) {
-            InventarioSucursal inventarioSucursal = inventarioSucursalRepository
-                    .findByProduct_IdAndBranch_Id(detalle.getProduct().getId(), ventaGuardada.getBranch().getId())
-                    .orElseThrow();
 
-            int stockAnterior = inventarioSucursal.getStock();
-            int stockNuevo = stockAnterior - detalle.getQuantity(); // fue salida
-            inventarioSucursal.setStockCritico(stockNuevo <= inventarioSucursal.getMinStock());
-            if (stockNuevo < 0) {
-                throw new IllegalArgumentException("No hay suficiente stock para vender: " + detalle.getProduct().getName());
+            Sucursal sucursal = ventaGuardada.getBranch();
+
+            boolean isInventarioPorduenio =
+                    Boolean.TRUE.equals(sucursal.getUsaInventarioPorDuenio());
+
+            InventarioSucursal inventarioSucursal;
+
+            if (isInventarioPorduenio) {
+                if (detalle.getOwnerType() == null) {
+                    throw new IllegalArgumentException(
+                            "Debe seleccionar si el producto " + detalle.getProduct().getName()+ " es PROPIO o de CONSIGNACIÓN"
+                    );
+                }
+                InventarioOwnerType ownerType = detalle.getOwnerType();
+
+                Optional<InventarioSucursal> inventarioOpt =
+                        inventarioSucursalRepository
+                                .findByProduct_IdAndBranch_IdAndOwnerType(
+                                        detalle.getProduct().getId(),
+                                        sucursal.getId(),
+                                        ownerType
+                                );
+                if(inventarioOpt.isPresent()){
+                    inventarioSucursal = inventarioOpt.get();
+                }else{
+                    InventarioOwnerType otroOwnerType =
+                            ownerType == InventarioOwnerType.PROPIO
+                                    ? InventarioOwnerType.CONSIGNACION
+                                    : InventarioOwnerType.PROPIO;
+
+                    throw new IllegalArgumentException(
+                            "No existe el producto "
+                                    + detalle.getProduct().getName()
+                                    + " en el inventario, intenta colocar TIPO DE DUEÑO: " +otroOwnerType
+                    );
+                }
+            } else {
+                List<InventarioSucursal> inventarios =
+                        inventarioSucursalRepository.findByProduct_IdAndBranch_Id(
+                                detalle.getProduct().getId(),
+                                sucursal.getId()
+                        );
+
+                if (inventarios.isEmpty()) {
+                    throw new IllegalArgumentException(
+                            "No hay inventario para el producto "
+                                    + detalle.getProduct().getName()
+                    );
+                }
+
+                inventarioSucursal = inventarios.get(0);
             }
 
-           if(stockNuevo <= inventarioSucursal.getMinStock()){
-               inventarioSucursal.setStockCritico(true);
-               if(inventarioSucursal.getBranch().getAlertaStockCritico()){
-                   alertaCorreoService.notificarStockCritico(inventarioSucursal);
-               }else{
-                   log.info(":::La sucursal no cuenta con notificaciones de stock critico enviadas por correo:::");
-               }
-           } else {
-               inventarioSucursal.setStockCritico(false);
-           }
+            int stockAnterior = inventarioSucursal.getStock();
+            int stockNuevo = stockAnterior - detalle.getQuantity();
+
+            if (stockNuevo < 0) {
+                throw new IllegalArgumentException(
+                        "No hay suficiente stock para vender: "
+                                + detalle.getProduct().getName()
+                );
+            }
 
             inventarioSucursal.setStock(stockNuevo);
+            inventarioSucursal.setStockCritico(
+                    inventarioSucursal.getMinStock() != null
+                            && stockNuevo <= inventarioSucursal.getMinStock()
+            );
+
             inventarioSucursalRepository.save(inventarioSucursal);
+
+            if (Boolean.TRUE.equals(inventarioSucursal.getStockCritico())
+                    && Boolean.TRUE.equals(sucursal.getAlertaStockCritico())) {
+                alertaCorreoService.notificarStockCritico(inventarioSucursal);
+            }
 
             historialMovimientosService.registrarMovimiento(
                     inventarioSucursal,
-                    TipoMovimiento.valueOf(TipoMovimiento.SALIDA.name()),
+                    TipoMovimiento.SALIDA,
                     detalle.getQuantity(),
                     stockAnterior,
                     stockNuevo,
                     "Venta #" + ventaGuardada.getId()
             );
         }
-
       //envio venta por email
         generateSaleOutput(venta, request.getIsPrinted(), request.getEmailList());
         return ventaMapper.toResponse(ventaRepository.save(venta));

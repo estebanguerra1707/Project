@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -125,7 +126,7 @@ class DevolucionComprasServiceImplTest {
                 .thenReturn(0); // nada devuelto antes
 
         when(inventarioRepository.findByProduct_IdAndBranch_Id(5L, 1L))
-                .thenReturn(Optional.of(inventario));
+                .thenReturn(List.of(inventario));
 
         DevolucionCompras devolucion = new DevolucionCompras();
         devolucion.setDetalles(java.util.List.of(new DetalleDevolucionCompras()));
@@ -157,7 +158,7 @@ class DevolucionComprasServiceImplTest {
         request.setCantidad(2); // 8 + 2 = 10 (cantidad comprada)
 
         when(inventarioRepository.findByProduct_IdAndBranch_Id(5L, 1L))
-                .thenReturn(Optional.of(inventario));
+                .thenReturn(List.of(inventario));
 
         DevolucionCompras devolucion = new DevolucionCompras();
         devolucion.setDetalles(java.util.List.of(new DetalleDevolucionCompras()));

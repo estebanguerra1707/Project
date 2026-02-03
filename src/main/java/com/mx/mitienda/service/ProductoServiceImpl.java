@@ -11,6 +11,7 @@ import com.mx.mitienda.repository.*;
 import com.mx.mitienda.service.base.BaseService;
 import com.mx.mitienda.specification.ProductoSpecification;
 import com.mx.mitienda.util.ProductoSpecBuilder;
+import com.mx.mitienda.util.enums.InventarioOwnerType;
 import com.mx.mitienda.util.enums.Rol;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -34,6 +36,7 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
     private final ProductoRepository productoRepository;
     private final ProductoMapper productoMapper;
     private final ProductCategoryRepository productCategoryRepository;
+    private final SucursalRepository sucursalRepository;
 
     private static final Map<String, String> SORT_ALIAS = Map.of(
             "product", "name",               // Si el front manda 'product', usa 'name'
@@ -50,12 +53,14 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
             ProductoRepository productoRepository,
             ProductoMapper productoMapper,
             UsuarioRepository usuarioRepository,
-            ProductCategoryRepository productCategoryRepository
+            ProductCategoryRepository productCategoryRepository,
+            SucursalRepository sucursalRepository
     ) {
         super(authenticatedUserService); // 👈 pasa la dependencia al BaseService
         this.productoRepository = productoRepository;
         this.productoMapper = productoMapper;
         this.productCategoryRepository = productCategoryRepository;
+        this.sucursalRepository = sucursalRepository;
     }
 
     private Pageable sanitize(Pageable pageable) {
@@ -80,13 +85,17 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
     @Transactional(readOnly = true)
     public Page<ProductoResponseDTO> getAll(ProductoFiltroDTO filtro, Pageable pageable) {
         UserContext ctx = ctx();
-
-        log.info("BUSINESS_TYPE_ID={} | BRANCH_ID={} | isSuper={}",
-                ctx.getBusinessTypeId(), ctx.getBranchId(), ctx.isSuperAdmin());
-
+        Long effectiveBranchId;
+        if (ctx.isSuperAdmin()) {
+            effectiveBranchId = filtro.getBranchId();
+        } else {
+            effectiveBranchId = ctx.getBranchId();
+        }
         var spec = ProductoSpecification.byBusinessTypeAndBranch(
-                ctx.getBusinessTypeId(), ctx.getBranchId(), ctx.isSuperAdmin());
-
+                ctx.getBusinessTypeId(),
+                effectiveBranchId,
+                ctx.isSuperAdmin()
+        );
         Pageable safePageable = sanitize(pageable);
 
         Page<Producto> page = productoRepository.findAll(spec, safePageable);
@@ -117,16 +126,37 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
                 .orElseThrow(() -> new NotFoundException("Categoría no encontrada"));
 
         Long businessTypeId = productCategory.getBusinessType().getId();
+        // 1️⃣ Buscar producto inactivo por código de barras (prioridad máxima)
+        Optional<Producto> inactiveByBarcode =
+                productoRepository.findByCodigoBarrasAndProductCategory_BusinessType_IdAndActiveFalse(
+                        productoDTO.getCodigoBarras(), businessTypeId
+                );
 
-        // Validaciones únicas por tipo de negocio
-        if (productoRepository.existsByCodigoBarrasAndProductCategory_BusinessType_Id(productoDTO.getCodigoBarras(), businessTypeId)) {
-            throw new IllegalArgumentException("Ya existe un producto con este código de barras en este tipo de negocio.");
+        if (inactiveByBarcode.isPresent()) {
+            Producto producto = inactiveByBarcode.get();
+
+            // Reactivar + actualizar datos
+            productoMapper.toUpdate(productoDTO, producto.getId());
+            producto.setActive(true);
+
+            Producto saved = productoRepository.save(producto);
+            return productoMapper.toResponse(saved);
         }
-        if (productoRepository.existsBySkuAndProductCategory_BusinessType_Id(productoDTO.getSku(), businessTypeId)) {
-            throw new IllegalArgumentException("Ya existe un producto con este SKU en este tipo de negocio.");
+
+        // 2️⃣ Validaciones SOLO contra activos
+        if (productoRepository.existsByCodigoBarrasAndProductCategory_BusinessType_IdAndActiveTrue(
+                productoDTO.getCodigoBarras(), businessTypeId)) {
+            throw new IllegalArgumentException("Ya existe un producto activo con este código de barras.");
         }
-        if (productoRepository.existsByNameIgnoreCaseAndProductCategory_BusinessType_Id(productoDTO.getName(), businessTypeId)) {
-            throw new IllegalArgumentException("Ya existe un producto con este nombre en este tipo de negocio.");
+
+        if (productoRepository.existsBySkuAndProductCategory_BusinessType_IdAndActiveTrue(
+                productoDTO.getSku(), businessTypeId)) {
+            throw new IllegalArgumentException("Ya existe un producto activo con este SKU.");
+        }
+
+        if (productoRepository.existsByNameIgnoreCaseAndProductCategory_BusinessType_IdAndActiveTrue(
+                productoDTO.getName(), businessTypeId)) {
+            throw new IllegalArgumentException("Ya existe un producto activo con este nombre.");
         }
 
         Producto entity = productoMapper.toEntity(productoDTO);
@@ -150,19 +180,62 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
 
     public Page<ProductoResponseDTO> buscarAvanzado(ProductoFiltroDTO productDTO, Pageable pageable) {
         var ctx = ctx();
-
-        // 🧩 Usuarios normales: filtran solo por su tipo de negocio
         if (!ctx.isSuperAdmin()) {
             productDTO.setBusinessTypeId(ctx.getBusinessTypeId());
         }
-
-        // 🧩 SUPER_ADMIN:
-        // Puede mandar businessTypeId directamente desde el frontend
-        // Ya NO necesitas derivarlo desde la sucursal porque Producto tiene businessType directo
-
+        if (ctx.isSuperAdmin() && productDTO.getBranchId() != null) {
+            Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(productDTO.getBranchId())
+                    .orElseThrow(() -> new NotFoundException("Sucursal no encontrada"));
+            Long businessTypeId = sucursal.getBusinessType().getId();
+            productDTO.setBusinessTypeId(businessTypeId);
+        }
         Specification<Producto> spec = ProductoSpecBuilder.fromDTO(productDTO);
-        Page<Producto> page = productoRepository.findAll(spec, pageable);
-        return page.map(productoMapper::toResponse);
+
+        Pageable safePageable = sanitize(pageable);
+        Page<Producto> page = productoRepository.findAll(spec, safePageable);
+
+        Page<ProductoResponseDTO> dtoPage = page.map(productoMapper::toResponse);
+
+        if (productDTO.getBranchId() == null) {
+            return dtoPage;
+        }
+
+        return enrichWithStock(dtoPage, productDTO);
+    }
+
+    private Page<ProductoResponseDTO> enrichWithStock(
+            Page<ProductoResponseDTO> page,
+            ProductoFiltroDTO filtro
+    ) {
+        Page<Object[]> stockPage = productoRepository.findProductosConStock(
+                filtro.getBranchId(),
+                filtro.getBusinessTypeId(),
+                PageRequest.of(
+                        page.getNumber(),
+                        page.getSize()
+                )
+        );
+
+        Map<Long, Object[]> stockMap = stockPage.getContent().stream()
+                .collect(Collectors.groupingBy(
+                        r -> ((Producto) r[0]).getId(),
+                        Collectors.collectingAndThen(
+                                Collectors.toList(),
+                                list -> list.get(0)
+                        )
+                ));
+
+        return page.map(dto -> {
+            Object[] row = stockMap.get(dto.getId());
+            if (row != null) {
+                Integer stock = ((Number) row[1]).intValue();
+                Boolean usaInventarioPorDuenio = (Boolean) row[2];
+
+                dto.setStock(stock);
+                dto.setUsaInventarioPorDuenio(usaInventarioPorDuenio);
+            }
+            return dto;
+        });
     }
 
 

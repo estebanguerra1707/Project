@@ -107,6 +107,7 @@ public class VentasMapper {
             detalle.setVenta(venta);
             detalle.setProduct(producto);
             detalle.setQuantity(cantidad);
+            detalle.setOwnerType(detalleVentaRequestDTO.getOwnerType());
             detalle.setUnitPrice(producto.getSalePrice());
             detalle.setSubTotal(producto.getSalePrice().multiply(BigDecimal.valueOf(cantidad)));
             detalle.setActive(true);
@@ -160,6 +161,8 @@ public class VentasMapper {
             detalleVentaResponseDTO.setQuantity(detail.getQuantity());
             detalleVentaResponseDTO.setUnitPrice(detail.getUnitPrice());
             detalleVentaResponseDTO.setSubTotal(detail.getSubTotal());
+            detalleVentaResponseDTO.setInventarioOwnerType(detail.getOwnerType());
+            detalleVentaResponseDTO.setUsaInventarioPorDuenio(detail.getVenta().getBranch().getUsaInventarioPorDuenio());
             return detalleVentaResponseDTO;
         }).toList();
 

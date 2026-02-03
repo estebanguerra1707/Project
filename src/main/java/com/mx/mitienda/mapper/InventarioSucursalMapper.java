@@ -38,6 +38,9 @@ public class InventarioSucursalMapper {
         inventarioSucursalResponseDTO.setLastUpdated(inventarioSucursal.getLastUpdatedDate());
         inventarioSucursalResponseDTO.setUpdatedBy(inventarioSucursal.getLastUpdatedBy());
         inventarioSucursalResponseDTO.setIsStockCritico(inventarioSucursal.getStockCritico());
+        if(inventarioSucursal.getBranch().getUsaInventarioPorDuenio()){
+            inventarioSucursalResponseDTO.setOwnerType(inventarioSucursal.getOwnerType());
+        }
         return inventarioSucursalResponseDTO;
     }
 

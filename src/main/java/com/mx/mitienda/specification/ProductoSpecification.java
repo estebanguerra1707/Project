@@ -41,13 +41,13 @@ public class ProductoSpecification {
     /** Mínimo (>=). OJO: atributo JPA camelCase (no "purchase_price"). */
     public static Specification<Producto> priceMajorTo(BigDecimal min) {
         if (min == null) return null;
-        return (root, query, cb) -> cb.greaterThanOrEqualTo(root.get("purchasePrice"), min);
+        return (root, query, cb) -> cb.greaterThanOrEqualTo(root.get("salePrice"), min);
     }
 
     /** Máximo (<=) */
     public static Specification<Producto> priceMinorTo(BigDecimal max) {
         if (max == null) return null;
-        return (root, query, cb) -> cb.lessThanOrEqualTo(root.get("purchasePrice"), max);
+        return (root, query, cb) -> cb.lessThanOrEqualTo(root.get("salePrice"), max);
     }
 
     /** Stock disponible: true => stock > 0, false => stock = 0 */

@@ -13,6 +13,7 @@ import com.mx.mitienda.repository.*;
 
 import com.mx.mitienda.service.base.BaseService;
 import com.mx.mitienda.util.DevolucionVentasSpecBuilder;
+import com.mx.mitienda.util.enums.InventarioOwnerType;
 import com.mx.mitienda.util.enums.Rol;
 import com.mx.mitienda.util.enums.TipoDevolucion;
 import com.mx.mitienda.util.enums.TipoMovimiento;
@@ -142,7 +143,8 @@ public class DevolucionVentasServiceImpl extends BaseService implements IDevoluc
         devolucionVentasRepository.save(devolucionVentas);
 
 // actualizar inventario
-        InventarioSucursal inventarioSucursal = obtenerInventario(producto.getId(), branchId);
+        InventarioSucursal inventarioSucursal =
+                obtenerInventario(producto, sucursal, detalleVenta);
 
         int stockAnterior = inventarioSucursal.getStock();
         int stockNuevo = stockAnterior + cantidadSolicitada;
@@ -215,10 +217,51 @@ public class DevolucionVentasServiceImpl extends BaseService implements IDevoluc
 
 
 
-    private InventarioSucursal obtenerInventario(Long productId, Long branchId) {
-        return inventarioSucursalRepository
-                .findByProduct_IdAndBranch_Id(productId, branchId)
-                .orElseThrow(() -> new NotFoundException("Inventario no encontrado"));
+    private InventarioSucursal obtenerInventario(
+            Producto producto,
+            Sucursal sucursal,
+            DetalleVenta detalleVenta
+    ) {
+
+        boolean usaInventarioPorDuenio =
+                Boolean.TRUE.equals(sucursal.getUsaInventarioPorDuenio());
+
+        if (usaInventarioPorDuenio) {
+
+            InventarioOwnerType ownerType =
+                    detalleVenta.getOwnerType() != null
+                            ? detalleVenta.getOwnerType()
+                            : InventarioOwnerType.PROPIO;
+
+            return inventarioSucursalRepository
+                    .findByProduct_IdAndBranch_IdAndOwnerType(
+                            producto.getId(),
+                            sucursal.getId(),
+                            ownerType
+                    )
+                    .orElseThrow(() ->
+                            new NotFoundException(
+                                    "Inventario no encontrado para el producto "
+                                            + producto.getName()
+                                            + " con dueño " + ownerType
+                            )
+                    );
+        }
+
+        List<InventarioSucursal> inventarios =
+                inventarioSucursalRepository.findByProduct_IdAndBranch_Id(
+                        producto.getId(),
+                        sucursal.getId()
+                );
+
+        if (inventarios.isEmpty()) {
+            throw new NotFoundException(
+                    "Inventario no encontrado para el producto " + producto.getName()
+            );
+        }
+
+        return inventarios.get(0);
+
     }
 
 }

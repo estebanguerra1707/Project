@@ -1,10 +1,9 @@
 package com.mx.mitienda.specification;
 
 import com.mx.mitienda.model.Compra;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
+import com.mx.mitienda.model.DetalleCompra;
+import com.mx.mitienda.model.Producto;
+import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
@@ -95,6 +94,25 @@ public class CompraSpecification {
                     "DATE_PART", Integer.class, criteriaBuilder.literal("day"), root.get("purchaseDate")
             ));
             return predicate;
+        };
+    }
+    public static Specification<Compra> excludeIfAnyInactiveProduct() {
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            // Subquery: ¿existe un detalle de esta compra cuyo producto esté inactivo?
+            Subquery<Long> sub = query.subquery(Long.class);
+            var dc = sub.from(DetalleCompra.class);
+            var p = dc.join("product");
+
+            sub.select(cb.literal(1L))
+                    .where(
+                            cb.equal(dc.get("compra"), root),  // ✅ nombre exacto en tu entity
+                            cb.isFalse(p.get("active"))        // ✅ producto.active = false
+                    );
+
+            // Queremos compras donde NO exista un producto inactivo
+            return cb.not(cb.exists(sub));
         };
     }
 }

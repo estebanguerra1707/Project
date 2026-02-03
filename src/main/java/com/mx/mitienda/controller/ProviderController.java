@@ -31,13 +31,13 @@ public class ProviderController {
     }
     @Tag(name = "PROVIDER get all ", description = "Operaciones relacionadas con get all PROVIDER")
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
     public List<ProveedorResponseDTO> getAll() {
         return proveedorService.getAll();
     }
     @Tag(name = "PROVIDER get by id ", description = "Operaciones relacionadas con get by id PROVIDER")
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ProveedorResponseDTO getById(@PathVariable Long id) {
         return proveedorService.getById(id);
     }
@@ -55,6 +55,7 @@ public class ProviderController {
     }
 
     @GetMapping("/proveedor-sucursal/{branchId}")
+    @PreAuthorize("hasAuthority('SUPER_ADMIN')")
     public ResponseEntity<List<ProveedorResponseDTO>> getProveedoresPorSucursal(@PathVariable Long branchId) {
         List<ProveedorResponseDTO> proveedores = proveedorSucursalService.getProveedoresBySucursal(branchId);
         return ResponseEntity.ok(proveedores);
@@ -66,9 +67,4 @@ public class ProviderController {
         return proveedorService.getByBusinessType(businessTypeId);
     }
 
-    @GetMapping("/actual")
-    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN', 'ADMIN', 'VENDOR')")
-    public List<ProveedorResponseDTO> getActualCatalog() {
-        return proveedorService.getActualCatalog();
-    }
 }

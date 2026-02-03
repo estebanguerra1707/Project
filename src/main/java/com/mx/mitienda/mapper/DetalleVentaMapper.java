@@ -12,6 +12,7 @@ public class DetalleVentaMapper {
         detalleVentaResponseDTO.setQuantity(detalleVenta.getQuantity());
         detalleVentaResponseDTO.setUnitPrice(detalleVenta.getUnitPrice());
         detalleVentaResponseDTO.setSubTotal(detalleVenta.getSubTotal());
+        detalleVentaResponseDTO.setInventarioOwnerType(detalleVenta.getOwnerType());
         return detalleVentaResponseDTO;
     }
 

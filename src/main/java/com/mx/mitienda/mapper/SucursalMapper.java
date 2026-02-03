@@ -40,6 +40,7 @@ public class SucursalMapper {
         sucursalResponseDTO.setPhone(sucursal.getPhone());
         sucursalResponseDTO.setAddress(sucursal.getAddress());
         sucursalResponseDTO.setActive(sucursal.getActive());
+        sucursalResponseDTO.setUsaInventarioPorDuenio(sucursal.getUsaInventarioPorDuenio());
         if (sucursal.getBusinessType() != null) {
             sucursalResponseDTO.setBusinessTypeId(sucursal.getBusinessType().getId());
             sucursalResponseDTO.setBusinessTypeName(sucursal.getBusinessType().getName());

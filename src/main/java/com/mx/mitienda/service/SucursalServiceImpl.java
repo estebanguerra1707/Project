@@ -76,12 +76,22 @@ public class SucursalServiceImpl implements ISucursalService {
     @Override
     public SucursalResponseDTO findById(Long id) {
 
-        if(authenticatedUserService.isSuperAdmin()){
-            return sucursalMapper.toResponse(sucursalRepository.findByIdAndActiveTrue(id)
-                    .orElseThrow(() -> new NotFoundException("Sucursal no encontrada")));
+        if (authenticatedUserService.isSuperAdmin()) {
+            return sucursalMapper.toResponse(
+                    sucursalRepository.findByIdAndActiveTrue(id)
+                            .orElseThrow(() -> new NotFoundException("Sucursal no encontrada"))
+            );
         }
-        Sucursal sucursal = authenticatedUserService.getCurrentBranch();
-        return sucursalMapper.toResponse(sucursal);
+
+        Sucursal current = authenticatedUserService.getCurrentBranch();
+        if (current == null) {
+            throw new NotFoundException("El usuario no tiene sucursal asignada");
+        }
+        if (id == null || !current.getId().equals(id)) {
+            throw new NotFoundException("No tienes permiso para consultar esa sucursal");
+        }
+
+        return sucursalMapper.toResponse(current);
     }
 
     @Transactional(readOnly = true)

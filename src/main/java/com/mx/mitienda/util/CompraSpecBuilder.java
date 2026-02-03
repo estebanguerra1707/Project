@@ -12,16 +12,17 @@ public class CompraSpecBuilder {
     private SpecificationBuilder builder = new SpecificationBuilder<>();
 
 
-    public CompraSpecBuilder active(Boolean active){
+    public CompraSpecBuilder active(Boolean active) {
         builder.and(CompraSpecification.active(active));
         return this;
     }
 
-    public CompraSpecBuilder supplier(Long supplierId){
+    public CompraSpecBuilder supplier(Long supplierId) {
         builder.and(CompraSpecification.supplier(supplierId));
         return this;
     }
-    public CompraSpecBuilder byId(Long purchaseId){
+
+    public CompraSpecBuilder byId(Long purchaseId) {
         builder.and(CompraSpecification.byId(purchaseId));
         return this;
     }
@@ -33,23 +34,29 @@ public class CompraSpecBuilder {
 
         // Normalizamos las fechas al rango completo del día
         LocalDateTime startDateTime = start;
-        LocalDateTime endDateTime   = end;
+        LocalDateTime endDateTime = end;
 
         builder.and(CompraSpecification.dateBetween(startDateTime, endDateTime));
         return this;
     }
 
-    public CompraSpecBuilder totalMajorTo(BigDecimal min){
+    public CompraSpecBuilder totalMajorTo(BigDecimal min) {
         builder.and(CompraSpecification.totalMajorTo(min));
         return this;
     }
-    public CompraSpecBuilder totalMinorTo(BigDecimal max){
+
+    public CompraSpecBuilder totalMinorTo(BigDecimal max) {
         builder.and(CompraSpecification.totalMinorTo(max));
         return this;
     }
 
-    public CompraSpecBuilder searchPerDayMonthYear(Integer day, Integer month, Integer year){
+    public CompraSpecBuilder searchPerDayMonthYear(Integer day, Integer month, Integer year) {
         builder.and(CompraSpecification.searchByDayMonthYear(day, month, year));
+        return this;
+    }
+
+    public CompraSpecBuilder excludeIfAnyInactiveProduct() {
+        builder.and(CompraSpecification.excludeIfAnyInactiveProduct());
         return this;
     }
 

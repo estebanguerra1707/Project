@@ -23,6 +23,8 @@ public class Sucursal {
     @Column(name = "alerta_stock_critico")
     private Boolean alertaStockCritico;
 
+    @Column(name = "usa_inventario_por_duenio", nullable = false)
+    private Boolean usaInventarioPorDuenio = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "business_type_id", foreignKey = @ForeignKey(name = "fk_sucursal_business_type"))

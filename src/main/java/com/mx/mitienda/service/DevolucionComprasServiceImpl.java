@@ -12,6 +12,7 @@ import com.mx.mitienda.model.dto.FiltroDevolucionComprasResponseDTO;
 import com.mx.mitienda.repository.*;
 import com.mx.mitienda.service.base.BaseService;
 import com.mx.mitienda.util.DevolucionComprasSpecBuilder;
+import com.mx.mitienda.util.enums.InventarioOwnerType;
 import com.mx.mitienda.util.enums.TipoDevolucion;
 import com.mx.mitienda.util.enums.TipoMovimiento;
 import lombok.RequiredArgsConstructor;
@@ -108,7 +109,11 @@ public class DevolucionComprasServiceImpl extends BaseService implements IDevolu
         }
 
         // 4) Inventario validado
-        InventarioSucursal inventario = obtenerInventario(producto.getId(), branchId);
+        InventarioSucursal inventario = obtenerInventario(
+                producto,
+                sucursal,
+                detalleCompra
+        );
 
         if (inventario.getStock() < cantidadSolicitada) {
             throw new IllegalArgumentException("No hay stock suficiente para devolver al proveedor");
@@ -222,8 +227,13 @@ public class DevolucionComprasServiceImpl extends BaseService implements IDevolu
     }
 
     private Producto obtenerProductoValido(String codigo, Long businessId) {
-        return productoRepository.findByCodigoBarrasAndBusinessTypeId(codigo, businessId)
+        Producto p = productoRepository.findByCodigoBarrasAndBusinessTypeId(codigo, businessId)
                 .orElseThrow(() -> new NotFoundException("Producto no encontrado: " + codigo));
+
+        if (!Boolean.TRUE.equals(p.getActive())) {
+            throw new BadRequestException("Producto inactivo: " + codigo);
+        }
+        return p;
     }
 
     private DetalleCompra obtenerDetalleCompra(Compra compra, Long productId) {
@@ -234,10 +244,56 @@ public class DevolucionComprasServiceImpl extends BaseService implements IDevolu
                 .orElseThrow(() -> new NotFoundException("El producto no está en la compra"));
     }
 
-    private InventarioSucursal obtenerInventario(Long productId, Long branchId) {
-        return inventarioSucursalRepository
-                .findByProduct_IdAndBranch_Id(productId, branchId)
-                .orElseThrow(() -> new NotFoundException("Inventario no encontrado"));
+    private InventarioSucursal obtenerInventario(
+            Producto producto,
+            Sucursal sucursal,
+            DetalleCompra detalleCompra
+    ) {
+
+        boolean usaInventarioPorDuenio =
+                Boolean.TRUE.equals(sucursal.getUsaInventarioPorDuenio());
+
+        if (usaInventarioPorDuenio) {
+
+            InventarioOwnerType ownerType =
+                    detalleCompra.getOwnerType() != null
+                            ? detalleCompra.getOwnerType()
+                            : InventarioOwnerType.PROPIO;
+
+            return inventarioSucursalRepository
+                    .findByProduct_IdAndBranch_IdAndOwnerType(
+                            producto.getId(),
+                            sucursal.getId(),
+                            ownerType
+                    )
+                    .orElseThrow(() ->
+                            new NotFoundException(
+                                    "Inventario no encontrado para el producto "
+                                            + producto.getName()
+                                            + " con dueño " + ownerType
+                            )
+                    );
+        }
+        List<InventarioSucursal> inventarios =
+                inventarioSucursalRepository.findByProduct_IdAndBranch_Id(
+                        producto.getId(),
+                        sucursal.getId()
+                );
+
+        if (inventarios.isEmpty()) {
+            throw new NotFoundException(
+                    "Inventario no encontrado para el producto " + producto.getName()
+            );
+        }
+        if (inventarios.size() > 1) {
+            throw new IllegalStateException(
+                    "Configuración inválida: existen múltiples inventarios "
+                            + "para el producto " + producto.getName()
+                            + " en una sucursal sin inventario por dueño"
+            );
+        }
+
+        return inventarios.get(0);
     }
 
     private void registrarMovimiento(

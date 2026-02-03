@@ -140,11 +140,57 @@ public class GlobalExceptionHandler {
         log.error("LazyInitializationException", ex);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno al inicializar entidades", req);
     }
-
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ApiError> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest req) {
+    public ResponseEntity<ApiError> handleDataIntegrity(
+            DataIntegrityViolationException ex,
+            HttpServletRequest req
+    ) {
         log.warn("Violación de integridad de datos", ex);
-        return buildResponse(HttpStatus.CONFLICT, "Violación de integridad de datos", req);
+
+        String rootMessage = ex.getMostSpecificCause() != null
+                ? ex.getMostSpecificCause().getMessage()
+                : ex.getMessage();
+
+        // 🔴 PRODUCTO - código de barras
+        if (rootMessage.contains("producto_codigo_barras_key")) {
+            ApiError api = ApiError.of(
+                    HttpStatus.CONFLICT,
+                    "Ya existe un producto con este código de barras. " +
+                            "Si el producto estaba desactivado, puedes reactivarlo.",
+                    req.getRequestURI()
+            );
+            api.addDetail("field", "codigoBarras");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(api);
+        }
+
+        // 🔴 PRODUCTO - SKU
+        if (rootMessage.contains("producto_sku_key")) {
+            ApiError api = ApiError.of(
+                    HttpStatus.CONFLICT,
+                    "Ya existe un producto con este SKU.",
+                    req.getRequestURI()
+            );
+            api.addDetail("field", "sku");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(api);
+        }
+
+        // 🔴 PRODUCTO - nombre
+        if (rootMessage.contains("producto_name_key")) {
+            ApiError api = ApiError.of(
+                    HttpStatus.CONFLICT,
+                    "Ya existe un producto con este nombre.",
+                    req.getRequestURI()
+            );
+            api.addDetail("field", "name");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(api);
+        }
+
+        // 🔵 Fallback genérico (NO se pierde)
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                "Violación de integridad de datos",
+                req
+        );
     }
 
     @ExceptionHandler(AccessDeniedException.class)
