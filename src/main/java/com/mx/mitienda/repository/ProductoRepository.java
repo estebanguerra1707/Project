@@ -60,6 +60,7 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
     boolean existsByCodigoBarrasAndProductCategory_BusinessType_IdAndActiveTrue(
             String codigoBarras, Long businessTypeId);
+
     boolean existsBySkuAndProductCategory_BusinessType_IdAndActiveTrue(
             String sku, Long businessTypeId);
     boolean existsByNameIgnoreCaseAndProductCategory_BusinessType_IdAndActiveTrue(
@@ -118,4 +119,16 @@ GROUP BY p, s.usaInventarioPorDuenio
 
     Optional<Producto> findByCodigoBarrasAndBusinessTypeIdAndActiveTrue(String codigoBarras, Long businessTypeId);
 
+    boolean existsByCodigoBarrasAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
+            String codigoBarras, Long businessTypeId, Long id);
+
+    boolean existsBySkuAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
+            String sku, Long businessTypeId, Long id);
+
+    boolean existsByNameIgnoreCaseAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
+            String name, Long businessTypeId, Long id);
+
+    Optional<Producto> findBySkuAndProductCategory_BusinessType_Id(String sku, Long businessTypeId);
+
+    Optional<Producto> findByCodigoBarrasAndProductCategory_BusinessType_Id(String codigoBarras, Long businessTypeId);
 }

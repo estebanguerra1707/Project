@@ -36,6 +36,9 @@ public class Producto {
 	@Column(name = "creation_date")
 	private LocalDateTime creationDate;
 
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
 	@Column(name = "codigo_barras", unique = true)
 	private String codigoBarras;
 

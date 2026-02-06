@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -86,8 +87,10 @@ public class ProductCategoryService implements IProductCategoryService{
             throw new ForbiddenException("Tu sucursal no tiene tipo de negocio asignado.");
         }
         return categoryRepository.findByBusinessTypeId(btId).stream()
+                .sorted(Comparator.comparing(ProductCategory::getName, String.CASE_INSENSITIVE_ORDER))
                 .map(productCategoryMapper::toResponse)
                 .toList();
+
     }
 
     @Transactional(readOnly = true)

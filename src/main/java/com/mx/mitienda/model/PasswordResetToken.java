@@ -11,15 +11,28 @@ import java.time.LocalDateTime;
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(
+        indexes = {
+                @Index(name = "idx_prt_usuario", columnList = "usuario_id")
+        },
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_prt_token", columnNames = "token")
+        }
+)
 public class PasswordResetToken {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false, length = 64)
     private String token;
+
+    @Column(nullable = false)
     private LocalDateTime expiryDate;
+
+    @Column(nullable = false)
     private boolean used = false;
-    @OneToOne
-    @JoinColumn(name = "usuario_id", referencedColumnName = "id")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 }

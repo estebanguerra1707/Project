@@ -64,6 +64,7 @@ public class ProductoMapper {
         producto.setProductCategory(category);
         producto.setProvider(proveedor);
         producto.setCreationDate(LocalDateTime.now());
+        producto.setUpdatedAt(LocalDateTime.now());
         producto.setBranch(sucursal);
         producto.setBusinessType(businessType);
         producto.setCodigoBarras(productoDTO.getCodigoBarras());
@@ -97,6 +98,7 @@ public class ProductoMapper {
             response.setProductDetail(productDetailMapper.toResponse(producto.getProductDetail()));
         }
         response.setCreationDate(producto.getCreationDate());
+        response.setUpdatedAt(producto.getUpdatedAt());
         response.setCodigoBarras(producto.getCodigoBarras());
 
         var branch = producto.getBranch();
@@ -137,6 +139,10 @@ public class ProductoMapper {
             ProductCategory cat = productCategoryRepository.findById(productoDTO.getCategoryId())
                     .orElseThrow(() -> new RuntimeException("Categoría no encontrada"));
             existing.setProductCategory(cat);
+
+            if (cat.getBusinessType() != null) {
+                existing.setBusinessType(cat.getBusinessType());
+            }
         }
         if (productoDTO.getProviderId() != null) {
             Proveedor prov = proveedorRepository.findById(productoDTO.getProviderId())
@@ -148,7 +154,7 @@ public class ProductoMapper {
                     .orElseThrow(()-> new RuntimeException("La sucursal no ha sido encontrada"));
             existing.setBranch(sucursal);
         }
-        existing.setCreationDate(LocalDateTime.now());
+        existing.setUpdatedAt(LocalDateTime.now());
         return existing;
     }
 

@@ -73,9 +73,7 @@ public class UsuarioController {
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
-        // Si usaras sesión tradicional:
         request.getSession().invalidate();
-        // Con JWT, no hay nada que invalidar en servidor (a menos que guardes blacklist).
         return ResponseEntity.ok("Logout successful");
     }
 
@@ -83,8 +81,26 @@ public class UsuarioController {
     @PostMapping("/forgot-password")
     public ResponseEntity<String> forgotPassword(@RequestBody EmailDTO emailDTO,
                                                  HttpServletRequest request) {
-        passwordResetService.createToken(emailDTO.getEmail(), request.getRemoteAddr());
-        return ResponseEntity.ok("Se ha enviado el enlace para restablecer la contraseña");
+        try {
+            passwordResetService.createToken(emailDTO.getEmail(), getClientIp(request));
+            return ResponseEntity.ok("Si el correo existe, se enviará un enlace para restablecer la contraseña");
+        } catch (IllegalArgumentException ex) {
+            if ("TOO_MANY_REQUESTS".equals(ex.getMessage())) {
+                // No revela si existe el correo, solo dice que hay rate limit
+                return ResponseEntity.status(429)
+                        .body("Demasiadas solicitudes. Intenta nuevamente más tarde.");
+            }
+            throw ex;
+        }
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        // Si estás detrás de proxy / load balancer, esto es importante
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            return xff.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     @Operation(summary = "Restablecer contraseña con token")

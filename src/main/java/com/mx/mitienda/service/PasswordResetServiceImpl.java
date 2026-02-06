@@ -43,68 +43,84 @@ public class PasswordResetServiceImpl implements IPasswordResetService {
     @Transactional
     public void createToken(String email, String ip) {
 
-        Optional<Usuario> usuarioOpt = usuarioRepository.findByEmail(email);
-        if (usuarioOpt.isEmpty()) return;
+        String normalizedEmail = email == null ? "" : email.trim().toLowerCase();
 
-        Usuario usuario = usuarioOpt.get();
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime since = now.minusMinutes(15);
 
-        // BORRAR TOKEN ANTERIOR CORRECTAMENTE
-        passwordResetTokenRepository.deleteByUsuario(usuario);
-
-        // ANTI BRUTE FORCE
-        long attempts = auditRepo.countRecentByIp(ip, LocalDateTime.now().minusHours(1));
+        long attempts = auditRepo.countRecentByIp(ip, since);
         if (attempts >= 3) {
+            LocalDateTime oldest = auditRepo.findOldestAttemptInWindowByIp(ip, since);
+            LocalDateTime retryAt = oldest != null ? oldest.plusMinutes(15) : now.plusMinutes(15);
             throw new IllegalArgumentException("TOO_MANY_REQUESTS");
         }
 
-        auditRepo.save(new PasswordResetAudit(null, email, ip, LocalDateTime.now()));
+        // 3) Auditar SIEMPRE
+        auditRepo.save(new PasswordResetAudit(null, normalizedEmail, ip, now));
 
+        Optional<Usuario> usuarioOpt = usuarioRepository.findByEmail(normalizedEmail);
+        if (usuarioOpt.isEmpty()) {
+            return;
+        }
+
+        Usuario usuario = usuarioOpt.get();
+
+        // 5) Borrar token anterior
+        passwordResetTokenRepository.deleteByUsuario(usuario);
+
+        // 6) Crear token nuevo
         String token = UUID.randomUUID().toString();
         PasswordResetToken resetToken = new PasswordResetToken(
                 null,
                 token,
-                LocalDateTime.now().plusHours(Long.parseLong(validTokenHour)),
+                now.plusHours(Long.parseLong(validTokenHour)),
                 false,
                 usuario
         );
 
         passwordResetTokenRepository.save(resetToken);
 
+        // 7) Enviar correo
         String url = login + "/reset-password?token=" + token;
         String html = loadTemplate(url);
-
         mailService.sendEmail(usuario.getEmail(), "Recuperación de contraseña", html);
     }
 
     @Override
+    @Transactional
     public void resetPassword(String token, String newPassword) {
 
-        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
-                .orElseThrow(() -> new NotFoundException("Token inválido o expirado"));
-
-        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("TOKEN_EXPIRED");
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("PASSWORD INVALIDA");
+        }
+        if (newPassword.length() < 6) {
+            throw new IllegalArgumentException("PASSWORD DEMASIADO PEQUEÑA");
         }
 
-        if (resetToken.isUsed()) {
-            throw new IllegalArgumentException("TOKEN_ALREADY_USED");
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new IllegalArgumentException("INVALID_TOKEN"));
+
+        LocalDateTime now = LocalDateTime.now();
+
+        if (resetToken.getExpiryDate().isBefore(now) || resetToken.isUsed()) {
+            // mismo error para no dar pistas
+            throw new IllegalArgumentException("INVALID_TOKEN");
         }
 
         Usuario usuario = resetToken.getUsuario();
         usuario.setPassword(passwordEncoder.encode(newPassword));
         usuarioRepository.save(usuario);
 
-        // Marcar como usado
         resetToken.setUsed(true);
         passwordResetTokenRepository.save(resetToken);
 
-        // Enviar correo de confirmación
+        // Idealmente after-commit, pero mínimo así:
         String html = """
-            <p>Tu contraseña fue restablecida exitosamente.</p>
-            <p><a href="%s">Ingresa al sistema</a></p>
-        """.formatted(login);
+        <p>Tu contraseña fue restablecida exitosamente.</p>
+        <p><a href="%s">Ingresa al sistema</a></p>
+    """.formatted(login);
 
-        mailService.sendEmail(usuario.getEmail(), "Contraseña reestablecida", html);
+        mailService.sendEmail(usuario.getEmail(), "Contraseña restablecida", html);
     }
 
     private String loadTemplate(String url) {

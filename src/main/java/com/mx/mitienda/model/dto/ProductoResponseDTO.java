@@ -23,6 +23,7 @@ public class ProductoResponseDTO {
     private Long businessTypeId;
     private String businessTypeName;
     private LocalDateTime creationDate;
+    private LocalDateTime updatedAt;
     private ProductoDetailResponseDTO productDetail;
     private String codigoBarras;
     private Long branchId;

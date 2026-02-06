@@ -22,9 +22,14 @@ public class SpecificationDevolucionVentas {
     public static Specification<DevolucionVentas> byUsername(String username) {
         return (root, query, cb) -> {
             if (username == null || username.isBlank()) return null;
-            return cb.equal(
-                    cb.lower(root.get("usuario").get("username")),
-                    username.toLowerCase()
+
+            String value = username.trim().toLowerCase();
+
+            var userJoin = root.get("usuario");
+
+            return cb.or(
+                    cb.equal(cb.lower(userJoin.get("username")), value),
+                    cb.equal(cb.lower(userJoin.get("email")), value)
             );
         };
     }

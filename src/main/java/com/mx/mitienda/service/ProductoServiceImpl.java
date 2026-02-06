@@ -1,6 +1,8 @@
 package com.mx.mitienda.service;
 
 import com.mx.mitienda.context.ScopeResolver;
+import com.mx.mitienda.exception.BadRequestException;
+import com.mx.mitienda.exception.ForbiddenException;
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.mapper.ProductoMapper;
 import com.mx.mitienda.model.*;
@@ -23,6 +25,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -37,6 +40,7 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
     private final ProductoMapper productoMapper;
     private final ProductCategoryRepository productCategoryRepository;
     private final SucursalRepository sucursalRepository;
+    private final InventarioSucursalRepository inventarioSucursalRepository;
 
     private static final Map<String, String> SORT_ALIAS = Map.of(
             "product", "name",               // Si el front manda 'product', usa 'name'
@@ -45,7 +49,7 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
 
     private static final Set<String> ALLOWED_SORTS = Set.of(
             "id", "name", "sku", "purchasePrice", "salePrice",
-            "active", "creationDate", "codigoBarras", "productCategory.name"
+            "active", "creationDate", "updatedAt", "codigoBarras", "productCategory.name"
     );
 
     public ProductoServiceImpl(
@@ -54,13 +58,15 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
             ProductoMapper productoMapper,
             UsuarioRepository usuarioRepository,
             ProductCategoryRepository productCategoryRepository,
-            SucursalRepository sucursalRepository
+            SucursalRepository sucursalRepository,
+            InventarioSucursalRepository inventarioSucursalRepository
     ) {
-        super(authenticatedUserService); // 👈 pasa la dependencia al BaseService
+        super(authenticatedUserService);
         this.productoRepository = productoRepository;
         this.productoMapper = productoMapper;
         this.productCategoryRepository = productCategoryRepository;
         this.sucursalRepository = sucursalRepository;
+        this.inventarioSucursalRepository = inventarioSucursalRepository;
     }
 
     private Pageable sanitize(Pageable pageable) {
@@ -119,50 +125,122 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
         return productoMapper.toResponse(producto);
     }
 
-    public ProductoResponseDTO save(ProductoDTO productoDTO){
+    @Transactional
+    public ProductoResponseDTO save(ProductoDTO productoDTO) {
+        UserContext ctx = ctx();
 
-        // Obtener la categoría para acceder al tipo de negocio
+        if (!(ctx.isAdmin() || ctx.isSuperAdmin())) {
+            throw new ForbiddenException("No tienes permisos para crear productos");
+        }
+
+        Long branchIdEfectivo = ctx.isSuperAdmin()
+                ? productoDTO.getBranchId()
+                : ctx.getBranchId();
+
+        if (branchIdEfectivo == null) {
+            throw new BadRequestException("No se pudo determinar la sucursal para el inventario inicial del producto");
+        }
+
+        Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(branchIdEfectivo)
+                .orElseThrow(() -> new NotFoundException("No se ha encontrado la sucursal"));
+
         ProductCategory productCategory = productCategoryRepository.findById(productoDTO.getCategoryId())
                 .orElseThrow(() -> new NotFoundException("Categoría no encontrada"));
 
         Long businessTypeId = productCategory.getBusinessType().getId();
-        // 1️⃣ Buscar producto inactivo por código de barras (prioridad máxima)
-        Optional<Producto> inactiveByBarcode =
-                productoRepository.findByCodigoBarrasAndProductCategory_BusinessType_IdAndActiveFalse(
-                        productoDTO.getCodigoBarras(), businessTypeId
-                );
 
-        if (inactiveByBarcode.isPresent()) {
-            Producto producto = inactiveByBarcode.get();
+        String sku = productoDTO.getSku();
+        String barcode = productoDTO.getCodigoBarras();
 
-            // Reactivar + actualizar datos
-            productoMapper.toUpdate(productoDTO, producto.getId());
-            producto.setActive(true);
+        boolean hasSku = sku != null && !sku.isBlank();
+        boolean hasBarcode = barcode != null && !barcode.isBlank();
 
-            Producto saved = productoRepository.save(producto);
+        // 1) Buscar por SKU y BARCODE sin importar active (para detectar conflictos)
+        Optional<Producto> bySku = Optional.empty();
+        Optional<Producto> byBarcode = Optional.empty();
+
+        if (hasSku) {
+            bySku = productoRepository.findBySkuAndProductCategory_BusinessType_Id(sku, businessTypeId);
+        }
+        if (hasBarcode) {
+            byBarcode = productoRepository.findByCodigoBarrasAndProductCategory_BusinessType_Id(barcode, businessTypeId);
+        }
+
+        // 2) Si ambos existen pero son productos distintos => conflicto
+        if (bySku.isPresent() && byBarcode.isPresent()
+                && !bySku.get().getId().equals(byBarcode.get().getId())) {
+            throw new BadRequestException(
+                    "Conflicto: el SKU pertenece a un producto distinto al código de barras. " +
+                            "Verifica los datos antes de crear/reactivar."
+            );
+        }
+
+        // 3) Si existe por BARCODE, ese manda (es el mismo producto si bySku también existe)
+        if (byBarcode.isPresent()) {
+            Producto p = byBarcode.get();
+
+            if (Boolean.TRUE.equals(p.getActive())) {
+                throw new IllegalArgumentException("Ya existe un producto activo con este código de barras.");
+            }
+
+            Producto saved = reactivarProducto(p, productoDTO);
+            asegurarInventarioInicial(saved, sucursal, ctx);
+            return productoMapper.toResponse(saved);
+        }
+        // 4) Si no existe por BARCODE pero sí por SKU
+        if (bySku.isPresent()) {
+            Producto p = bySku.get();
+            if (Boolean.TRUE.equals(p.getActive())) {
+                throw new IllegalArgumentException("Ya existe un producto activo con este SKU.");
+            }
+            Producto saved = reactivarProducto(p, productoDTO);
+            asegurarInventarioInicial(saved, sucursal, ctx);
             return productoMapper.toResponse(saved);
         }
 
-        // 2️⃣ Validaciones SOLO contra activos
-        if (productoRepository.existsByCodigoBarrasAndProductCategory_BusinessType_IdAndActiveTrue(
-                productoDTO.getCodigoBarras(), businessTypeId)) {
-            throw new IllegalArgumentException("Ya existe un producto activo con este código de barras.");
-        }
-
-        if (productoRepository.existsBySkuAndProductCategory_BusinessType_IdAndActiveTrue(
-                productoDTO.getSku(), businessTypeId)) {
-            throw new IllegalArgumentException("Ya existe un producto activo con este SKU.");
-        }
-
-        if (productoRepository.existsByNameIgnoreCaseAndProductCategory_BusinessType_IdAndActiveTrue(
+        // 5) Validaciones contra activos restantes (nombre)
+        if (productoDTO.getName() != null && !productoDTO.getName().isBlank()
+                && productoRepository.existsByNameIgnoreCaseAndProductCategory_BusinessType_IdAndActiveTrue(
                 productoDTO.getName(), businessTypeId)) {
             throw new IllegalArgumentException("Ya existe un producto activo con este nombre.");
         }
 
+        // 6) Crear nuevo
         Producto entity = productoMapper.toEntity(productoDTO);
         Producto saved = productoRepository.save(entity);
-        return productoMapper.toResponse(saved);
 
+        asegurarInventarioInicial(saved, sucursal, ctx);
+        return productoMapper.toResponse(saved);
+    }
+    private Producto reactivarProducto(Producto producto, ProductoDTO productoDTO) {
+        productoMapper.toUpdate(productoDTO, producto.getId());
+        producto.setActive(true);
+        return productoRepository.save(producto);
+    }
+    private void asegurarInventarioInicial(Producto producto, Sucursal sucursal, UserContext ctx) {
+
+        InventarioOwnerType ownerType = InventarioOwnerType.PROPIO;
+
+        boolean existe = inventarioSucursalRepository
+                .findByProduct_IdAndBranch_IdAndOwnerType(producto.getId(), sucursal.getId(), ownerType)
+                .isPresent();
+
+        if (existe) return;
+
+        InventarioSucursal inv = new InventarioSucursal();
+        inv.setProduct(producto);
+        inv.setBranch(sucursal);
+        inv.setOwnerType(ownerType);
+
+        inv.setStock(0);
+        inv.setMinStock(1);
+        inv.setMaxStock(10);
+
+        inv.setStockCritico(false);
+        inv.setLastUpdatedBy(ctx.getEmail());
+        inv.setLastUpdatedDate(LocalDateTime.now());
+
+        inventarioSucursalRepository.save(inv);
     }
 
     public void disableProduct(Long id){
@@ -172,10 +250,44 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
     }
 
     @Transactional
-    public ProductoResponseDTO updateProduct(ProductoDTO updatedProduct, Long id){
-       Producto existProduct = productoMapper.toUpdate(updatedProduct, id);
-       Producto producto = productoRepository.save(existProduct);
-        return productoMapper.toResponse(producto);
+    public ProductoResponseDTO updateProduct(ProductoDTO dto, Long id) {
+
+        Producto entity = productoRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Producto no encontrado"));
+
+        Long businessTypeId;
+        if (dto.getCategoryId() != null) {
+            ProductCategory pc = productCategoryRepository.findById(dto.getCategoryId())
+                    .orElseThrow(() -> new NotFoundException("Categoría no encontrada"));
+            businessTypeId = pc.getBusinessType().getId();
+        } else {
+            businessTypeId = entity.getProductCategory().getBusinessType().getId();
+        }
+
+        if (dto.getCodigoBarras() != null && !dto.getCodigoBarras().equals(entity.getCodigoBarras())) {
+            if (productoRepository.existsByCodigoBarrasAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
+                    dto.getCodigoBarras(), businessTypeId, id)) {
+                throw new IllegalArgumentException("Ya existe un producto activo con este código de barras.");
+            }
+        }
+
+        if (dto.getSku() != null && !dto.getSku().equals(entity.getSku())) {
+            if (productoRepository.existsBySkuAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
+                    dto.getSku(), businessTypeId, id)) {
+                throw new IllegalArgumentException("Ya existe un producto activo con este SKU.");
+            }
+        }
+
+        if (dto.getName() != null && !dto.getName().equalsIgnoreCase(entity.getName())) {
+            if (productoRepository.existsByNameIgnoreCaseAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
+                    dto.getName(), businessTypeId, id)) {
+                throw new IllegalArgumentException("Ya existe un producto activo con este nombre.");
+            }
+        }
+        Producto updated = productoMapper.toUpdate(dto, id);
+
+        Producto saved = productoRepository.save(updated);
+        return productoMapper.toResponse(saved);
     }
 
     public Page<ProductoResponseDTO> buscarAvanzado(ProductoFiltroDTO productDTO, Pageable pageable) {
