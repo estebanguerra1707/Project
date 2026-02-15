@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Range;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -99,4 +100,54 @@ public interface VentaRepository extends JpaRepository<Venta, Long>, JpaSpecific
     BigDecimal sumGananciaNetaByMonth(@Param("branchId") Long branchId,
                                       @Param("startDate") LocalDateTime startDate,
                                       @Param("endDate") LocalDateTime endDate);
+
+    @EntityGraph(attributePaths = {
+            "client",
+            "usuario",
+            "branch",
+            "paymentMethod",
+            "detailsList",
+            "detailsList.product",
+            "detailsList.product.unidadMedida",
+            "detailsList.product.businessType",
+            "detailsList.product.branch"
+    })
+    Optional<Venta> findWithAllById(Long id);
+
+    @Query("""
+select distinct v
+from Venta v
+join fetch v.client
+join fetch v.usuario
+join fetch v.branch
+join fetch v.paymentMethod
+left join fetch v.detailsList d
+left join fetch d.product p
+left join fetch p.unidadMedida
+left join fetch p.branch
+left join fetch p.businessType
+where v.id = :id and v.active = true
+""")
+    Optional<Venta> findByIdFull(@Param("id") Long id);
+    @Query("""
+select v
+from Venta v
+join fetch v.client
+join fetch v.usuario
+join fetch v.branch
+join fetch v.paymentMethod
+where v.active = true
+""")
+    List<Venta> findAllActiveHeader();
+
+    @Query("""
+select v
+from Venta v
+join fetch v.client
+join fetch v.usuario
+join fetch v.branch
+join fetch v.paymentMethod
+where v.active = true and v.branch.id = :branchId
+""")
+    List<Venta> findAllActiveHeaderByBranch(@Param("branchId") Long branchId);
 }

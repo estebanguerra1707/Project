@@ -61,9 +61,9 @@ public class ProviderController {
         return ResponseEntity.ok(proveedores);
     }
 
-    @GetMapping("/tipo-negocio/{businessTypeId}")
+    @GetMapping(params = "businessTypeId")
     @PreAuthorize("hasAuthority('SUPER_ADMIN')")
-    public List<ProveedorResponseDTO> getByBusinessType(@PathVariable Long businessTypeId) {
+    public List<ProveedorResponseDTO> getByBusinessTypeParam(@RequestParam Long businessTypeId) {
         return proveedorService.getByBusinessType(businessTypeId);
     }
 

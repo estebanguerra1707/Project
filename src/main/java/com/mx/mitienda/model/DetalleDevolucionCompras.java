@@ -17,7 +17,8 @@ public class DetalleDevolucionCompras {
     @ManyToOne
     private Producto producto;
 
-    private int cantidadDevuelta;
+    @Column(precision = 18, scale = 3, nullable = false)
+    private BigDecimal cantidadDevuelta;
 
     private BigDecimal precioCompra;
 

@@ -41,5 +41,6 @@ public interface SucursalRepository extends JpaRepository<Sucursal, Long> {
     order by s.id asc
 """)
     List<Sucursal> findByBusinessType_IdAndActiveTrueOrderByIdAsc(@Param("businessTypeId") Long businessTypeId);
+    List<Sucursal> findByActiveTrueOrderByNameAsc();
 
 }

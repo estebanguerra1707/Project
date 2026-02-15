@@ -7,6 +7,7 @@ import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -19,11 +20,14 @@ public class InventarioSucursal {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Integer stock;
+    @Column(precision = 18, scale = 3, nullable = false)
+    private BigDecimal stock;
 
-    private Integer minStock;
+    @Column(precision = 18, scale = 3, nullable = false)
+    private BigDecimal minStock;
 
-    private Integer maxStock;
+    @Column(precision = 18, scale = 3, nullable = false)
+    private BigDecimal maxStock;
 
     @Column(name = "stock_critico")
     private Boolean stockCritico = false;

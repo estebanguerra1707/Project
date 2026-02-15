@@ -20,6 +20,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -66,10 +67,9 @@ public class InventarioSucursalServiceImpl extends BaseService implements IInven
             throw new NotFoundException("No hay inventario para este producto");
         }
 
-        int stockTotal = inventarios.stream()
-                .mapToInt(i -> i.getStock() == null ? 0 : i.getStock())
-                .sum();
-
+        BigDecimal stockTotal = inventarios.stream()
+                .map(i -> i.getStock() == null ? BigDecimal.ZERO : i.getStock())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         InventarioSucursal base = inventarios.get(0);
 
         InventarioSucursalResponseDTO dto =
@@ -171,11 +171,15 @@ public class InventarioSucursalServiceImpl extends BaseService implements IInven
         inv.setOwnerType(ownerType);
 
         if (inv.getStock() == null) {
-            inv.setStock(0);
+            inv.setStock(BigDecimal.ZERO);
         }
-        inv.setStockCritico(
-                inv.getMinStock() != null && inv.getStock() < inv.getMinStock()
-        );
+
+        if (inv.getMinStock() != null) {
+            inv.setStockCritico(inv.getStock().compareTo(inv.getMinStock()) < 0);
+        } else {
+            inv.setStockCritico(false);
+        }
+
         inv.setLastUpdatedDate(LocalDateTime.now());
         InventarioSucursal saved = inventarioSucursalRepository.save(inv);
         return inventarioSucursalMapper.toResponse(saved);
@@ -184,7 +188,7 @@ public class InventarioSucursalServiceImpl extends BaseService implements IInven
     @Transactional
     public void aumentarStock(
             Long productId,
-            int cantidad,
+            BigDecimal cantidad,
             InventarioOwnerType requestedOwnerType
     ) {
         Long branchId = authenticatedUserService.getCurrentBranchId();
@@ -204,9 +208,10 @@ public class InventarioSucursalServiceImpl extends BaseService implements IInven
                                         "No existe inventario para el producto con ownerType " + ownerType
                                 )
                         );
-        int nuevoStock = inv.getStock() + cantidad;
+        BigDecimal stockActual = inv.getStock() == null ? BigDecimal.ZERO : inv.getStock();
+        BigDecimal nuevoStock = stockActual.add(cantidad);
 
-        if (inv.getMaxStock() != null && nuevoStock > inv.getMaxStock()) {
+        if (inv.getMaxStock() != null && nuevoStock.compareTo(inv.getMaxStock()) > 0) {
             throw new IllegalArgumentException("El stock excede el máximo permitido");
         }
 
@@ -228,7 +233,7 @@ public class InventarioSucursalServiceImpl extends BaseService implements IInven
     @Transactional
     public void disminuirStock(
             Long productId,
-            int cantidad,
+            BigDecimal cantidad,
             InventarioOwnerType requestedOwnerType
     ) {
         Long branchId = authenticatedUserService.getCurrentBranchId();
@@ -249,17 +254,17 @@ public class InventarioSucursalServiceImpl extends BaseService implements IInven
                                         "No existe inventario para el producto con ownerType " + ownerType
                                 )
                         );
+        BigDecimal stockActual = inv.getStock() == null ? BigDecimal.ZERO : inv.getStock();
 
-        if (inv.getStock() < cantidad) {
+        if (stockActual.compareTo(cantidad) < 0) {
             throw new IllegalArgumentException("Stock insuficiente");
         }
+        BigDecimal nuevoStock = stockActual.subtract(cantidad);
+        inv.setStock(nuevoStock);
 
-        inv.setStock(inv.getStock() - cantidad);
-
-        if (inv.getMinStock() != null && inv.getStock() < inv.getMinStock()) {
-            inv.setStockCritico(true);
+        if (inv.getMinStock() != null) {
+            inv.setStockCritico(nuevoStock.compareTo(inv.getMinStock()) < 0);
         }
-
         inv.setLastUpdatedDate(LocalDateTime.now());
         inventarioSucursalRepository.save(inv);
     }

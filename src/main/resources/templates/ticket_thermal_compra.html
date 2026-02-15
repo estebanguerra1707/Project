@@ -4,73 +4,27 @@
     <meta charset="UTF-8" />
     <title>Ticket de Compra</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 10px;
-            margin: 0;
-            padding: 0;
-        }
+        body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; padding: 0; }
+        .ticket { width: 220px; padding: 5px; }
+        .logo { width: 80px; display: block; margin: 0 auto 5px auto; }
+        h1 { font-size: 12px; text-align: center; margin: 5px 0; }
+        h2 { font-size: 10px; text-align: center; margin: 5px 0; }
 
-        .ticket {
-            width: 220px; /* 58mm aprox */
-            padding: 5px;
-        }
+        table { width: 100%; border-collapse: collapse; font-size: 9px; }
+        th { text-align: left; border-bottom: 1px dashed #000; padding-bottom: 2px; }
+        td { padding: 2px 0; vertical-align: top; }
 
-        .logo {
-            width: 80px;
-            display: block;
-            margin: 0 auto 5px auto;
-        }
+        .center { text-align: center; }
+        .right { text-align: right; }
 
-        h1 {
-            font-size: 12px;
-            text-align: center;
-            margin: 5px 0;
-        }
+        .total, .footer, .payment-details { font-size: 9px; text-align: left; margin-top: 5px; }
+        .footer { text-align: center; margin-top: 10px; }
 
-        h2 {
-            font-size: 10px;
-            text-align: center;
-            margin: 5px 0;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 9px;
-        }
-
-        th {
-            text-align: left;
-            border-bottom: 1px dashed #000;
-            padding-bottom: 2px;
-        }
-
-        td {
-            padding: 2px 0;
-        }
-
-        .total, .footer, .payment-details {
-            font-size: 9px;
-            text-align: left;
-            margin-top: 5px;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 10px;
-        }
-
-        .highlight {
-            font-weight: bold;
-        }
-
-        .line {
-            border-top: 1px dashed #000;
-            margin: 5px 0;
-        }
+        .highlight { font-weight: bold; }
+        .line { border-top: 1px dashed #000; margin: 5px 0; }
     </style>
 </head>
+
 <body>
 <div class="ticket">
 
@@ -85,17 +39,31 @@
         <thead>
         <tr>
             <th>Producto</th>
-            <th>Cant</th>
-            <th>Precio</th>
-            <th>Subt.</th>
+            <th class="center">Cant</th>
+            <th class="center">UM</th>
+            <th class="right">Precio</th>
+            <th class="right">Subt.</th>
         </tr>
         </thead>
+
         <tbody>
         <tr th:each="detalle : ${compra.details}">
             <td th:text="${detalle.productName}"></td>
-            <td th:text="${detalle.quantity}"></td>
-            <td th:text="${detalle.unitPrice}"></td>
-            <td th:text="${detalle.subTotal}"></td>
+
+            <td class="center" th:text="${detalle.quantity}"></td>
+
+            <td class="center"
+                th:text="${#strings.isEmpty(detalle.unitAbbr) ? '—' : detalle.unitAbbr}"
+                th:title="${detalle.unitName}">
+            </td>
+
+            <td class="right"
+                th:text="${#numbers.formatDecimal(detalle.unitPrice, 1, 'POINT', 2, 'POINT')}">
+            </td>
+
+            <td class="right"
+                th:text="${#numbers.formatDecimal(detalle.subTotal, 1, 'POINT', 2, 'POINT')}">
+            </td>
         </tr>
         </tbody>
     </table>
@@ -103,19 +71,28 @@
     <div class="line"></div>
 
     <div class="total">
-        <p><span class="highlight">TOTAL:</span> <span th:text="${#numbers.formatDecimal(compra.totalAmount, 1, 'POINT', 2, 'POINT')}"></span></p>
+        <p>
+            <span class="highlight">TOTAL:</span>
+            <span th:text="${#numbers.formatDecimal(compra.totalAmount, 1, 'POINT', 2, 'POINT')}"></span>
+        </p>
         <p th:text="${compra.amountInWords}"></p>
     </div>
 
     <div class="payment-details">
-        <p><span class="highlight">Pago:</span> <span th:text="${compra.paymentName}"></span></p>
+        <p>
+            <span class="highlight">Pago:</span>
+            <span th:text="${compra.paymentName}"></span>
+        </p>
 
         <p th:if="${compra.amountPaid != null and compra.amountPaid > 0}">
             <span class="highlight">Recibido:</span>
-            <span th:text="${compra.amountPaid}"></span>
+            <span th:text="${#numbers.formatDecimal(compra.amountPaid, 1, 'POINT', 2, 'POINT')}"></span>
         </p>
 
-        <p><span class="highlight">Cambio:</span> <span th:text="${compra.changeAmount}"></span></p>
+        <p th:if="${compra.changeAmount != null and compra.changeAmount > 0}">
+            <span class="highlight">Cambio:</span>
+            <span th:text="${#numbers.formatDecimal(compra.changeAmount, 1, 'POINT', 2, 'POINT')}"></span>
+        </p>
     </div>
 
     <div class="line"></div>

@@ -67,6 +67,11 @@ public class VentaSpecBuilder {
         return this;
     }
 
+    public VentaSpecBuilder userId(Long userId) {
+        builder.and(VentasSpecification.hasUserId(userId));
+        return this;
+    }
+
     public Specification<Venta> build() {
         return builder.build();
     }

@@ -30,7 +30,7 @@ public class ProductController {
 
     @Tag(name = "PRODUCT SAVE", description = "Operaciones relacionadas con SALVAR PRODUCT")
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<ProductoResponseDTO> save(@RequestBody ProductoDTO product) {
         return ResponseEntity.ok(productService.save(product));
     }

@@ -107,7 +107,7 @@ public class CompraMapper {
             detail.setQuantity(detalleDTO.getQuantity());
             detail.setUnitPrice(producto.getPurchasePrice());
             detail.setSubTotal(producto.getPurchasePrice()
-                    .multiply(BigDecimal.valueOf(detalleDTO.getQuantity())));
+                    .multiply(detalleDTO.getQuantity()));
             detail.setActive(true);
             detail.setOwnerType(detalleDTO.getOwnerType());
             return detail;
@@ -121,7 +121,7 @@ public class CompraMapper {
 
         compra.setTotalAmount(total);
 
-        if (paymentMethod.getName().equalsIgnoreCase(EFECTIVO.name().toLowerCase())) {
+        if (paymentMethod.getName().equalsIgnoreCase(EFECTIVO.name())) {
             if (compra.getAmountPaid().compareTo(total) < 0) {
                 throw new IllegalArgumentException("El monto pagado no puede ser menor al total.");
             }
@@ -163,10 +163,28 @@ public class CompraMapper {
                     detalleCompraResponseDTO.setUnitPrice(detail.getUnitPrice());
                     detalleCompraResponseDTO.setSubTotal(detail.getSubTotal());
                     detalleCompraResponseDTO.setInventarioOwnerType(detail.getOwnerType());
+                    UnidadMedidaEntity um = null;
+                    if (detail.getProduct() != null) {
+                        um = detail.getProduct().getUnidadMedida(); // ahora es entidad
+                    }
+
+                    if (um != null) {
+                        detalleCompraResponseDTO.setUnitId(um.getId());
+                        detalleCompraResponseDTO.setUnitAbbr(um.getAbreviatura());
+                        detalleCompraResponseDTO.setUnitName(um.getNombre());
+                        detalleCompraResponseDTO.setPermiteDecimales(um.isPermiteDecimales());
+                    } else {
+                        // fallback defensivo por si algo viene null (idealmente no pasa)
+                        detalleCompraResponseDTO.setUnitId(null);
+                        detalleCompraResponseDTO.setUnitAbbr(null);
+                        detalleCompraResponseDTO.setUnitName(null);
+                        detalleCompraResponseDTO.setPermiteDecimales(detail.getProduct() != null && detail.getProduct().isPermiteDecimales());
+                    }
                     detalleCompraResponseDTO.setUsaInventarioPorDuenio(detail.getCompra().getBranch().getUsaInventarioPorDuenio());
                     return detalleCompraResponseDTO;
                 })
                 .toList();
+
     compraResponseDTO.setDetails(details);
     return compraResponseDTO;
     }

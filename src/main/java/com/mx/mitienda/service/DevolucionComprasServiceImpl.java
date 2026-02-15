@@ -93,18 +93,25 @@ public class DevolucionComprasServiceImpl extends BaseService implements IDevolu
 
         // 3) Detalle correcto dentro de la compra
         DetalleCompra detalleCompra = obtenerDetalleCompra(compra, producto.getId());
-        if (req.getCantidad() > detalleCompra.getQuantity()) {
-            throw new BadRequestException("No puedes devolver más de " + detalleCompra.getQuantity() + " unidades.");
+        BigDecimal cantidadComprada = Optional.ofNullable(detalleCompra.getQuantity()).orElse(BigDecimal.ZERO);
+        BigDecimal cantidadSolicitada = Optional.ofNullable(req.getCantidad()).orElse(BigDecimal.ZERO);
+
+        if (cantidadSolicitada.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("Cantidad inválida para devolución.");
         }
 
-        int cantidadComprada = detalleCompra.getQuantity();
-        int devueltaAcum = Optional.ofNullable(
-                detalleDevolucionComprasRepository.sumCantidadDevueltaPorCompraYProducto(compra.getId(), producto.getId())
-        ).orElse(0);
-        int cantidadSolicitada = req.getCantidad();
-        int cantidadRestante = cantidadComprada - devueltaAcum;
+        if (cantidadSolicitada.compareTo(cantidadComprada) > 0) {
+            throw new BadRequestException("No puedes devolver más de " + cantidadComprada + " unidades.");
+        }
 
-        if (cantidadSolicitada > cantidadRestante) {
+        BigDecimal devueltaAcum = Optional.ofNullable(
+                detalleDevolucionComprasRepository
+                        .sumCantidadDevueltaPorCompraYProducto(compra.getId(), producto.getId())
+        ).orElse(BigDecimal.ZERO);
+
+        BigDecimal cantidadRestante = cantidadComprada.subtract(devueltaAcum);
+
+        if (cantidadSolicitada.compareTo(cantidadRestante) > 0) {
             throw new IllegalArgumentException("No puedes devolver más de lo comprado");
         }
 
@@ -115,7 +122,9 @@ public class DevolucionComprasServiceImpl extends BaseService implements IDevolu
                 detalleCompra
         );
 
-        if (inventario.getStock() < cantidadSolicitada) {
+        BigDecimal stockActual = Optional.ofNullable(inventario.getStock()).orElse(BigDecimal.ZERO);
+
+        if (stockActual.compareTo(cantidadSolicitada) < 0) {
             throw new IllegalArgumentException("No hay stock suficiente para devolver al proveedor");
         }
 
@@ -128,15 +137,17 @@ public class DevolucionComprasServiceImpl extends BaseService implements IDevolu
                 sucursal
         );
 
-        boolean devolucionTotal = (devueltaAcum + cantidadSolicitada) == cantidadComprada;
+        boolean devolucionTotal =
+                devueltaAcum.add(cantidadSolicitada).compareTo(cantidadComprada) == 0;
         devolucion.setTipoDevolucion(devolucionTotal ? TipoDevolucion.TOTAL : TipoDevolucion.PARCIAL);
+
 
         devolucion.getDetalles().forEach(d -> d.setDevolucion(devolucion));
         devolucionComprasRepository.save(devolucion);
 
         // 6) Actualizar inventario (SALIDA)
-        int before = inventario.getStock();
-        int after = before - cantidadSolicitada;
+        BigDecimal before = Optional.ofNullable(inventario.getStock()).orElse(BigDecimal.ZERO);
+        BigDecimal after = before.subtract(cantidadSolicitada);;
 
         inventario.setStock(after);
         inventarioSucursalRepository.save(inventario);
@@ -298,9 +309,9 @@ public class DevolucionComprasServiceImpl extends BaseService implements IDevolu
 
     private void registrarMovimiento(
             InventarioSucursal inv,
-            int qty,
-            int before,
-            int after,
+            BigDecimal qty,
+            BigDecimal before,
+            BigDecimal after,
             Long compraId
     ) {
         HistorialMovimiento mov = new HistorialMovimiento();

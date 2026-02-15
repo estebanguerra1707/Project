@@ -78,11 +78,12 @@ public class CompraController {
 
     @Tag(name = "COMPRA GET ALL", description = "Operaciones relacionadas con obtener todas las compras ")
     @PostMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Page<CompraResponseDTO>> search(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String sort,
+
             @RequestBody CompraFiltroDTO filtro
     ) {
 
@@ -109,13 +110,13 @@ public class CompraController {
 
     @Tag(name = "COMPRA GET BY ID", description = "Operaciones relacionadas con obtener todas las compras ")
     @GetMapping("/{purchaseId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<CompraResponseDTO> getById(@PathVariable Long purchaseId) {
         return ResponseEntity.ok(compraServiceImpl.getById(purchaseId));
     }
 
     @PostMapping("/devolucion")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<DevolucionComprasReponseDTO> devoluciones( @Valid @RequestBody DevolucionComprasRequestDTO devolucionComprasRequestDTO) {
         return ResponseEntity.ok(devolucionComprasService.procesarDevolucion(devolucionComprasRequestDTO));
     }
@@ -149,7 +150,7 @@ public class CompraController {
     }
 
     @GetMapping("/devolucion-dia")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public Map<LocalDate, Long> porDia(@RequestParam LocalDate desde,
                                        @RequestParam LocalDate hasta,
                                        @RequestParam(required = false) Long branchId) {
@@ -158,7 +159,7 @@ public class CompraController {
     }
 
     @GetMapping("/devolucion-semana")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public Map<LocalDate, Long> porSemana(@RequestParam LocalDate desde,
                                        @RequestParam LocalDate hasta,
                                        @RequestParam(required = false) Long branchId) {
@@ -167,7 +168,7 @@ public class CompraController {
     }
 
     @GetMapping("/devolucion-mes")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public Map<YearMonth, Long> PorMes(@RequestParam LocalDate desde,
                                        @RequestParam LocalDate hasta,
                                        @RequestParam(required = false) Long branchId) {

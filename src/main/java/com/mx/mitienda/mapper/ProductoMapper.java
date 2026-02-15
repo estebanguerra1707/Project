@@ -26,6 +26,7 @@ public class ProductoMapper {
     private final ProductoRepository productoRepository;
     private final ScopeResolver scopeResolver;
     private final SucursalRepository sucursalRepository;
+    private final UnidadMedidaRepository unidadMedidaRepository;
 
 
     @Transactional
@@ -67,6 +68,12 @@ public class ProductoMapper {
         producto.setUpdatedAt(LocalDateTime.now());
         producto.setBranch(sucursal);
         producto.setBusinessType(businessType);
+        UnidadMedidaEntity um = unidadMedidaRepository.findByIdAndActiveTrue(productoDTO.getUnidadMedidaId())
+                .orElseThrow(() -> new NotFoundException("Unidad de medida no encontrada"));
+        producto.setUnidadMedida(um);
+
+// opcional: sincroniza permiteDecimales automáticamente
+        producto.setPermiteDecimales(um.isPermiteDecimales());
         producto.setCodigoBarras(productoDTO.getCodigoBarras());
         return producto;
     }
@@ -110,53 +117,77 @@ public class ProductoMapper {
             response.setBranchName(null);
         }
         response.setActive(producto.getActive());
+        var um = producto.getUnidadMedida();
+        if (um != null) {
+            response.setUnidadMedidaId(um.getId());
+            response.setUnidadMedidaAbreviatura(um.getAbreviatura());
+            response.setUnidadMedidaCodigo(um.getCodigo());
+            response.setUnidadMedidaNombre(um.getNombre());
+            response.setPermiteDecimales(producto.isPermiteDecimales());
+        }
         return response;
     }
 
     // Actualizar producto existente
-    public Producto toUpdate(ProductoDTO productoDTO, Long id) {
-
-        Producto existing = productoRepository.findById(id).orElseThrow(()-> new NotFoundException("Producto no encontrado"));
-        if(productoDTO.getName()!=null){
-            existing.setName(productoDTO.getName());
-        }
-        if (productoDTO.getSku() != null && !productoDTO.getSku().isBlank()) {
-            existing.setSku(productoDTO.getSku());
-        }
-        if (productoDTO.getCodigoBarras() != null && !productoDTO.getCodigoBarras().isBlank()) {
-            existing.setCodigoBarras(productoDTO.getCodigoBarras());
-        }
-        if (productoDTO.getDescription() != null && !productoDTO.getDescription().isBlank()) {
-            existing.setDescription(productoDTO.getDescription());
-        }
-        if (productoDTO.getPurchasePrice() != null) {
-            existing.setPurchasePrice(productoDTO.getPurchasePrice());
-        }
-        if (productoDTO.getSalePrice() != null) {
-            existing.setSalePrice(productoDTO.getSalePrice());
-        }
-        if (productoDTO.getCategoryId() != null) {
-            ProductCategory cat = productCategoryRepository.findById(productoDTO.getCategoryId())
-                    .orElseThrow(() -> new RuntimeException("Categoría no encontrada"));
-            existing.setProductCategory(cat);
-
-            if (cat.getBusinessType() != null) {
-                existing.setBusinessType(cat.getBusinessType());
+    public Producto toUpdate(ProductoDTO dto, Producto existing) {
+            if (dto.getName() != null && !dto.getName().isBlank()) {
+                existing.setName(dto.getName());
             }
-        }
-        if (productoDTO.getProviderId() != null) {
-            Proveedor prov = proveedorRepository.findById(productoDTO.getProviderId())
-                    .orElseThrow(() -> new RuntimeException("Proveedor no encontrado"));
-            existing.setProvider(prov);
-        }
-        if(productoDTO.getBranchId()!=null){
-            Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(productoDTO.getBranchId())
-                    .orElseThrow(()-> new RuntimeException("La sucursal no ha sido encontrada"));
-            existing.setBranch(sucursal);
-        }
-        existing.setUpdatedAt(LocalDateTime.now());
-        return existing;
+
+            if (dto.getSku() != null && !dto.getSku().isBlank()) {
+                existing.setSku(dto.getSku());
+            }
+
+            if (dto.getCodigoBarras() != null && !dto.getCodigoBarras().isBlank()) {
+                existing.setCodigoBarras(dto.getCodigoBarras());
+            }
+
+            if (dto.getDescription() != null && !dto.getDescription().isBlank()) {
+                existing.setDescription(dto.getDescription());
+            }
+
+            if (dto.getPurchasePrice() != null) {
+                existing.setPurchasePrice(dto.getPurchasePrice());
+            }
+
+            if (dto.getSalePrice() != null) {
+                existing.setSalePrice(dto.getSalePrice());
+            }
+
+            if (dto.getCategoryId() != null) {
+                ProductCategory cat = productCategoryRepository.findById(dto.getCategoryId())
+                        .orElseThrow(() -> new RuntimeException("Categoría no encontrada"));
+                existing.setProductCategory(cat);
+
+                if (cat.getBusinessType() != null) {
+                    existing.setBusinessType(cat.getBusinessType());
+                }
+            }
+
+            if (dto.getProviderId() != null) {
+                Proveedor prov = proveedorRepository.findById(dto.getProviderId())
+                        .orElseThrow(() -> new RuntimeException("Proveedor no encontrado"));
+                existing.setProvider(prov);
+            }
+
+            if (dto.getBranchId() != null) {
+                Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(dto.getBranchId())
+                        .orElseThrow(() -> new RuntimeException("La sucursal no ha sido encontrada"));
+                existing.setBranch(sucursal);
+            }
+
+            if (dto.getUnidadMedidaId() != null) {
+                UnidadMedidaEntity um = unidadMedidaRepository.findByIdAndActiveTrue(dto.getUnidadMedidaId())
+                        .orElseThrow(() -> new NotFoundException("Unidad de medida no encontrada"));
+
+                existing.setUnidadMedida(um);
+                existing.setPermiteDecimales(um.isPermiteDecimales());
+            }
+
+            existing.setUpdatedAt(LocalDateTime.now());
+            return existing;
     }
+
 
     private void validateCreateDTO(ProductoDTO productoDTO) {
         if (productoDTO.getName() == null || productoDTO.getName().isBlank()) {
@@ -176,6 +207,9 @@ public class ProductoMapper {
         }
         if (productoDTO.getCodigoBarras() == null || productoDTO.getCodigoBarras().isBlank()) {
             throw new IllegalArgumentException("El código de barras es obligatorio.");
+        }
+        if (productoDTO.getUnidadMedidaId() == null) {
+            throw new IllegalArgumentException("La unidad de medida es obligatoria.");
         }
     }
 

@@ -38,7 +38,7 @@ public class VentaIntegrationTest {
 
         DetalleVentaRequestDTO detalle = new DetalleVentaRequestDTO();
         detalle.setProductId(1L);
-        detalle.setQuantity(2);
+        detalle.setQuantity(BigDecimal.valueOf(2));
         request.setDetails(List.of(detalle));
 
         VentaResponseDTO venta = ventaService.registerSell(request);

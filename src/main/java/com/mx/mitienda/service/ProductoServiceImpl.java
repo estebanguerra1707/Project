@@ -25,6 +25,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,9 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
     private final ProductCategoryRepository productCategoryRepository;
     private final SucursalRepository sucursalRepository;
     private final InventarioSucursalRepository inventarioSucursalRepository;
+    private static final BigDecimal ZERO = BigDecimal.ZERO;
+    private static final BigDecimal ONE  = BigDecimal.ONE;
+
 
     private static final Map<String, String> SORT_ALIAS = Map.of(
             "product", "name",               // Si el front manda 'product', usa 'name'
@@ -149,6 +153,11 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
 
         Long businessTypeId = productCategory.getBusinessType().getId();
 
+        if (sucursal.getBusinessType() != null
+                && !sucursal.getBusinessType().getId().equals(businessTypeId)) {
+            throw new BadRequestException("La categoría no pertenece al tipo de negocio de la sucursal");
+        }
+
         String sku = productoDTO.getSku();
         String barcode = productoDTO.getCodigoBarras();
 
@@ -160,11 +169,11 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
         Optional<Producto> byBarcode = Optional.empty();
 
         if (hasSku) {
-            bySku = productoRepository.findBySkuAndProductCategory_BusinessType_Id(sku, businessTypeId);
-        }
+            bySku = productoRepository.findBySkuAndBranch_IdAndProductCategory_BusinessType_Id(
+                    sku, branchIdEfectivo, businessTypeId);        }
         if (hasBarcode) {
-            byBarcode = productoRepository.findByCodigoBarrasAndProductCategory_BusinessType_Id(barcode, businessTypeId);
-        }
+            byBarcode = productoRepository.findByCodigoBarrasAndBranch_IdAndProductCategory_BusinessType_Id(
+                    barcode, branchIdEfectivo, businessTypeId);        }
 
         // 2) Si ambos existen pero son productos distintos => conflicto
         if (bySku.isPresent() && byBarcode.isPresent()
@@ -183,7 +192,7 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
                 throw new IllegalArgumentException("Ya existe un producto activo con este código de barras.");
             }
 
-            Producto saved = reactivarProducto(p, productoDTO);
+            Producto saved = reactivarProducto(p, productoDTO,sucursal);
             asegurarInventarioInicial(saved, sucursal, ctx);
             return productoMapper.toResponse(saved);
         }
@@ -193,27 +202,29 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
             if (Boolean.TRUE.equals(p.getActive())) {
                 throw new IllegalArgumentException("Ya existe un producto activo con este SKU.");
             }
-            Producto saved = reactivarProducto(p, productoDTO);
+            Producto saved = reactivarProducto(p, productoDTO, sucursal);
             asegurarInventarioInicial(saved, sucursal, ctx);
             return productoMapper.toResponse(saved);
         }
 
         // 5) Validaciones contra activos restantes (nombre)
         if (productoDTO.getName() != null && !productoDTO.getName().isBlank()
-                && productoRepository.existsByNameIgnoreCaseAndProductCategory_BusinessType_IdAndActiveTrue(
-                productoDTO.getName(), businessTypeId)) {
+                && productoRepository.existsByNameIgnoreCaseAndBranch_IdAndProductCategory_BusinessType_IdAndActiveTrue(
+                productoDTO.getName(), branchIdEfectivo, businessTypeId)) {
             throw new IllegalArgumentException("Ya existe un producto activo con este nombre.");
         }
 
         // 6) Crear nuevo
         Producto entity = productoMapper.toEntity(productoDTO);
+        entity.setBranch(sucursal);
         Producto saved = productoRepository.save(entity);
 
         asegurarInventarioInicial(saved, sucursal, ctx);
         return productoMapper.toResponse(saved);
     }
-    private Producto reactivarProducto(Producto producto, ProductoDTO productoDTO) {
-        productoMapper.toUpdate(productoDTO, producto.getId());
+    private Producto reactivarProducto(Producto producto, ProductoDTO productoDTO, Sucursal sucursal) {
+        productoMapper.toUpdate(productoDTO, producto);
+        producto.setBranch(sucursal);
         producto.setActive(true);
         return productoRepository.save(producto);
     }
@@ -232,9 +243,9 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
         inv.setBranch(sucursal);
         inv.setOwnerType(ownerType);
 
-        inv.setStock(0);
-        inv.setMinStock(1);
-        inv.setMaxStock(10);
+        inv.setStock(ZERO);
+        inv.setMinStock(ONE);
+        inv.setMaxStock(BigDecimal.TEN);
 
         inv.setStockCritico(false);
         inv.setLastUpdatedBy(ctx.getEmail());
@@ -255,6 +266,16 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
         Producto entity = productoRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Producto no encontrado"));
 
+        UserContext ctx = ctx();
+
+        Long branchIdEfectivo = ctx.isSuperAdmin()
+                ? (dto.getBranchId() != null ? dto.getBranchId() : entity.getBranch().getId())
+                : ctx.getBranchId();
+
+        if (branchIdEfectivo == null) {
+            throw new BadRequestException("No se pudo determinar la sucursal para actualizar el producto");
+        }
+
         Long businessTypeId;
         if (dto.getCategoryId() != null) {
             ProductCategory pc = productCategoryRepository.findById(dto.getCategoryId())
@@ -265,28 +286,31 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
         }
 
         if (dto.getCodigoBarras() != null && !dto.getCodigoBarras().equals(entity.getCodigoBarras())) {
-            if (productoRepository.existsByCodigoBarrasAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
-                    dto.getCodigoBarras(), businessTypeId, id)) {
+            if (productoRepository.existsByCodigoBarrasAndBranch_IdAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
+                    dto.getCodigoBarras(), branchIdEfectivo, businessTypeId, id)) {
                 throw new IllegalArgumentException("Ya existe un producto activo con este código de barras.");
             }
         }
 
         if (dto.getSku() != null && !dto.getSku().equals(entity.getSku())) {
-            if (productoRepository.existsBySkuAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
-                    dto.getSku(), businessTypeId, id)) {
+            if (productoRepository.existsBySkuAndBranch_IdAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
+                    dto.getSku(), branchIdEfectivo, businessTypeId, id)) {
                 throw new IllegalArgumentException("Ya existe un producto activo con este SKU.");
             }
         }
 
         if (dto.getName() != null && !dto.getName().equalsIgnoreCase(entity.getName())) {
-            if (productoRepository.existsByNameIgnoreCaseAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
-                    dto.getName(), businessTypeId, id)) {
+            if (productoRepository.existsByNameIgnoreCaseAndBranch_IdAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
+                    dto.getName(), branchIdEfectivo, businessTypeId, id)) {
                 throw new IllegalArgumentException("Ya existe un producto activo con este nombre.");
             }
         }
-        Producto updated = productoMapper.toUpdate(dto, id);
+        if (!ctx.isSuperAdmin() && dto.getBranchId() != null && !dto.getBranchId().equals(ctx.getBranchId())) {
+            throw new ForbiddenException("No puedes cambiar la sucursal del producto");
+        }
 
-        Producto saved = productoRepository.save(updated);
+        productoMapper.toUpdate(dto, entity);
+        Producto saved = productoRepository.save(entity);
         return productoMapper.toResponse(saved);
     }
 
@@ -365,8 +389,15 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ProductoResponseDTO> getProductsByBranch(Long branchId) {
-        return productoRepository.findByBranchIdAndActiveTrue(branchId)
+        UserContext ctx = ctx();
+
+        Long effectiveBranchId = ctx.isSuperAdmin()
+                ? branchId
+                : ctx.getBranchId();
+
+        return productoRepository.findActiveByBranchWithAll(effectiveBranchId)
                 .stream()
                 .map(productoMapper::toResponse)
                 .toList();

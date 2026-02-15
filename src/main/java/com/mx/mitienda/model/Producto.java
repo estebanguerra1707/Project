@@ -1,8 +1,11 @@
 package com.mx.mitienda.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.mx.mitienda.util.enums.UnidadMedida;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -41,6 +44,15 @@ public class Producto {
 
 	@Column(name = "codigo_barras", unique = true)
 	private String codigoBarras;
+
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "unidad_medida_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_producto_unidad_medida"))
+    private UnidadMedidaEntity unidadMedida;
+
+    @Column(nullable = false)
+    private boolean permiteDecimales = false;
 
 	@ManyToOne
 	@JsonBackReference

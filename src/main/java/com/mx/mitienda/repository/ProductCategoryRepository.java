@@ -18,4 +18,8 @@ public interface ProductCategoryRepository extends JpaRepository<ProductCategory
     List<ProductCategory> findByBusinessTypeId(Long businessTypeId);
     Optional<ProductCategory> findWithBusinessTypeById(Long id);
     Optional<ProductCategory> findByIdAndBusinessTypeId(Long id, Long businessTypeId);
+    boolean existsByBusinessTypeIdAndNameIgnoreCase(Long businessTypeId, String name);
+    boolean existsByBusinessTypeIdAndNameIgnoreCaseAndIdNot(Long businessTypeId, String name, Long id);
+    List<ProductCategory> findByBusinessTypeIdAndActivoTrue(Long businessTypeId);
+
 }

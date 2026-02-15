@@ -34,7 +34,8 @@ public class DetalleCompra {
     @JoinColumn(name = "product_id", foreignKey = @ForeignKey(name = "fk_detalle_producto"))
     private Producto product;
 
-    private Integer quantity;
+    @Column(precision = 18, scale = 3, nullable = false)
+    private BigDecimal quantity;
 
     @Column(name = "unit_price")
     private BigDecimal unitPrice;

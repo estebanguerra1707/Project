@@ -55,4 +55,5 @@ public interface ProveedorSucursalRepository extends JpaRepository<ProveedorSucu
     List<ProveedorSucursal> findByProveedorId(Long proveedorId);
     boolean existsByProveedorAndSucursal(Proveedor proveedor, Sucursal sucursal);
 
+
 }

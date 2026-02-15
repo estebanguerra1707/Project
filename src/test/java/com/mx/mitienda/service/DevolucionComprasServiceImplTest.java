@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -47,7 +48,7 @@ class DevolucionComprasServiceImplTest {
         request = new DevolucionComprasRequestDTO();
         request.setCompraId(1L);
         request.setCodigoBarras("ABC123");
-        request.setCantidad(2);
+        request.setCantidad(BigDecimal.valueOf(2));
 
         usuario = new Usuario();
         usuario.setId(10L);
@@ -58,7 +59,7 @@ class DevolucionComprasServiceImplTest {
 
         detalle = new DetalleCompra();
         detalle.setProduct(producto);
-        detalle.setQuantity(10);
+        detalle.setQuantity(BigDecimal.valueOf(10));
 
         compra = new Compra();
         compra.setId(1L);
@@ -66,7 +67,7 @@ class DevolucionComprasServiceImplTest {
 
         inventario = new InventarioSucursal();
         inventario.setProduct(producto);
-        inventario.setStock(20);
+        inventario.setStock(BigDecimal.valueOf(20));
     }
 
     // ───────────────────────────────────────────────
@@ -104,9 +105,9 @@ class DevolucionComprasServiceImplTest {
                 .thenReturn(Optional.of(producto));
 
         when(detalleDevolucionComprasRepository.sumCantidadDevueltaPorCompraYProducto(1L, 5L))
-                .thenReturn(9); // ya se devolvieron 9
+                .thenReturn(BigDecimal.valueOf(9)); // ya se devolvieron 9
 
-        request.setCantidad(5); // quiere devolver 5 → supera lo permitido (solo queda 1)
+        request.setCantidad(BigDecimal.valueOf(5)); // quiere devolver 5 → supera lo permitido (solo queda 1)
 
         assertThrows(IllegalArgumentException.class, () -> service.procesarDevolucion(request));
     }
@@ -123,7 +124,7 @@ class DevolucionComprasServiceImplTest {
                 .thenReturn(Optional.of(producto));
 
         when(detalleDevolucionComprasRepository.sumCantidadDevueltaPorCompraYProducto(1L, 5L))
-                .thenReturn(0); // nada devuelto antes
+                .thenReturn(BigDecimal.ZERO); // nada devuelto antes
 
         when(inventarioRepository.findByProduct_IdAndBranch_Id(5L, 1L))
                 .thenReturn(List.of(inventario));
@@ -153,9 +154,9 @@ class DevolucionComprasServiceImplTest {
                 .thenReturn(Optional.of(producto));
 
         when(detalleDevolucionComprasRepository.sumCantidadDevueltaPorCompraYProducto(1L, 5L))
-                .thenReturn(8); // ya devolvieron 8
+                .thenReturn(BigDecimal.valueOf(8)); // ya devolvieron 8
 
-        request.setCantidad(2); // 8 + 2 = 10 (cantidad comprada)
+        request.setCantidad(BigDecimal.valueOf(2)); // 8 + 2 = 10 (cantidad comprada)
 
         when(inventarioRepository.findByProduct_IdAndBranch_Id(5L, 1L))
                 .thenReturn(List.of(inventario));

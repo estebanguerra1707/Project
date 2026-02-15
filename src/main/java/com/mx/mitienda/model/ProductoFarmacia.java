@@ -18,7 +18,7 @@ public class ProductoFarmacia {
     private FormaFarmaceutica formaFarmaceutica;
 
     @ManyToOne
-    private UnidadMedida unidadMedida;
+    private UnidadMedidaEntity unidadMedida;
 
     private String concentracion; // ej: "500 mg"
 }

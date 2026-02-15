@@ -8,6 +8,7 @@ import com.mx.mitienda.model.*;
 import com.mx.mitienda.model.dto.*;
 import com.mx.mitienda.repository.*;
 import com.mx.mitienda.service.base.BaseService;
+import com.mx.mitienda.util.NumberToWordsConverter;
 import com.mx.mitienda.util.VentaSpecBuilder;
 import com.mx.mitienda.util.enums.InventarioOwnerType;
 import com.mx.mitienda.util.enums.TipoMovimiento;
@@ -84,12 +85,10 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
     private BigDecimal safe(BigDecimal venta) {
         return venta != null ? venta : BigDecimal.ZERO;
     }
-    // pequeño contenedor inmutable para devolver 3 valores
-    //es lo mismo que crear un DTO
     private record Totales(BigDecimal brutas, BigDecimal netas, BigDecimal gananciaNeta) {}
 
     @Override
-    @Transactional //si falla o hay unea excepcion en cualquier lugar del metodo, se hace rollback de todo
+    @Transactional
     public VentaResponseDTO registerSell(VentaRequestDTO request) {
         Venta venta = ventaMapper.toEntity(request, ctx().getEmail());
 
@@ -150,10 +149,12 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
                 inventarioSucursal = inventarios.get(0);
             }
 
-            int stockAnterior = inventarioSucursal.getStock();
-            int stockNuevo = stockAnterior - detalle.getQuantity();
+            BigDecimal stockAnterior = Optional.ofNullable(inventarioSucursal.getStock()).orElse(BigDecimal.ZERO);
+            BigDecimal cantidad = Optional.ofNullable(detalle.getQuantity()).orElse(BigDecimal.ZERO);
+            BigDecimal stockNuevo = stockAnterior.subtract(cantidad);
 
-            if (stockNuevo < 0) {
+
+            if (stockNuevo.compareTo(BigDecimal.ZERO) < 0) {
                 throw new IllegalArgumentException(
                         "No hay suficiente stock para vender: "
                                 + detalle.getProduct().getName()
@@ -161,10 +162,13 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
             }
 
             inventarioSucursal.setStock(stockNuevo);
-            inventarioSucursal.setStockCritico(
-                    inventarioSucursal.getMinStock() != null
-                            && stockNuevo <= inventarioSucursal.getMinStock()
-            );
+            if (inventarioSucursal.getMinStock() != null) {
+                inventarioSucursal.setStockCritico(
+                        stockNuevo.compareTo(inventarioSucursal.getMinStock()) <= 0
+                );
+            }else {
+                inventarioSucursal.setStockCritico(false);
+            }
 
             inventarioSucursalRepository.save(inventarioSucursal);
 
@@ -183,31 +187,36 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
             );
         }
       //envio venta por email
-        generateSaleOutput(venta, request.getIsPrinted(), request.getEmailList());
-        return ventaMapper.toResponse(ventaRepository.save(venta));
+        generateSaleOutput(ventaGuardada, request.getIsPrinted(), request.getEmailList());
+        return ventaMapper.toResponse(ventaGuardada);
     }
     @Override
     @Transactional(readOnly = true)
     public List<VentaResponseDTO> getAll() {
         UserContext ctx = ctx();
         if (ctx.isSuperAdmin()) {
-            return ventaRepository.findByActiveTrue()
+            return ventaRepository.findAllActiveHeader()
                     .stream()
-                    .map(ventaMapper::toResponse)
-                    .collect(Collectors.toList());
+                    .map(ventaMapper::toResponseHeader)
+                    .toList();
         } else {
-            return ventaRepository.findByBranch_IdAndActiveTrue(ctx.getBranchId())
+            return ventaRepository.findAllActiveHeaderByBranch(ctx.getBranchId())
                     .stream()
-                    .map(ventaMapper::toResponse)
-                    .collect(Collectors.toList());
+                    .map(ventaMapper::toResponseHeader)
+                    .toList();
         }
     }
+
     @Override
     @Transactional(readOnly = true)
     public Page<VentaResponseDTO> findByFilter(VentaFiltroDTO filterDTO, int page, int size) {
         UserContext ctx = ctx();
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+
+        boolean isSuper = ctx.isSuperAdmin();
+        boolean isAdmin = ctx.isAdmin();
+        boolean isVendor = !isSuper && !isAdmin;
 
         VentaSpecBuilder builder = new VentaSpecBuilder()
                 .client(filterDTO.getClienteId())
@@ -220,37 +229,36 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
                 .sellPerMonthYear(filterDTO.getMonth(), filterDTO.getYear())
                 .byPaymentMethod(filterDTO.getPaymentMethodId())
                 .withId(filterDTO.getId());
-
+        if (isSuper) {
+            builder.username(filterDTO.getUsername());
+        } else if (isVendor) {
+            builder.username(ctx.getEmail());
+        }
         Specification<Venta> spec = builder.build();
-
-        // Si NO es super admin → solo su branch
-        if (!ctx.isSuperAdmin()) {
+        if (!isSuper) {
             spec = spec.and((root, query, cb) ->
                     cb.equal(root.get("branch").get("id"), ctx.getBranchId()));
         }
-
         return ventaRepository.findAll(spec, pageable)
-                .map(ventaMapper::toResponse);
+                .map(ventaMapper::toResponseHeader);
     }
     @Override
+    @Transactional(readOnly = true)
     public List<DetalleVentaResponseDTO> getDetailsPerSale(Long idVenta) {
         UserContext ctx = ctx();
 
-        if (ctx.isSuperAdmin()) {
-            return detalleVentaRepository.findByVenta_Id(idVenta)
-                    .stream()
-                    .map(detalleVentaMapper::toResponse)
-                    .toList();
-        }
-        return detalleVentaRepository.findByVenta_IdAndVenta_Branch_Id(idVenta, ctx.getBranchId())
-                .stream()
+        List<DetalleVenta> detalles = ctx.isSuperAdmin()
+                ? detalleVentaRepository.findFullByVentaId(idVenta)
+                : detalleVentaRepository.findFullByVentaIdAndBranchId(idVenta, ctx.getBranchId());
+
+        return detalles.stream()
                 .map(detalleVentaMapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
     @Override
     @Transactional(readOnly = true)
     public VentaResponseDTO getById(Long id) {
-        Venta venta =  ventaRepository.findByIdAndActiveTrue(id)
+        Venta venta = ventaRepository.findByIdFull(id)
                 .orElseThrow(() -> new NotFoundException("Venta no encontrada"));
         return ventaMapper.toResponse(venta);
     }
@@ -263,8 +271,9 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
         ventaRepository.save(venta);
     }
     @Override
+    @Transactional(readOnly = true)
     public byte[] generateTicketPdf(Long idVenta) {
-        Venta venta = ventaRepository.findById(idVenta)
+        Venta venta = ventaRepository.findByIdFull(idVenta)
                 .orElseThrow(() -> new RuntimeException("Venta no encontrada"));
 
         Context context = new Context();
@@ -288,6 +297,7 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<VentaResponseDTO> findCurrentUserVentas() {
         UserContext ctx = ctx();
         return ventaRepository.findByBranchAndBusinessType(ctx.getBranchId(), ctx.getBusinessTypeId())
@@ -395,21 +405,23 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
                 .stream()
                 .map(detalleVenta -> {
 
-                    BigDecimal precioVenta = detalleVenta.getUnitPrice();
-                    BigDecimal precioCompra = detalleVenta.getProduct().getPurchasePrice();
-                    int cantidadVendida = detalleVenta.getQuantity();
+                    BigDecimal precioVenta = Optional.ofNullable(detalleVenta.getUnitPrice()).orElse(BigDecimal.ZERO);
+                    BigDecimal precioCompra = Optional.ofNullable(detalleVenta.getProduct().getPurchasePrice()).orElse(BigDecimal.ZERO);
+
+                    BigDecimal cantidadVendida = Optional.ofNullable(detalleVenta.getQuantity()).orElse(BigDecimal.ZERO);
 
                     // Cantidad devuelta de este detalle
-                    int cantidadDevuelta = Optional.ofNullable(
+                    BigDecimal cantidadDevuelta = Optional.ofNullable(
                             detalleDevolucionVentasRepository.sumCantidadDevuelta(detalleVenta.getId())
-                    ).orElse(0);
+                    ).orElse(BigDecimal.ZERO);
 
                     // Cantidad efectiva (vendida - devuelta)
-                    int cantidadEfectiva = cantidadVendida - cantidadDevuelta;
-
-                    BigDecimal resta = precioVenta.subtract(precioCompra);
-
-                    return resta.multiply(BigDecimal.valueOf(cantidadEfectiva));
+                    BigDecimal cantidadEfectiva = cantidadVendida.subtract(cantidadDevuelta);
+                    if (cantidadEfectiva.compareTo(BigDecimal.ZERO) < 0) {
+                        cantidadEfectiva = BigDecimal.ZERO;
+                    }
+                    BigDecimal margen = precioVenta.subtract(precioCompra);
+                    return margen.multiply(cantidadEfectiva);
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }

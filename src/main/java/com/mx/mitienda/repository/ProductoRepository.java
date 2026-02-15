@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -89,9 +90,29 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
             @Param("businessTypeId") Long businessTypeId
     );
 
+    @EntityGraph(attributePaths = {
+            "unidadMedida",
+            "productCategory",
+            "productCategory.businessType",
+            "provider",
+            "branch",
+            "productDetail"
+    })
     Page<Producto> findAll(Specification<Producto> spec, Pageable pageable);
 
-    List<Producto> findByBranchIdAndActiveTrue(Long branchId);
+    @Query("""
+    select distinct p
+    from Producto p
+    left join fetch p.unidadMedida um
+    left join fetch p.productCategory pc
+    left join fetch pc.businessType bt
+    left join fetch p.provider prov
+    left join fetch p.branch b
+    left join fetch p.productDetail pd
+    where p.active = true
+      and b.id = :branchId
+""")
+    List<Producto> findActiveByBranchWithAll(@Param("branchId") Long branchId);
 
     long countByBranchId(Long branchId);
 
@@ -131,4 +152,32 @@ GROUP BY p, s.usaInventarioPorDuenio
     Optional<Producto> findBySkuAndProductCategory_BusinessType_Id(String sku, Long businessTypeId);
 
     Optional<Producto> findByCodigoBarrasAndProductCategory_BusinessType_Id(String codigoBarras, Long businessTypeId);
+
+    Optional<Producto> findBySkuAndBranch_IdAndProductCategory_BusinessType_Id(
+            String sku, Long branchId, Long businessTypeId);
+
+    Optional<Producto> findByCodigoBarrasAndBranch_IdAndProductCategory_BusinessType_Id(
+            String codigoBarras, Long branchId, Long businessTypeId);
+
+    boolean existsByNameIgnoreCaseAndBranch_IdAndProductCategory_BusinessType_IdAndActiveTrue(
+            String name, Long branchId, Long businessTypeId);
+
+    Optional<Producto> findBySkuAndBranch_IdAndProductCategory_BusinessType_IdAndActiveFalse(
+            String sku, Long branchId, Long businessTypeId);
+
+    Optional<Producto> findByCodigoBarrasAndBranch_IdAndProductCategory_BusinessType_IdAndActiveFalse(
+            String codigoBarras, Long branchId, Long businessTypeId);
+
+
+    boolean existsByCodigoBarrasAndBranch_IdAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
+            String codigoBarras, Long branchId, Long businessTypeId, Long id);
+
+    boolean existsBySkuAndBranch_IdAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
+            String sku, Long branchId, Long businessTypeId, Long id);
+
+    boolean existsByNameIgnoreCaseAndBranch_IdAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
+            String name, Long branchId, Long businessTypeId, Long id);
+
+    Optional<Producto> findByCodigoBarrasAndBranch_IdAndProductCategory_BusinessType_IdAndActiveTrue(
+            String codigoBarras, Long branchId, Long businessTypeId);
 }

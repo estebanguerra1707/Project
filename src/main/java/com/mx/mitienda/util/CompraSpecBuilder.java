@@ -59,8 +59,21 @@ public class CompraSpecBuilder {
         builder.and(CompraSpecification.excludeIfAnyInactiveProduct());
         return this;
     }
+    public CompraSpecBuilder branch(Long branchId) {
+        builder.and(CompraSpecification.byBranch(branchId));
+        return this;
+    }
 
-    public Specification<Compra> build(){
+    public CompraSpecBuilder username(String username) {
+        builder.and(CompraSpecification.byUsername(username));
+        return this;
+    }
+    public CompraSpecBuilder byUserRol(String username) {
+        builder.and(CompraSpecification.byUserRoles(username));
+        return this;
+    }
+
+        public Specification<Compra> build(){
         return builder.build();
     }
 

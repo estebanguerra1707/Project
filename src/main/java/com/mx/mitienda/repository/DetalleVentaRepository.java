@@ -194,6 +194,36 @@ public interface DetalleVentaRepository extends JpaRepository<DetalleVenta, Long
             @Param("fin") LocalDateTime fin,
             @Param("branchId") Long branchId
     );
+    @Query("""
+        select dv
+        from DetalleVenta dv
+        join fetch dv.product p
+        left join fetch p.unidadMedida um
+        left join fetch p.branch b
+        left join fetch p.businessType bt
+        join fetch dv.venta v
+        join fetch v.branch vb
+        where v.id = :ventaId
+    """)
+    List<DetalleVenta> findFullByVentaId(@Param("ventaId") Long ventaId);
+
+    @Query("""
+        select dv
+        from DetalleVenta dv
+        join fetch dv.product p
+        left join fetch p.unidadMedida um
+        left join fetch p.branch b
+        left join fetch p.businessType bt
+        join fetch dv.venta v
+        join fetch v.branch vb
+        where v.id = :ventaId
+          and v.branch.id = :branchId
+    """)
+    List<DetalleVenta> findFullByVentaIdAndBranchId(
+            @Param("ventaId") Long ventaId,
+            @Param("branchId") Long branchId
+    );
+
 
 }
 

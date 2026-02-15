@@ -66,7 +66,8 @@ public class SucursalServiceImpl implements ISucursalService {
         if (!authenticatedUserService.isSuperAdmin()) {
             throw new ForbiddenException("Solo el super administrador puede ver todas las sucursales.");
         }
-        return sucursalRepository.findByActiveTrueOrderByIdAsc()
+
+        return sucursalRepository.findByActiveTrueOrderByNameAsc()
                 .stream()
                 .map(sucursalMapper::toResponse)
                 .toList();

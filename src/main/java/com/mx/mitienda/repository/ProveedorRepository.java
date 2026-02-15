@@ -43,4 +43,42 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Long> {
     Optional<Proveedor> findByEmailAndNameAndActiveTrue(String email, String name);
     Optional<Proveedor> findByEmailAndName(String email, String name);
 
+    @Query("""
+   SELECT COUNT(ps) > 0
+   FROM ProveedorSucursal ps
+   WHERE ps.sucursal.id = :branchId
+     AND ps.proveedor.active = true
+     AND LOWER(ps.proveedor.email) = LOWER(:email)
+     AND LOWER(ps.proveedor.name) = LOWER(:name)
+""")
+    boolean existsActiveByBranchAndEmailAndName(
+            @Param("branchId") Long branchId,
+            @Param("email") String email,
+            @Param("name") String name
+    );
+    @Query("""
+   SELECT DISTINCT ps.proveedor
+   FROM ProveedorSucursal ps
+   WHERE ps.sucursal.id = :branchId
+     AND ps.sucursal.businessType.id = :businessTypeId
+""")
+    List<Proveedor> findBySucursalIdAndBusinessTypeId(
+            @Param("branchId") Long branchId,
+            @Param("businessTypeId") Long businessTypeId
+    );
+
+    @Query("""
+   SELECT ps.proveedor.id
+   FROM ProveedorSucursal ps
+   WHERE ps.sucursal.id = :branchId
+     AND ps.proveedor.active = true
+     AND LOWER(ps.proveedor.email) = LOWER(:email)
+     AND LOWER(ps.proveedor.name) = LOWER(:name)
+""")
+    List<Long> findActiveProveedorIdsByBranchAndEmailAndName(
+            @Param("branchId") Long branchId,
+            @Param("email") String email,
+            @Param("name") String name
+    );
+
 }

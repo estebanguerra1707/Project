@@ -8,7 +8,7 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            position: relative; /* Necesario para absolute */
+            position: relative;
         }
 
         .header-line,
@@ -20,13 +20,8 @@
             right: 0;
         }
 
-        .header-line {
-            top: 0;
-        }
-
-        .footer-line {
-            bottom: 0;
-        }
+        .header-line { top: 0; }
+        .footer-line { bottom: 0; }
 
         .outer-border {
             border: 8px solid #DAA520;
@@ -47,10 +42,10 @@
         }
 
         .formato{
-        font-size: 9px;
+            font-size: 9px;
             margin-bottom: 10px;
             color: #003366;
-            }
+        }
 
         table {
             width: 100%;
@@ -62,11 +57,30 @@
             text-align: left;
             font-size: 10px;
             border-bottom: 1px solid #003366;
+            padding: 4px 5px;
         }
 
         td {
-            padding: 2px 5px;
+            padding: 4px 5px;
             font-size: 10px;
+            vertical-align: top;
+        }
+
+        /* ✅ Mejor look */
+        td.qty, th.qty {
+            text-align: right;
+            white-space: nowrap;
+            width: 75px;
+        }
+
+        td.money, th.money {
+            text-align: right;
+            white-space: nowrap;
+            width: 70px;
+        }
+
+        td.product {
+            width: auto;
         }
 
         .payment-details {
@@ -99,7 +113,7 @@
 <div class="outer-border">
     <div class="inner-border">
 
-        <img class="logo" src="img/logo.png"  alt="Mi Inventario Logo"/>
+        <img class="logo" src="img/logo.png" alt="Mi Inventario Logo"/>
 
         <h1 class="highlight" th:text="${storeName}"></h1>
         <h2>Ticket de Compra</h2>
@@ -107,27 +121,40 @@
         <table>
             <thead>
             <tr>
-                <th>Producto</th>
-                <th>Cantidad</th>
-                <th>Precio</th>
-                <th>Subtotal</th>
+                <th class="product">Producto</th>
+                <th class="qty">Cant (UM)</th>
+                <th class="money">Precio</th>
+                <th class="money">Subtotal</th>
             </tr>
             </thead>
             <tbody>
             <tr th:each="detalle : ${compra.details}">
-                <td th:text="${detalle.productName}"></td>
-                <td th:text="${detalle.quantity}"></td>
-                <td th:text="${detalle.unitPrice}"></td>
-                <td th:text="${detalle.subTotal}"></td>
+                <td class="product" th:text="${detalle.productName}"></td>
+
+                <!-- ✅ Cantidad bonita: "2 pz" / "0.50 kg" / "1.2 m" -->
+                <td class="qty"
+                    th:text="${detalle.quantity} +
+                      (detalle.unitAbbr != null ? ' ' + detalle.unitAbbr
+                      : (detalle.unitName != null ? ' ' + detalle.unitName : ''))">
+                </td>
+
+                <td class="money"
+                    th:text="${#numbers.formatDecimal(detalle.unitPrice, 1, 'POINT', 2, 'POINT')}">
+                </td>
+
+                <td class="money"
+                    th:text="${#numbers.formatDecimal(detalle.subTotal, 1, 'POINT', 2, 'POINT')}">
+                </td>
             </tr>
             </tbody>
         </table>
 
         <div class="payment-details">
-            <p class = "formato"><strong>TOTAL</strong></p>
+            <p class="formato"><strong>TOTAL</strong></p>
             <p th:text="${#numbers.formatDecimal(compra.totalAmount, 1, 'POINT', 2, 'POINT')}"></p>
             <p th:text="${compra.amountInWords}"></p>
-            <p class = "formato"><strong>Pagado con:</strong></p>
+
+            <p class="formato"><strong>Pagado con:</strong></p>
             <p>
                 <strong>Método de pago:</strong>
                 <span th:text="${compra.paymentName}"></span>
@@ -135,12 +162,12 @@
 
             <p th:if="${compra.amountPaid != null and compra.amountPaid > 0}">
                 <strong class="highlight">Recibido:</strong>
-                <span th:text="${compra.amountPaid}"></span>
+                <span th:text="${#numbers.formatDecimal(compra.amountPaid, 1, 'POINT', 2, 'POINT')}"></span>
             </p>
 
-            <p>
+            <p th:if="${compra.changeAmount != null}">
                 <strong>Cambio:</strong>
-                <span th:text="${compra.changeAmount}"></span>
+                <span th:text="${#numbers.formatDecimal(compra.changeAmount, 1, 'POINT', 2, 'POINT')}"></span>
             </p>
         </div>
 
@@ -149,7 +176,7 @@
             <span th:text="${branch.address}"></span>
             <p><span th:text="${fechaFormateada}"></span></p>
             <p>Transacción # <span th:text="${compra.id}"></span></p>
-            <p>Atendido por:<span th:text="${compra.userName}"></span> </p>
+            <p>Atendido por: <span th:text="${compra.userName}"></span></p>
             <p><strong>¡Gracias por su compra!</strong></p>
         </div>
 

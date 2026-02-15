@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Page;
 
@@ -53,7 +54,39 @@ WHERE (:#{#spec} IS NULL OR :#{#spec} = :#{#spec})
     @Query("SELECT c FROM Compra c WHERE c.active = true ORDER BY c.purchaseDate DESC")
     Page<Compra> findAllWithDetails(Pageable pageable);
 
-    @EntityGraph(attributePaths = {"details", "proveedor", "paymentMethod"})
-    Page<Compra> findAll(Specification<Compra> spec, Pageable pageable);
+    @Query("""
+select distinct c
+from Compra c
+join fetch c.branch
+join fetch c.proveedor
+join fetch c.usuario
+left join fetch c.details d
+left join fetch d.product p
+left join fetch p.unidadMedida
+where c.id = :id and c.active = true
+""")
+    Optional<Compra> findByIdFull(@Param("id") Long id);
 
+    @Query("""
+select distinct c
+from Compra c
+join fetch c.branch
+join fetch c.proveedor
+join fetch c.usuario
+left join fetch c.details d
+left join fetch d.product p
+left join fetch p.unidadMedida
+where c.id = :id and c.branch.id = :branchId and c.active = true
+""")
+    Optional<Compra> findByIdFullByBranch(@Param("id") Long id, @Param("branchId") Long branchId);
+
+    @EntityGraph(attributePaths = {
+            "branch",
+            "proveedor",
+            "usuario",
+            "details",
+            "details.product",
+            "details.product.unidadMedida"
+    })
+    Page<Compra> findAll(Specification<Compra> spec, Pageable pageable);
 }

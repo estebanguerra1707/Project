@@ -20,4 +20,5 @@ public class CompraFiltroDTO {
     private Integer day;
     private Integer month;
     private Integer year;
+    private String username;
 }

@@ -1,10 +1,7 @@
 package com.mx.mitienda.mapper;
 
 import com.mx.mitienda.exception.NotFoundException;
-import com.mx.mitienda.model.InventarioSucursal;
-import com.mx.mitienda.model.Producto;
-import com.mx.mitienda.model.Sucursal;
-import com.mx.mitienda.model.Usuario;
+import com.mx.mitienda.model.*;
 import com.mx.mitienda.model.dto.InventarioAlertasDTO;
 import com.mx.mitienda.model.dto.InventarioSucursalRequestDTO;
 import com.mx.mitienda.model.dto.InventarioSucursalResponseDTO;
@@ -38,7 +35,27 @@ public class InventarioSucursalMapper {
         inventarioSucursalResponseDTO.setLastUpdated(inventarioSucursal.getLastUpdatedDate());
         inventarioSucursalResponseDTO.setUpdatedBy(inventarioSucursal.getLastUpdatedBy());
         inventarioSucursalResponseDTO.setIsStockCritico(inventarioSucursal.getStockCritico());
-        if(inventarioSucursal.getBranch().getUsaInventarioPorDuenio()){
+        UnidadMedidaEntity um = null;
+        if (inventarioSucursal.getProduct() != null) {
+            um = inventarioSucursal.getProduct().getUnidadMedida(); // ahora es entidad
+        }
+
+        if (um != null) {
+            inventarioSucursalResponseDTO.setUnitId(um.getId());
+            inventarioSucursalResponseDTO.setUnitAbbr(um.getAbreviatura());
+            inventarioSucursalResponseDTO.setUnitName(um.getNombre());
+            inventarioSucursalResponseDTO.setPermiteDecimales(um.isPermiteDecimales());
+        } else {
+            // fallback defensivo
+            inventarioSucursalResponseDTO.setUnitId(null);
+            inventarioSucursalResponseDTO.setUnitAbbr(null);
+            inventarioSucursalResponseDTO.setUnitName(null);
+            inventarioSucursalResponseDTO.setPermiteDecimales(
+                    inventarioSucursal.getProduct() != null && inventarioSucursal.getProduct().isPermiteDecimales()
+            );
+        }
+
+        if (Boolean.TRUE.equals(inventarioSucursal.getBranch().getUsaInventarioPorDuenio())) {
             inventarioSucursalResponseDTO.setOwnerType(inventarioSucursal.getOwnerType());
         }
         return inventarioSucursalResponseDTO;
@@ -56,7 +73,7 @@ public class InventarioSucursalMapper {
         inventarioSucursal.setMaxStock(inventarioSucursalRequestDTO.getMaxStock());
         inventarioSucursal.setMinStock(inventarioSucursalRequestDTO.getMinStock());
         inventarioSucursal.setBranch(sucursal);
-        inventarioSucursalRequestDTO.setIsStockCritico(inventarioSucursalRequestDTO.getIsStockCritico());
+        inventarioSucursal.setStockCritico(inventarioSucursalRequestDTO.getIsStockCritico());
         inventarioSucursal.setStock(inventarioSucursalRequestDTO.getQuantity());
         return inventarioSucursal;
     }

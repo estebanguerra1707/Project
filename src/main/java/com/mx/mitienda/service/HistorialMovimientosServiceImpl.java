@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Service
@@ -23,21 +24,24 @@ public class HistorialMovimientosServiceImpl implements IHistorialMovimientosSer
     private final AuthenticatedUserServiceImpl authenticatedUserService;
     private final InventarioSucursalRepository inventarioSucursalRepository;
 
+    private static final BigDecimal ZERO = BigDecimal.ZERO;
+    private BigDecimal nz(BigDecimal v) { return v == null ? ZERO : v; }
+
     @Override
     public void registrarMovimiento(  InventarioSucursal inventarioSucursal,
                                       TipoMovimiento tipoMovimiento,
-                                      Integer cantidad,
-                                      Integer stockAnterior,
-                                      Integer stockNuevo,
+                                      BigDecimal cantidad,
+                                      BigDecimal stockAnterior,
+                                      BigDecimal stockNuevo,
                                       String referencia){
 
         HistorialMovimiento historial = new HistorialMovimiento();
         historial.setInventarioSucursal(inventarioSucursal);
         historial.setMovementDate(LocalDateTime.now());
         historial.setMovementType(tipoMovimiento);
-        historial.setQuantity(cantidad);
-        historial.setBeforeStock(stockAnterior);
-        historial.setNewStock(stockNuevo);
+        historial.setQuantity(nz(cantidad));
+        historial.setBeforeStock(nz(stockAnterior));
+        historial.setNewStock(nz(stockNuevo));
         historial.setReference(referencia);
         historialMovimientoRepository.save(historial);
     }

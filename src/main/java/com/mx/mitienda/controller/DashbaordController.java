@@ -26,7 +26,7 @@ public class DashbaordController {
     private final IVentaService ventaServiceImpl;
 
     @GetMapping("/top-products")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
     public ResponseEntity<List<TopProductoDTO>> getTopProducts(
             @RequestParam String groupBy,
             @RequestParam(required = false) Long branchId,

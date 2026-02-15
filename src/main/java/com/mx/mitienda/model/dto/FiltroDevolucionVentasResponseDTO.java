@@ -20,7 +20,7 @@ public class FiltroDevolucionVentasResponseDTO {
     private String productName;         // dato directo desde el detalle
     private String productCode;         // código de barras
 
-    private Integer cantidadDevuelta;   // suma o único detalle
+    private BigDecimal cantidadDevuelta;   // suma o único detalle
 
     private String motivo;
 }

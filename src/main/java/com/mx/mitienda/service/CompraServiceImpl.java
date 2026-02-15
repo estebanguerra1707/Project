@@ -8,15 +8,12 @@ import com.mx.mitienda.model.dto.CompraRequestDTO;
 import com.mx.mitienda.model.dto.CompraResponseDTO;
 import com.mx.mitienda.repository.*;
 import com.mx.mitienda.service.base.BaseService;
-import com.mx.mitienda.util.enums.BusinessTypeEnum;
+import com.mx.mitienda.specification.CompraSpecification;
 import com.mx.mitienda.util.enums.InventarioOwnerType;
-import com.mx.mitienda.util.enums.Rol;
 import com.mx.mitienda.model.dto.CompraFiltroDTO;
 import com.mx.mitienda.util.CompraSpecBuilder;
 import com.mx.mitienda.util.enums.TipoMovimiento;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -49,6 +46,13 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
     private final MailService mailService;
     private final SucursalRepository sucursalRepository;
 
+
+    private static final BigDecimal ZERO = BigDecimal.ZERO;
+    private static final BigDecimal ONE  = BigDecimal.ONE;
+
+    private BigDecimal nz(BigDecimal v) {
+        return v == null ? ZERO : v;
+    }
 
     @Value("${alertas.stock.email.destinatario}")
     private String destinatario;
@@ -102,14 +106,13 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
         UserContext ctx = ctx();
         Compra compra;
         if (ctx.isSuperAdmin()) {
-            compra = compraRepository.findByIdAndActiveTrue(idPurchase)
+            compra = compraRepository.findByIdFull(idPurchase)
                     .orElseThrow(() -> new NotFoundException("Compra no encontrada"));
         } else {
-            compra = compraRepository.findByIdAndBranch_IdAndActiveTrue(idPurchase, ctx.getBranchId())
+            compra = compraRepository.findByIdFullByBranch(idPurchase, ctx.getBranchId())
                     .orElseThrow(() -> new NotFoundException(
                             "La compra no se ha encontrado dentro de la sucursal asignada al usuario logueado"));
         }
-        compra.getDetails().size();
         return compraMapper.toResponse(compra);
 
     }
@@ -144,11 +147,15 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
         }
 
         Compra compra = compraMapper.toEntity(compraRequestDTO, username);
+        compra.setBranch(sucursal);
         Compra compraGuardada = compraRepository.saveAndFlush(compra);
 
         for (DetalleCompra detalle : compraGuardada.getDetails()) {
             Producto producto = productoRepository.findByIdAndActiveTrue(detalle.getProduct().getId())
                     .orElseThrow(() -> new BadRequestException("Producto no disponible o inactivo"));
+
+
+            validarCantidadSegunUnidad(producto, detalle.getQuantity());
 
             boolean usaInventarioPorDuenio =
                     Boolean.TRUE.equals(sucursal.getUsaInventarioPorDuenio());
@@ -180,21 +187,22 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
                                 nuevo.setProduct(producto);
                                 nuevo.setBranch(sucursal);
                                 nuevo.setOwnerType(ownerType);
-                                nuevo.setStock(0);
-                                nuevo.setMinStock(1);
-                                nuevo.setMaxStock(10);
+                                nuevo.setStock(ZERO);
+                                nuevo.setMinStock(ONE);
+                                nuevo.setMaxStock(BigDecimal.TEN);
                                 nuevo.setLastUpdatedDate(LocalDateTime.now());
                                 nuevo.setLastUpdatedBy(ctx.getEmail());
                                 nuevo.setStockCritico(false);
                                 return nuevo;
                             });
 
+            BigDecimal stockAnterior = nz(inventarioSucursal.getStock());
+            BigDecimal qty = nz(detalle.getQuantity());
+            BigDecimal stockNuevo = stockAnterior.add(qty);
 
-            int stockAnterior = Optional.ofNullable(inventarioSucursal.getStock()).orElse(0);
-            int stockNuevo = stockAnterior + detalle.getQuantity();
+            BigDecimal max = inventarioSucursal.getMaxStock();
 
-            Integer max = inventarioSucursal.getMaxStock();
-            if (max != null && stockNuevo > max) {
+            if (max != null && stockNuevo.compareTo(max) > 0) {
                 throw new IllegalArgumentException(
                         "La compra excede el inventario máximo permitido para el producto: "
                                 + producto.getName()
@@ -202,10 +210,10 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
             }
 
             inventarioSucursal.setStock(stockNuevo);
-            inventarioSucursal.setStockCritico(
-                    inventarioSucursal.getMinStock() != null
-                            && stockNuevo < inventarioSucursal.getMinStock()
-            );
+
+            BigDecimal min = inventarioSucursal.getMinStock();
+            inventarioSucursal.setStockCritico(min != null && stockNuevo.compareTo(min) < 0);
+
             inventarioSucursal.setLastUpdatedBy(username);
             inventarioSucursal.setLastUpdatedDate(LocalDateTime.now());
 
@@ -221,7 +229,7 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
             historialMovimientosService.registrarMovimiento(
                     inventarioSucursal,
                     TipoMovimiento.ENTRADA,
-                    detalle.getQuantity(),
+                    qty,
                     stockAnterior,
                     stockNuevo,
                     "Compra #" + compraGuardada.getId()
@@ -245,29 +253,44 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<CompraResponseDTO> advancedSearch(CompraFiltroDTO compraDTO, Pageable pageable) {
-        Specification<Compra> spec = new CompraSpecBuilder()
-                .active(compraDTO.getActive())
-                .supplier(compraDTO.getSupplierId())
-                .dateBetween(compraDTO.getStart(), compraDTO.getEnd())
-                .totalMajorTo(compraDTO.getMin())
-                .totalMinorTo(compraDTO.getMax())
-                .searchPerDayMonthYear(compraDTO.getDay(), compraDTO.getMonth(), compraDTO.getYear())
-                .byId(compraDTO.getPurchaseId())
-                .excludeIfAnyInactiveProduct()
-                .build();
+    public Page<CompraResponseDTO> advancedSearch(CompraFiltroDTO filterDTO, Pageable pageable) {
 
-        // 🔹 Usa el método con paginación
-        Page<Compra> compras = compraRepository.findAll(spec, pageable);
+        UserContext ctx = ctx();
 
-        // 🔹 Forzar carga de los detalles dentro de la sesión activa
-        compras.forEach(c -> Hibernate.initialize(c.getDetails()));
+        boolean isSuper = ctx.isSuperAdmin();
 
-        // 🔹 Mapea y devuelve como Page<CompraResponseDTO>
-        return compras.map(compraMapper::toResponse);
+        CompraSpecBuilder builder = new CompraSpecBuilder()
+                .active(filterDTO.getActive())
+                .supplier(filterDTO.getSupplierId())
+                .dateBetween(filterDTO.getStart(), filterDTO.getEnd())
+                .totalMajorTo(filterDTO.getMin())
+                .totalMinorTo(filterDTO.getMax())
+                .searchPerDayMonthYear(filterDTO.getDay(), filterDTO.getMonth(), filterDTO.getYear())
+                .byId(filterDTO.getPurchaseId());
+
+        // SUPER puede filtrar por username si se lo mandan
+        if (isSuper) {
+            builder.username(filterDTO.getUsername());
+        }
+
+        Specification<Compra> spec = Specification.where(builder.build());
+
+        if (!isSuper) {
+            Long branchId = ctx.getBranchId();
+            if (branchId == null) {
+                throw new IllegalStateException("El usuario ADMIN debe tener branchId");
+            }
+            spec = spec
+                    .and(CompraSpecification.byBranch(branchId))
+                    .and(CompraSpecification.byUserRoles("ADMIN", "VENDOR"));
+        }
+
+        return compraRepository.findAll(spec, pageable)
+                .map(compraMapper::toResponse);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CompraResponseDTO> findCurrentUserCompras() {
         UserContext ctx = ctx();
         return compraRepository.findByBranchAndBusinessType( ctx.getBranchId(),
@@ -281,7 +304,6 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
         // Generar PDF
         byte[] pdfBytes = generatePdfService.generatePdf(COMPRA_CODE, compraGuardada.getId(), isPrinted != null && isPrinted);
 
-// Enviar por correo
         if (emailList != null && !emailList.isEmpty()) {
             mailService.sendPDFEmail(
                     emailList,
@@ -339,12 +361,11 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
                     .orElse(null);
 
             if (inventario != null) {
-
-                int before = inventario.getStock();
-                int after = before - detalle.getQuantity();
-
+                BigDecimal before = nz(inventario.getStock());
+                BigDecimal qty = nz(detalle.getQuantity());
+                BigDecimal after = before.subtract(qty);
                 // 🔒 Seguridad: evitar stock negativo
-                if (after < 0) {
+                if (after.compareTo(ZERO) < 0) {
                     throw new BadRequestException(
                             "Eliminación inválida: el stock quedaría negativo para el producto "
                                     + detalle.getProduct().getName()
@@ -352,9 +373,9 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
                 }
 
                 inventario.setStock(after);
-                inventario.setStockCritico(
-                        inventario.getMinStock() != null && after < inventario.getMinStock()
-                );
+                BigDecimal min = inventario.getMinStock();
+                inventario.setStockCritico(min != null && after.compareTo(min) < 0);
+
                 inventario.setLastUpdatedBy(ctx.getEmail());
                 inventario.setLastUpdatedDate(LocalDateTime.now());
 
@@ -375,16 +396,10 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
         compraRepository.save(compra);
     }
 
-
     @Override
     @Transactional(readOnly = true)
     public Page<CompraResponseDTO> findByBranchPaginated(Long branchId, int page, int size, String sort) {
-
         UserContext ctx = ctx();
-
-        // -----------------------------
-        // 🔹 PARSEAR SORT "campo,direccion"
-        // -----------------------------
         String sortField = "purchaseDate";
         Sort.Direction direction = Sort.Direction.DESC; // default
 
@@ -398,19 +413,12 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
                         : Sort.Direction.DESC;
             }
         }
-
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
         Page<Compra> comprasPage;
-
-        // -----------------------------
-        // 🔹 SUPER_ADMIN → ve todo
-        // -----------------------------
         if (ctx.isSuperAdmin()) {
             comprasPage = compraRepository.findAllWithDetails(pageable);
         }
-        // -----------------------------
-        // 🔹 ADMIN / VENDOR → filtra por sucursal
-        // -----------------------------
+
         else {
             if (branchId == null) {
                 throw new IllegalArgumentException("El usuario no tiene una sucursal asignada");
@@ -419,5 +427,19 @@ public class CompraServiceImpl extends BaseService implements ICompraService {
         }
 
         return comprasPage.map(compraMapper::toResponse);
+    }
+
+    private void validarCantidadSegunUnidad(Producto producto, BigDecimal qty) {
+        if (qty == null || qty.compareTo(ZERO) <= 0) {
+            throw new BadRequestException("Cantidad inválida para el producto: " + producto.getName());
+        }
+        boolean permiteDecimales = producto.isPermiteDecimales();
+        if (!permiteDecimales) {
+            if (qty.stripTrailingZeros().scale() > 0) {
+                throw new BadRequestException(
+                        "El producto " + producto.getName() + " no permite decimales por su unidad de medida."
+                );
+            }
+        }
     }
 }

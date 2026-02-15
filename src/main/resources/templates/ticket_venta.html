@@ -20,13 +20,8 @@
             right: 0;
         }
 
-        .header-line {
-            top: 0;
-        }
-
-        .footer-line {
-            bottom: 0;
-        }
+        .header-line { top: 0; }
+        .footer-line { bottom: 0; }
 
         .outer-border {
             border: 8px solid #DAA520; /* Dorado */
@@ -56,11 +51,30 @@
             text-align: left;
             font-size: 10px;
             border-bottom: 1px solid #003366;
+            padding: 4px 5px;
         }
 
         td {
-            padding: 2px 5px;
+            padding: 4px 5px;
             font-size: 10px;
+            vertical-align: top;
+        }
+
+        /* ✅ Mejor look */
+        td.qty, th.qty {
+            text-align: right;
+            white-space: nowrap;
+            width: 75px;
+        }
+
+        td.money, th.money {
+            text-align: right;
+            white-space: nowrap;
+            width: 70px;
+        }
+
+        td.product {
+            width: auto;
         }
 
         .payment-details {
@@ -107,28 +121,40 @@
         <table>
             <thead>
             <tr>
-                <th>Producto</th>
-                <th>Cantidad</th>
-                <th>Precio</th>
-                <th>Subtotal</th>
+                <th class="product">Producto</th>
+                <th class="qty">Cant (UM)</th>
+                <th class="money">Precio</th>
+                <th class="money">Subtotal</th>
             </tr>
             </thead>
             <tbody>
             <tr th:each="detalle : ${venta.details}">
-                <td th:text="${detalle.productName}"></td>
-                <td th:text="${detalle.quantity}"></td>
-                <td th:text="${#numbers.formatDecimal(detalle.unitPrice, 1, 'POINT', 2, 'POINT')}"></td>
-                <td th:text="${#numbers.formatDecimal(detalle.subTotal, 1, 'POINT', 2, 'POINT')}"></td>
+                <td class="product" th:text="${detalle.productName}"></td>
+
+                <!-- ✅ Cantidad con unidad: "2 pz" / "0.50 kg" / "1.2 m" -->
+                <td class="qty"
+                    th:text="${detalle.quantity} +
+                      (detalle.unitAbbr != null ? ' ' + detalle.unitAbbr
+                      : (detalle.unitName != null ? ' ' + detalle.unitName : ''))">
+                </td>
+
+                <td class="money"
+                    th:text="${#numbers.formatDecimal(detalle.unitPrice, 1, 'POINT', 2, 'POINT')}">
+                </td>
+
+                <td class="money"
+                    th:text="${#numbers.formatDecimal(detalle.subTotal, 1, 'POINT', 2, 'POINT')}">
+                </td>
             </tr>
             </tbody>
         </table>
 
         <div class="payment-details">
-            <p class = "formato"><strong>TOTAL</strong></p>
+            <p class="formato"><strong>TOTAL</strong></p>
             <p th:text="${#numbers.formatDecimal(venta.totalAmount, 1, 'POINT', 2, 'POINT')}"></p>
             <p th:text="${venta.amountInWords}"></p>
-            <p class="formato"><strong>Pagado con:</strong></p>
 
+            <p class="formato"><strong>Pagado con:</strong></p>
             <p>
                 <strong>Método de pago:</strong>
                 <span th:text="${venta.paymentName}"></span>
@@ -136,12 +162,12 @@
 
             <p th:if="${venta.amountPaid != null and venta.amountPaid > 0}">
                 <strong class="highlight">Recibido:</strong>
-                <span th:text="${venta.amountPaid}"></span>
+                <span th:text="${#numbers.formatDecimal(venta.amountPaid, 1, 'POINT', 2, 'POINT')}"></span>
             </p>
 
             <p>
                 <strong>Cambio:</strong>
-                <span th:text="${venta.changeAmount}"></span>
+                <span th:text="${#numbers.formatDecimal(venta.changeAmount, 1, 'POINT', 2, 'POINT')}"></span>
             </p>
         </div>
 
@@ -150,7 +176,7 @@
             <p><span th:text="${branch.address}"></span></p>
             <p><span th:text="${fechaFormateada}"></span></p>
             <p>Transacción # <span th:text="${venta.id}"></span></p>
-            <p>Atendido por:<span th:text="${venta.userName}"></span> </p>
+            <p>Atendido por: <span th:text="${venta.userName}"></span></p>
             <p><strong>¡Gracias por su compra!</strong></p>
         </div>
 

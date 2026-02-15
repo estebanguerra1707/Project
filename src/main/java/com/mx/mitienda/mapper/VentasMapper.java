@@ -87,7 +87,6 @@ public class VentasMapper {
         List<DetalleVenta> details = ventasRequestDTO.getDetails().stream().map(detalleVentaRequestDTO -> {
             Producto producto = productoRepository.findById(detalleVentaRequestDTO.getProductId())
                     .orElseThrow(() -> new NotFoundException("Producto no encontrado"));
-
             Long tipoProducto = producto.getProductCategory().getBusinessType().getId();
             if (!tipoProducto.equals(businessTypeId)) {
                 throw new NotFoundException(String.format(
@@ -97,10 +96,19 @@ public class VentasMapper {
                         sucursal.getName()
                 ));
             }
+            BigDecimal cantidad = detalleVentaRequestDTO.getQuantity();
 
-            Integer cantidad = detalleVentaRequestDTO.getQuantity();
-            if (cantidad == null || cantidad <= 0) {
+            if (cantidad == null || cantidad.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new IllegalArgumentException("Cantidad inválida para producto: " + producto.getName());
+            }
+
+            boolean permiteDecimales = producto.isPermiteDecimales();
+            if (!permiteDecimales) {
+                if (cantidad.stripTrailingZeros().scale() > 0) {
+                    throw new IllegalArgumentException(
+                            "El producto " + producto.getName() + " no permite decimales por su unidad de medida."
+                    );
+                }
             }
 
             DetalleVenta detalle = new DetalleVenta();
@@ -109,7 +117,7 @@ public class VentasMapper {
             detalle.setQuantity(cantidad);
             detalle.setOwnerType(detalleVentaRequestDTO.getOwnerType());
             detalle.setUnitPrice(producto.getSalePrice());
-            detalle.setSubTotal(producto.getSalePrice().multiply(BigDecimal.valueOf(cantidad)));
+            detalle.setSubTotal(producto.getSalePrice().multiply(cantidad));
             detalle.setActive(true);
             return detalle;
         }).collect(Collectors.toList());
@@ -161,6 +169,23 @@ public class VentasMapper {
             detalleVentaResponseDTO.setQuantity(detail.getQuantity());
             detalleVentaResponseDTO.setUnitPrice(detail.getUnitPrice());
             detalleVentaResponseDTO.setSubTotal(detail.getSubTotal());
+            UnidadMedidaEntity um = null;
+            if (detail.getProduct() != null) {
+                um = detail.getProduct().getUnidadMedida(); // ahora es entity
+            }
+
+            if (um != null) {
+                detalleVentaResponseDTO.setUnitId(um.getId());
+                detalleVentaResponseDTO.setUnitAbbr(um.getAbreviatura());
+                detalleVentaResponseDTO.setUnitName(um.getNombre());
+                detalleVentaResponseDTO.setPermiteDecimales(um.isPermiteDecimales());
+            } else {
+                // fallback defensivo (idealmente nunca pasa si unidad_medida es NOT NULL)
+                detalleVentaResponseDTO.setUnitId(null);
+                detalleVentaResponseDTO.setUnitAbbr(null);
+                detalleVentaResponseDTO.setUnitName(null);
+                detalleVentaResponseDTO.setPermiteDecimales(detail.getProduct() != null && detail.getProduct().isPermiteDecimales());
+            }
             detalleVentaResponseDTO.setInventarioOwnerType(detail.getOwnerType());
             detalleVentaResponseDTO.setUsaInventarioPorDuenio(detail.getVenta().getBranch().getUsaInventarioPorDuenio());
             return detalleVentaResponseDTO;
@@ -168,6 +193,22 @@ public class VentasMapper {
 
         ventaResponseDTO.setDetails(details);
         return ventaResponseDTO;
+    }
+
+    public VentaResponseDTO toResponseHeader(Venta venta){
+        VentaResponseDTO dto = new VentaResponseDTO();
+        dto.setId(venta.getId());
+        dto.setClientName(venta.getClient().getName());
+        dto.setSaleDate(venta.getSaleDate());
+        dto.setTotalAmount(venta.getTotalAmount());
+        dto.setPaymentMethodId(venta.getPaymentMethod().getId());
+        dto.setPaymentName(venta.getPaymentMethod().getName());
+        dto.setAmountInWords(NumberToWordsConverter.convert(venta.getTotalAmount()));
+        dto.setChangeAmount(venta.getChangeAmount());
+        dto.setAmountPaid(venta.getAmountPaid());
+        dto.setUserName(venta.getUsuario().getUsername());
+        dto.setActive(venta.getActive());
+        return dto;
     }
 
 }

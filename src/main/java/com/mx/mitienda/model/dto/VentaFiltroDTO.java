@@ -22,4 +22,5 @@ public class VentaFiltroDTO {
     private Integer year;
     private Integer day;
     private Long paymentMethodId;
+    private String username;
 }

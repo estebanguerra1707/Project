@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
+
 @Repository
 public interface DetalleDevolucionVentasRepository extends JpaRepository<DetalleDevolucionVentas, Long> {
     // Para validar cantidades ya devueltas de un producto en una venta
@@ -15,12 +17,12 @@ public interface DetalleDevolucionVentasRepository extends JpaRepository<Detalle
       WHERE ddv.detalleVenta.venta.id = :ventaId
         AND ddv.producto.id = :productoId
     """)
-    Integer sumCantidadDevueltaPorVentaYProducto(@Param("ventaId") Long ventaId,
+    BigDecimal sumCantidadDevueltaPorVentaYProducto(@Param("ventaId") Long ventaId,
                                                  @Param("productoId") Long productoId);
     @Query("""
         SELECT COALESCE(SUM(ddv.cantidadDevuelta), 0)
        FROM DetalleDevolucionVentas ddv
        WHERE ddv.detalleVenta.id = :detalleVentaId
     """)
-    Integer sumCantidadDevuelta(@Param("detalleVentaId") Long detalleVentaId);
+    BigDecimal sumCantidadDevuelta(@Param("detalleVentaId") Long detalleVentaId);
 }

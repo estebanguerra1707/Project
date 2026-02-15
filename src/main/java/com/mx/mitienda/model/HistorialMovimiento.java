@@ -4,6 +4,7 @@ import com.mx.mitienda.util.enums.TipoMovimiento;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -19,11 +20,14 @@ public class HistorialMovimiento {
     @Column(name = "movement_type")
     private TipoMovimiento movementType; // ENTRADA, SALIDA, AJUSTE
 
-    private Integer quantity;
+    @Column(precision = 18, scale = 3, nullable = false)
+    private BigDecimal quantity;
 
-    private Integer beforeStock;
+    @Column(precision = 18, scale = 3, nullable = false)
+    private BigDecimal beforeStock;
 
-    private Integer newStock;
+    @Column(precision = 18, scale = 3, nullable = false)
+    private BigDecimal newStock;
 
     private String reference; // Ej: Compra #15, Venta #8
     @ManyToOne

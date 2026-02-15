@@ -6,6 +6,7 @@ import com.mx.mitienda.util.enums.TipoMovimiento;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -13,9 +14,9 @@ public interface IHistorialMovimientosService {
     public void registrarMovimiento(
             InventarioSucursal inventarioSucursal,
             TipoMovimiento tipoMovimiento,
-            Integer cantidad,
-            Integer stockAnterior,
-            Integer stockNuevo,
+            BigDecimal cantidad,
+            BigDecimal stockAnterior,
+            BigDecimal stockNuevo,
             String referencia);
 
     public Page<HistorialMovimientosResponseDTO> obtenerPaginadoPorProducto(Long productoId, Pageable pageable) ;

@@ -81,16 +81,15 @@ public class ProductCategoryService implements IProductCategoryService{
     @Transactional(readOnly = true)
     @Override
     public List<ProductCategoryResponseDTO> getActualCatalog() {
-        // Para el <select> del front: categorías según BT del usuario (sin paginar)
         Long btId = authenticatedUserService.getCurrentBusinessTypeId();
         if (btId == null) {
             throw new ForbiddenException("Tu sucursal no tiene tipo de negocio asignado.");
         }
-        return categoryRepository.findByBusinessTypeId(btId).stream()
+
+        return categoryRepository.findByBusinessTypeIdAndActivoTrue(btId).stream()
                 .sorted(Comparator.comparing(ProductCategory::getName, String.CASE_INSENSITIVE_ORDER))
                 .map(productCategoryMapper::toResponse)
                 .toList();
-
     }
 
     @Transactional(readOnly = true)

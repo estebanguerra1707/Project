@@ -119,4 +119,10 @@ public class VentasSpecification {
             return cb.equal(root.get("paymentMethod").get("id"), paymentMethodId);
         };
     }
+    public static Specification<Venta> hasUserId(Long userId) {
+        return (root, query, cb) -> {
+            if (userId == null) return null;
+            return cb.equal(root.get("usuario").get("id"), userId);
+        };
+    }
 }

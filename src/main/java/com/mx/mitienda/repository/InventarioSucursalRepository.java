@@ -14,24 +14,35 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.EntityGraph;
+
 
 public interface InventarioSucursalRepository extends JpaRepository<InventarioSucursal, Long>,
         JpaSpecificationExecutor<InventarioSucursal> {
-   List<InventarioSucursal> findByProduct_IdAndBranch_Id(Long IdProduct, Long idBranch);
-    Optional<InventarioSucursal> findByBranchIdAndProductId(Long branchId, Long productId);
-    List<InventarioSucursal> findByBranch_Id(Long branchId);
-   List<InventarioSucursal> findByProduct_Id(Long productId);
-   @Query("""
-        SELECT i FROM InventarioSucursal i
-        JOIN i.branch b
-        JOIN i.product p
-        JOIN p.productCategory pc
-        JOIN pc.businessType bt
-        WHERE b.id = :branchId AND bt.id = :businessTypeId
-    """)
-   List<InventarioSucursal> findByBranchAndBusinessType(Long branchId, Long businessTypeId);
+    @EntityGraph(attributePaths = {"branch", "product", "product.unidadMedida"})
+    List<InventarioSucursal> findByProduct_IdAndBranch_Id(Long IdProduct, Long idBranch);
 
-   Page<InventarioSucursal> findAll(Specification<InventarioSucursal> spec, Pageable pageable);
+    Optional<InventarioSucursal> findByBranchIdAndProductId(Long branchId, Long productId);
+
+    @EntityGraph(attributePaths = {"branch", "product", "product.unidadMedida"})
+    List<InventarioSucursal> findByBranch_Id(Long branchId);
+
+    @EntityGraph(attributePaths = {"branch", "product", "product.unidadMedida"})
+    List<InventarioSucursal> findByProduct_Id(Long productId);
+    @Query("""
+    SELECT i FROM InventarioSucursal i
+    JOIN FETCH i.branch b
+    JOIN FETCH i.product p
+    LEFT JOIN FETCH p.unidadMedida um
+    JOIN p.productCategory pc
+    JOIN pc.businessType bt
+    WHERE b.id = :branchId AND bt.id = :businessTypeId
+""")
+    List<InventarioSucursal> findByBranchAndBusinessType(Long branchId, Long businessTypeId);
+
+    @EntityGraph(attributePaths = {"branch", "product", "product.unidadMedida"})
+    Page<InventarioSucursal> findAll(Specification<InventarioSucursal> spec, Pageable pageable);
+
    List<InventarioSucursal> findByBranch_BusinessType_Id(Long businessTypeId);
    boolean existsByIdAndBranch_Id(Long id, Long branchId);
     @Query("""
@@ -60,15 +71,10 @@ public interface InventarioSucursalRepository extends JpaRepository<InventarioSu
     );
     long countByBranchIdAndStockCriticoTrue(Long branchId);
 
+    @EntityGraph(attributePaths = {"branch", "product", "product.unidadMedida"})
     Optional<InventarioSucursal> findByProduct_IdAndBranch_IdAndOwnerType(
-            Long productId,
-            Long branchId,
-            InventarioOwnerType ownerType
+            Long productId, Long branchId, InventarioOwnerType ownerType
     );
-
-    List<InventarioSucursal> findByBranch_IdAndOwnerType(
-            Long branchId,
-            InventarioOwnerType ownerType
-    );
-
+    @EntityGraph(attributePaths = {"branch", "product", "product.unidadMedida"})
+    List<InventarioSucursal> findByBranch_IdAndOwnerType(Long branchId, InventarioOwnerType ownerType);
 }

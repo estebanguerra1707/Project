@@ -15,9 +15,33 @@ import java.time.LocalDateTime;
 public class TopProductoDTO {
 
     private String productName;
-    private Long totalQuantity;
+    private BigDecimal totalQuantity;
+    private LocalDateTime ultimaVenta;
+    private String categoria;
+    private String tipoNegocio;
     private LocalDateTime saleDate;
     private String username;
     private String branchName;
+    public TopProductoDTO(String productName, BigDecimal totalQuantity) {
+        this.productName = productName;
+        this.totalQuantity = totalQuantity;
+    }
+    public TopProductoDTO(
+            String productName,
+            BigDecimal totalQuantity,
+            LocalDateTime ultimaVenta,
+            String categoria,
+            String tipoNegocio,
+            String username,
+            String branchName
+    ) {
+        this.productName = productName;
+        this.totalQuantity = totalQuantity;
+        this.ultimaVenta = ultimaVenta;
+        this.categoria = categoria;
+        this.tipoNegocio = tipoNegocio;
+        this.username = username;
+        this.branchName = branchName;
+    }
 
 }

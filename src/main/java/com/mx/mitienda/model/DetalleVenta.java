@@ -19,7 +19,8 @@ public class DetalleVenta {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Integer quantity;
+    @Column(precision = 18, scale = 3, nullable = false)
+    private BigDecimal quantity;
 
     @Column(name = "unit_price") // nombre exacto de la columna en BD
     private BigDecimal unitPrice;
@@ -27,8 +28,8 @@ public class DetalleVenta {
     @Column(name = "sub_total")
     private BigDecimal subTotal;
 
-    @Column(name = "cantidad_devuelta")
-    private Integer cantidadDevuelta;
+    @Column(name = "cantidad_devuelta", precision = 18, scale = 3, nullable = false)
+    private BigDecimal cantidadDevuelta;
 
     private Boolean active;
 

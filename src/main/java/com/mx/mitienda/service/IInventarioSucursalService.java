@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public interface IInventarioSucursalService {
@@ -13,8 +14,8 @@ public interface IInventarioSucursalService {
     List<InventarioSucursalResponseDTO> getProductosEnSucursal(Long sucursalId, InventarioOwnerType requestedOwnerType);
     List<InventarioSucursalResponseDTO> getProducto(Long productId, InventarioOwnerType requestedOwnerType);
     InventarioSucursalResponseDTO create(InventarioSucursalRequestDTO dto);
-    void disminuirStock(Long productId, int cantidad, InventarioOwnerType requestedOwnerType);
-    void aumentarStock(Long productId, int cantidad, InventarioOwnerType requestedOwnerType);
+    void disminuirStock(Long productId, BigDecimal cantidad, InventarioOwnerType requestedOwnerType);
+    void aumentarStock(Long productId, BigDecimal cantidad, InventarioOwnerType requestedOwnerType);
     Page<InventarioAlertasDTO> obtenerAlertasStock(InventarioAlertaFiltroDTO filtro, Pageable pageable);
     List<InventarioSucursalResponseDTO> getByBusinessType(Long businessTypeId);
     List<InventarioSucursalResponseDTO> findByBranchAndBusinessType();

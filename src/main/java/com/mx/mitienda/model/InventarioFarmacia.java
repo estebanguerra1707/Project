@@ -1,10 +1,8 @@
 package com.mx.mitienda.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -23,5 +21,6 @@ public class InventarioFarmacia {
 
     private LocalDate fechaCaducidad;
 
-    private Integer cantidad;
+    @Column(precision = 18, scale = 3, nullable = false)
+    private BigDecimal cantidad;
 }

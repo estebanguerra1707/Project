@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 @Data
 public class DetalleCompraRequestDTO {
     private Long productId;
-    private Integer quantity;
+    private BigDecimal quantity;
     private InventarioOwnerType ownerType;
 }
 

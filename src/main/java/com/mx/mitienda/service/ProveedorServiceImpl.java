@@ -14,6 +14,7 @@ import com.mx.mitienda.repository.ProveedorRepository;
 import com.mx.mitienda.repository.ProveedorSucursalRepository;
 import com.mx.mitienda.repository.SucursalRepository;
 import com.mx.mitienda.repository.UsuarioRepository;
+import com.mx.mitienda.service.base.BaseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
@@ -26,8 +27,7 @@ import java.util.stream.Stream;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
-public class ProveedorServiceImpl implements IProveedorService{
+public class ProveedorServiceImpl extends BaseService implements IProveedorService{
 
 
     private final ProveedorRepository proveedorRepository;
@@ -36,6 +36,16 @@ public class ProveedorServiceImpl implements IProveedorService{
     private final SucursalRepository sucursalRepository;
     private final IProveedorSucursalService proveedorSucursalService;
     private final AuthenticatedUserServiceImpl authenticatedUserService;
+
+    public ProveedorServiceImpl(ProveedorRepository proveedorRepository, ProveedorMapper proveedorMapper, ProveedorSucursalRepository proveedorSucursalRepository, SucursalRepository sucursalRepository, IProveedorSucursalService proveedorSucursalService, AuthenticatedUserServiceImpl authenticatedUserService) {
+        super(authenticatedUserService);
+        this.proveedorRepository = proveedorRepository;
+        this.proveedorMapper = proveedorMapper;
+        this.proveedorSucursalRepository = proveedorSucursalRepository;
+        this.sucursalRepository = sucursalRepository;
+        this.proveedorSucursalService = proveedorSucursalService;
+        this.authenticatedUserService = authenticatedUserService;
+    }
 
     @Transactional(readOnly = true)
     @Override
@@ -77,14 +87,25 @@ public class ProveedorServiceImpl implements IProveedorService{
     @Transactional(readOnly = true)
     @Override
     public List<ProveedorResponseDTO> getByBusinessType(Long businessTypeId) {
-        List<Proveedor> proveedores =
-                proveedorRepository.findByBusinessTypeId(businessTypeId);
-        if (proveedores.isEmpty()) {
-            return List.of();
+
+        List<Proveedor> proveedores;
+
+        if (authenticatedUserService.isSuperAdmin()) {
+            proveedores = proveedorRepository.findByBusinessTypeId(businessTypeId);
+        } else {
+            Long branchId = authenticatedUserService.getCurrentBranchId();
+            if (branchId == null) {
+                throw new ForbiddenException("Sucursal no determinada");
+            }
+            proveedores = proveedorRepository.findBySucursalIdAndBusinessTypeId(branchId, businessTypeId);
         }
+
+        if (proveedores.isEmpty()) return List.of();
+
         List<Long> proveedorIds = proveedores.stream()
                 .map(Proveedor::getId)
                 .toList();
+
         List<ProveedorSucursal> relaciones =
                 proveedorSucursalRepository.findByProveedorIdIn(proveedorIds);
 
@@ -94,12 +115,21 @@ public class ProveedorServiceImpl implements IProveedorService{
                             .filter(ps -> ps.getProveedor().getId().equals(proveedor.getId()))
                             .toList();
 
+                    // ADMIN: por consistencia, deja SOLO su sucursal en relaciones
+                    if (!authenticatedUserService.isSuperAdmin()) {
+                        Long branchId = authenticatedUserService.getCurrentBranchId();
+                        relsProveedor = relsProveedor.stream()
+                                .filter(ps -> ps.getSucursal().getId().equals(branchId))
+                                .toList();
+                    }
+
                     return proveedorMapper.toResponse(proveedor, relsProveedor);
                 })
                 .toList();
     }
-    @Override
+
     @Transactional(readOnly = true)
+    @Override
     public ProveedorResponseDTO getById(Long idProveedor) {
 
         // 1️⃣ Proveedor base
@@ -140,16 +170,42 @@ public class ProveedorServiceImpl implements IProveedorService{
     @Override
     public ProveedorResponseDTO save(ProveedorDTO dto) {
 
-        // 1) Si ya existe ACTIVO => duplicado
-        proveedorRepository
-                .findByEmailAndNameAndActiveTrue(dto.getEmail(), dto.getName())
-                .ifPresent(p -> { throw new DuplicateProveedorException("Proveedor ya existe"); });
+        UserContext ctx = ctx();
+        boolean isSuper = ctx.isSuperAdmin();
 
         if (dto.getBranchIds() == null || dto.getBranchIds().isEmpty()) {
             throw new IllegalArgumentException("El proveedor debe tener al menos una sucursal");
         }
 
-        // 2) Si existe INACTIVO => reactivar y actualizar
+        // ✅ VALIDACIÓN DUPLICADO SEGÚN ROL
+        if (isSuper) {
+            // SUPER_ADMIN: global (igual que ya lo tienes)
+            proveedorRepository
+                    .findByEmailAndNameAndActiveTrue(dto.getEmail(), dto.getName())
+                    .ifPresent(p -> { throw new DuplicateProveedorException("Proveedor ya existe"); });
+
+        } else {
+            // ADMIN: solo valida dentro de su sucursal
+            Long branchId = ctx.getBranchId();
+            if (branchId == null) {
+                throw new IllegalStateException("El usuario ADMIN debe tener sucursal asignada");
+            }
+
+            // (Recomendado) evita que ADMIN intente asociar proveedores a otras sucursales
+            if (dto.getBranchIds().size() != 1 || !dto.getBranchIds().contains(branchId)) {
+                throw new IllegalArgumentException("Solo puedes registrar el proveedor en tu sucursal");
+            }
+
+            boolean existsInMyBranch = proveedorRepository.existsActiveByBranchAndEmailAndName(
+                    branchId,
+                    dto.getEmail(),
+                    dto.getName()
+            );
+
+            if (existsInMyBranch) {
+                throw new DuplicateProveedorException("Proveedor ya existe en tu sucursal");
+            }
+        }
         Proveedor proveedor = proveedorRepository
                 .findByEmailAndName(dto.getEmail(), dto.getName())
                 .filter(p -> !p.getActive())
@@ -158,7 +214,6 @@ public class ProveedorServiceImpl implements IProveedorService{
         Proveedor saved;
 
         if (proveedor != null) {
-            // Reactivar + actualizar datos
             proveedor.setActive(true);
             proveedor.setName(dto.getName());
             proveedor.setEmail(dto.getEmail());
@@ -166,18 +221,15 @@ public class ProveedorServiceImpl implements IProveedorService{
 
             saved = proveedorRepository.save(proveedor);
 
-            // Asegurar relaciones con sucursales (sin duplicar)
             for (Long branchId : dto.getBranchIds()) {
                 Sucursal sucursal = sucursalRepository
                         .findByIdAndActiveTrue(branchId)
                         .orElseThrow(() -> new NotFoundException("Sucursal no encontrada"));
 
-                // Reutiliza tu helper para no duplicar ProveedorSucursal
                 asociarProveedorASucursalSiNoExiste(saved, sucursal);
             }
 
         } else {
-            // 3) No existe => crear normal
             Proveedor nuevo = proveedorMapper.toEntity(dto);
             saved = proveedorRepository.save(nuevo);
 
@@ -193,7 +245,6 @@ public class ProveedorServiceImpl implements IProveedorService{
             }
         }
 
-        // 4) Respuesta con relaciones actuales
         List<ProveedorSucursal> relaciones =
                 proveedorSucursalRepository.findByProveedorId(saved.getId());
 
@@ -208,6 +259,16 @@ public class ProveedorServiceImpl implements IProveedorService{
                 .findById(id)
                 .orElseThrow(() -> new NotFoundException("Proveedor no encontrado"));
 
+        if (!authenticatedUserService.isSuperAdmin()) {
+            Long branchId = authenticatedUserService.getCurrentBranchId();
+            if (branchId == null) throw new ForbiddenException("Sucursal no determinada");
+
+            boolean asociado = proveedorSucursalRepository.existsByProveedorIdAndSucursalId(proveedor.getId(), branchId);
+            if (!asociado) {
+                throw new ForbiddenException("No puedes actualizar un proveedor de otra sucursal");
+            }
+        }
+
         if (!proveedor.getActive()) {
             proveedor.setActive(true);
         }
@@ -216,11 +277,30 @@ public class ProveedorServiceImpl implements IProveedorService{
         String newEmail = dto.getEmail() != null ? dto.getEmail() : proveedor.getEmail();
 
         if (newName != null && newEmail != null) {
-            proveedorRepository
-                    .findByEmailAndNameAndIdNotAndActiveTrue(newEmail, newName, id)
-                    .ifPresent(p -> {
-                        throw new DuplicateProveedorException("Proveedor ya existe");
-                    });
+
+            if (authenticatedUserService.isSuperAdmin()) {
+                // SUPER_ADMIN: duplicado global
+                proveedorRepository
+                        .findByEmailAndNameAndIdNotAndActiveTrue(newEmail, newName, id)
+                        .ifPresent(p -> { throw new DuplicateProveedorException("Proveedor ya existe"); });
+
+            } else {
+                // ADMIN: duplicado SOLO dentro de su sucursal
+                Long branchId = authenticatedUserService.getCurrentBranchId();
+                if (branchId == null) throw new ForbiddenException("Sucursal no determinada");
+
+                List<Long> ids = proveedorRepository.findActiveProveedorIdsByBranchAndEmailAndName(
+                        branchId,
+                        newEmail,
+                        newName
+                );
+
+                // Si existe un proveedor distinto al que estoy editando -> duplicado
+                boolean existeOtro = ids.stream().anyMatch(pid -> !pid.equals(proveedor.getId()));
+                if (existeOtro) {
+                    throw new DuplicateProveedorException("Proveedor ya existe en tu sucursal");
+                }
+            }
         }
 
         if (dto.getName() != null) proveedor.setName(dto.getName());
@@ -270,7 +350,19 @@ public class ProveedorServiceImpl implements IProveedorService{
     @Transactional
     @Override
     public void disable(Long id) {
-        Proveedor proveedor = proveedorRepository.findByIdAndActiveTrue(id).orElseThrow(()-> new NotFoundException("Proveedor con Id no encontrado"));
+        Proveedor proveedor = proveedorRepository.findByIdAndActiveTrue(id)
+                .orElseThrow(() -> new NotFoundException("Proveedor con Id no encontrado"));
+
+        if (!authenticatedUserService.isSuperAdmin()) {
+            Long branchId = authenticatedUserService.getCurrentBranchId();
+            if (branchId == null) throw new ForbiddenException("Sucursal no determinada");
+
+            boolean asociado = proveedorSucursalRepository.existsByProveedorIdAndSucursalId(proveedor.getId(), branchId);
+            if (!asociado) {
+                throw new ForbiddenException("No puedes desactivar un proveedor de otra sucursal");
+            }
+        }
+
         proveedor.setActive(false);
         proveedorRepository.save(proveedor);
     }

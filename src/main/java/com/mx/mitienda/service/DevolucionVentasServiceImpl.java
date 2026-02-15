@@ -99,21 +99,24 @@ public class DevolucionVentasServiceImpl extends BaseService implements IDevoluc
                 .orElseThrow(()-> new RuntimeException("La sucursal no ha sido encontrada"));
 
         //validar la cantidad devuelta
-        int cantidadVendida = detalleVenta.getQuantity();
-        int cantidadDevuelta = Optional.ofNullable(
-                detalleDevolucionVentasRepository.sumCantidadDevueltaPorVentaYProducto(venta.getId(), producto.getId())
-        ).orElse(0);
-        int cantidadRestante = cantidadVendida - cantidadDevuelta;
+        BigDecimal cantidadVendida = detalleVenta.getQuantity(); // BigDecimal
+        BigDecimal cantidadDevueltaAcum = Optional.ofNullable(
+                detalleDevolucionVentasRepository.sumCantidadDevueltaPorVentaYProducto(
+                        venta.getId(), producto.getId()
+                )
+        ).orElse(BigDecimal.ZERO);
 
-        if(devolucionVentasRequestDTO.getCantidad() > cantidadRestante){
+        BigDecimal cantidadRestante = cantidadVendida.subtract(cantidadDevueltaAcum);
+        BigDecimal cantidadSolicitada = devolucionVentasRequestDTO.getCantidad(); // BigDecimal
+
+        if (cantidadSolicitada == null || cantidadSolicitada.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("La cantidad a devolver debe ser mayor a 0");
+        }
+
+        if (cantidadSolicitada.compareTo(cantidadRestante) > 0) {
             throw new IllegalArgumentException("No puedes devolver más de lo vendido");
         }
 
-        int cantidadSolicitada = devolucionVentasRequestDTO.getCantidad();
-
-        if (cantidadSolicitada > cantidadRestante) {
-            throw new IllegalArgumentException("No puedes devolver más de lo vendido");
-        }
 
 // CREAR DEVOLUCIÓN
         DevolucionVentas devolucionVentas = new DevolucionVentas();
@@ -122,9 +125,11 @@ public class DevolucionVentasServiceImpl extends BaseService implements IDevoluc
         devolucionVentas.setUsuario(usuario);
         devolucionVentas.setMotivo(devolucionVentasRequestDTO.getMotivo());
         devolucionVentas.setFechaDevolucion(LocalDateTime.now());
-        devolucionVentas.setTipoDevolucion(
-                cantidadDevuelta + cantidadSolicitada == cantidadVendida ? TOTAL : PARCIAL
-        );
+
+        BigDecimal totalDevuelto = cantidadDevueltaAcum.add(cantidadSolicitada);
+
+        boolean esTotal = totalDevuelto.compareTo(cantidadVendida) >= 0;
+        devolucionVentas.setTipoDevolucion(esTotal ? TOTAL : PARCIAL);
 
 // DETALLE
         DetalleDevolucionVentas detalleDevolucionVentas = new DetalleDevolucionVentas();
@@ -135,8 +140,7 @@ public class DevolucionVentasServiceImpl extends BaseService implements IDevoluc
         detalleDevolucionVentas.setDevolucion(devolucionVentas);
 
 // monto devuelto
-        BigDecimal montoDevuelto = detalleVenta.getUnitPrice()
-                .multiply(BigDecimal.valueOf(cantidadSolicitada));
+        BigDecimal montoDevuelto = detalleVenta.getUnitPrice().multiply(cantidadSolicitada);
         devolucionVentas.setMontoDevuelto(montoDevuelto);
 
         devolucionVentas.setDetalles(List.of(detalleDevolucionVentas));
@@ -146,8 +150,8 @@ public class DevolucionVentasServiceImpl extends BaseService implements IDevoluc
         InventarioSucursal inventarioSucursal =
                 obtenerInventario(producto, sucursal, detalleVenta);
 
-        int stockAnterior = inventarioSucursal.getStock();
-        int stockNuevo = stockAnterior + cantidadSolicitada;
+        BigDecimal stockAnterior = inventarioSucursal.getStock(); // BigDecimal
+        BigDecimal stockNuevo = stockAnterior.add(cantidadSolicitada);
 
         inventarioSucursal.setStock(stockNuevo);
         inventarioSucursalRepository.save(inventarioSucursal);

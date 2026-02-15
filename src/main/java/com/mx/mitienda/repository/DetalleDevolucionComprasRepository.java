@@ -29,6 +29,6 @@ public interface DetalleDevolucionComprasRepository extends JpaRepository<Detall
         WHERE ddc.detalleCompra.compra.id = :compraId
           AND ddc.detalleCompra.product.id = :productoId
     """)
-    Integer sumCantidadDevueltaPorCompraYProducto(@Param("compraId") Long compraId,
+    BigDecimal sumCantidadDevueltaPorCompraYProducto(@Param("compraId") Long compraId,
                                                   @Param("productoId") Long productoId);
 }

@@ -51,7 +51,7 @@ class DevolucionVentasServiceImplTest {
         req = new DevolucionVentasRequestDTO();
         req.setVentaId(10L);
         req.setCodigoBarras("COD123");
-        req.setCantidad(2);
+        req.setCantidad(BigDecimal.valueOf(2));
         req.setMotivo("Prueba");
 
         usuario = new Usuario();
@@ -63,7 +63,7 @@ class DevolucionVentasServiceImplTest {
 
         detalleVenta = new DetalleVenta();
         detalleVenta.setProduct(producto);
-        detalleVenta.setQuantity(5);
+        detalleVenta.setQuantity(BigDecimal.valueOf(5));
         detalleVenta.setUnitPrice(new BigDecimal("20.00"));
 
         venta = new Venta();
@@ -71,7 +71,7 @@ class DevolucionVentasServiceImplTest {
         venta.setDetailsList(java.util.List.of(detalleVenta));
 
         inventario = new InventarioSucursal();
-        inventario.setStock(20);
+        inventario.setStock(BigDecimal.valueOf(20));
         inventario.setProduct(producto);
     }
 
@@ -150,9 +150,9 @@ class DevolucionVentasServiceImplTest {
                 .thenReturn(Optional.of(producto));
 
         when(detalleDevolucionRepo.sumCantidadDevueltaPorVentaYProducto(10L, 5L))
-                .thenReturn(4);
+                .thenReturn(BigDecimal.valueOf(4));
 
-        req.setCantidad(3);
+        req.setCantidad(BigDecimal.valueOf(3));
 
         assertThrows(IllegalArgumentException.class, () -> service.procesarDevolucion(req));
     }
@@ -171,7 +171,7 @@ class DevolucionVentasServiceImplTest {
                 .thenReturn(Optional.of(producto));
 
         when(detalleDevolucionRepo.sumCantidadDevueltaPorVentaYProducto(10L, 5L))
-                .thenReturn(1);
+                .thenReturn(BigDecimal.ONE);
 
         when(inventarioRepo.findByProduct_IdAndBranch_Id(5L, 1L))
                 .thenReturn(List.of(inventario));
@@ -204,9 +204,9 @@ class DevolucionVentasServiceImplTest {
                 .thenReturn(Optional.of(producto));
 
         when(detalleDevolucionRepo.sumCantidadDevueltaPorVentaYProducto(10L, 5L))
-                .thenReturn(3);
+                .thenReturn(BigDecimal.valueOf(3));
 
-        req.setCantidad(2);
+        req.setCantidad(BigDecimal.valueOf(2));
 
         when(inventarioRepo.findByProduct_IdAndBranch_Id(5L, 1L))
                 .thenReturn(List.of(inventario));

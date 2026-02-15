@@ -94,7 +94,7 @@
         <tbody>
         <tr th:each="detalle : ${venta.details}">
             <td th:text="${detalle.productName}"></td>
-            <td th:text="${detalle.quantity}"></td>
+            <td th:text="${detalle.quantity} + (detalle.unitAbbr != null ? ' ' + detalle.unitAbbr : (detalle.unitName != null ? ' ' + detalle.unitName : ''))"></td>
             <td th:text="${#numbers.formatDecimal(detalle.unitPrice, 1, 'POINT', 2, 'POINT')}"></td>
             <td th:text="${#numbers.formatDecimal(detalle.subTotal, 1, 'POINT', 2, 'POINT')}"></td>
         </tr>

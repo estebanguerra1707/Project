@@ -16,9 +16,13 @@ public class DetalleVentaResponseDTO {
     private Long businessTypeId;
     private String businessTypeName;
     private String codigoBarras;
-    private Integer quantity;
+    private BigDecimal quantity;
     private BigDecimal unitPrice;
     private BigDecimal subTotal;
+    private Long unitId;
+    private String unitAbbr;
+    private String unitName;
+    private Boolean permiteDecimales;
     private InventarioOwnerType inventarioOwnerType;
     private Boolean usaInventarioPorDuenio;
 }

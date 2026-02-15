@@ -15,9 +15,13 @@ public class DetalleCompraResponseDTO {
     private String codigoBarras;
     private String sku;
     private String productName;
-    private Integer quantity;
+    private BigDecimal quantity;
     private BigDecimal unitPrice;
     private BigDecimal subTotal;
+    private Long unitId;
+    private String unitAbbr;
+    private String unitName;
+    private Boolean permiteDecimales;
     private InventarioOwnerType inventarioOwnerType;
     private Boolean usaInventarioPorDuenio;
 }

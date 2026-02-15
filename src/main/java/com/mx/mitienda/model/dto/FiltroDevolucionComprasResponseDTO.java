@@ -19,7 +19,7 @@ public class FiltroDevolucionComprasResponseDTO {
 
         private String productName;
         private String codigoBarras;
-        private Integer cantidadDevuelta;
+        private BigDecimal cantidadDevuelta;
 
         private String username;
         private String branchName;

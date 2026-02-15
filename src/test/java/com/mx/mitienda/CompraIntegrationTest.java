@@ -38,7 +38,7 @@ public class CompraIntegrationTest {
 
         DetalleCompraRequestDTO detalle = new DetalleCompraRequestDTO();
         detalle.setProductId(1L);
-        detalle.setQuantity(5);
+        detalle.setQuantity(BigDecimal.valueOf(5));
         request.setDetails(List.of(detalle));
 
         // Ejecutar el servicio

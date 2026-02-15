@@ -11,9 +11,11 @@ import java.time.LocalDateTime;
 
 public class CompraSpecification {
 
-    public static Specification<Compra> active(Boolean active){
-        if(active == null) return null;
-        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("active"), active);
+    public static Specification<Compra> active(Boolean active) {
+        return (root, query, cb) -> {
+            if (active == null) return null;
+            return active ? cb.isTrue(root.get("active")) : cb.isFalse(root.get("active"));
+        };
     }
 
     public static Specification<Compra> supplier(Long supplierId){
@@ -113,6 +115,24 @@ public class CompraSpecification {
 
             // Queremos compras donde NO exista un producto inactivo
             return cb.not(cb.exists(sub));
+        };
+    }
+    public static Specification<Compra> byBranch(Long branchId) {
+        return (root, query, cb) -> {
+            if (branchId == null) return cb.conjunction();
+            return cb.equal(root.get("branch").get("id"), branchId);
+        };
+    }
+    public static Specification<Compra> byUsername(String email) {
+        return (root, query, cb) -> {
+            if (email == null || email.isBlank()) return null;
+            return cb.equal(cb.lower(root.get("usuario").get("email")), email.trim().toLowerCase());
+        };
+    }
+    public static Specification<Compra> byUserRoles(String... roles) {
+        return (root, query, cb) -> {
+            if (roles == null || roles.length == 0) return null;
+            return root.get("usuario").get("role").in((Object[]) roles);
         };
     }
 }
