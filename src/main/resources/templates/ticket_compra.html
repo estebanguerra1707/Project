@@ -133,10 +133,11 @@
 
                 <!-- ✅ Cantidad bonita: "2 pz" / "0.50 kg" / "1.2 m" -->
                 <td class="qty"
-                    th:text="${detalle.quantity} +
-                      (detalle.unitAbbr != null ? ' ' + detalle.unitAbbr
-                      : (detalle.unitName != null ? ' ' + detalle.unitName : ''))">
-                </td>
+                    th:text="${#numbers.formatDecimal(detalle.quantity, 1, 'POINT',
+                              (detalle.permiteDecimales ? 2 : 0), 'POINT')
+                      + (detalle.unitAbbr != null ? ' ' + detalle.unitAbbr
+                      : (detalle.unitName != null ? ' ' + detalle.unitName : ''))}">
+                                </td>
 
                 <td class="money"
                     th:text="${#numbers.formatDecimal(detalle.unitPrice, 1, 'POINT', 2, 'POINT')}">
