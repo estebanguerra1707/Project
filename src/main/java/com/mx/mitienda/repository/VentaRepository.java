@@ -129,6 +129,7 @@ left join fetch p.businessType
 where v.id = :id and v.active = true
 """)
     Optional<Venta> findByIdFull(@Param("id") Long id);
+
     @Query("""
 select v
 from Venta v

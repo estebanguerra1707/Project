@@ -94,7 +94,7 @@
         <tbody>
         <tr th:each="detalle : ${venta.details}">
             <td th:text="${detalle.productName}"></td>
-            <td th:text="${detalle.quantity} + (detalle.unitAbbr != null ? ' ' + detalle.unitAbbr : (detalle.unitName != null ? ' ' + detalle.unitName : ''))"></td>
+            <td th:text="${detalle.quantity} + ' ' + (${#strings.isEmpty(detalle.unitAbbr)} ? (${#strings.isEmpty(detalle.unitName)} ? '' : detalle.unitName) : detalle.unitAbbr)"></td>
             <td th:text="${#numbers.formatDecimal(detalle.unitPrice, 1, 'POINT', 2, 'POINT')}"></td>
             <td th:text="${#numbers.formatDecimal(detalle.subTotal, 1, 'POINT', 2, 'POINT')}"></td>
         </tr>
@@ -113,10 +113,11 @@
 
         <p th:if="${venta.amountPaid != null and venta.amountPaid > 0}">
             <span class="highlight">Recibido:</span>
-            <span th:text="${venta.amountPaid}"></span>
+            <span th:text="${#numbers.formatDecimal(venta.amountPaid, 1, 'POINT', 2, 'POINT')}"></span>
         </p>
 
-        <p><span class="highlight">Cambio:</span> <span th:text="${venta.changeAmount}"></span></p>
+        <p><span class="highlight">Cambio:</span>
+            <span th:text="${#numbers.formatDecimal(venta.changeAmount, 1, 'POINT', 2, 'POINT')}"></span>
     </div>
 
     <div class="line"></div>

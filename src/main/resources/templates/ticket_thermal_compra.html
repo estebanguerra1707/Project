@@ -53,7 +53,7 @@
             <td class="center" th:text="${detalle.quantity}"></td>
 
             <td class="center"
-                th:text="${#strings.isEmpty(detalle.unitAbbr) ? '—' : detalle.unitAbbr}"
+                th:text="${(detalle.unitAbbr != null and !#strings.isEmpty(detalle.unitAbbr)) ? detalle.unitAbbr : '—'}"
                 th:title="${detalle.unitName}">
             </td>
 

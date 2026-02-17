@@ -131,9 +131,9 @@
             <tr th:each="detalle : ${venta.details}">
                 <td class="product" th:text="${detalle.productName}"></td>
 
-                <!-- ✅ Cantidad con unidad: "2 pz" / "0.50 kg" / "1.2 m" -->
                 <td class="qty"
-                    th:text="${detalle.quantity} +
+                    th:text="${#numbers.formatDecimal(detalle.quantity, 1, 'POINT',
+                      (detalle.permiteDecimales ? 2 : 0), 'POINT')} +
                       (detalle.unitAbbr != null ? ' ' + detalle.unitAbbr
                       : (detalle.unitName != null ? ' ' + detalle.unitName : ''))">
                 </td>

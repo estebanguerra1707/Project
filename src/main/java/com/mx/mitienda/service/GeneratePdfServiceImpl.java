@@ -54,7 +54,7 @@ public class GeneratePdfServiceImpl implements IGeneratePdfService {
 
         switch (type.toLowerCase()) {
             case VENTA_CODE:
-                Venta venta = ventaRepository.findByIdWithDetails(id)
+                Venta venta = ventaRepository.findByIdFull(id)
                         .orElseThrow(() -> new NotFoundException("Venta no encontrada"));
                 VentaResponseDTO ventaResponseDTO = ventasMapper.toResponse(venta);
                 context.setVariable("branch", venta.getBranch());
