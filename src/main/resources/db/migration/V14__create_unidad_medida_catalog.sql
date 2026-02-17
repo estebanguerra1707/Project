@@ -79,7 +79,7 @@ BEGIN
     VALUES
       ('PIEZA', 'PIEZA', 'Pieza', 'pz', false, true),
       ('KG', 'KG', 'Kilogramo', 'kg', true, true),
-      ('LITRO', 'LITRO', 'Litro', 'L', true, true)
+      ('LITRO', 'LITRO', 'Litro', 'L', true, true),
       ('METRO', 'METRO', 'Metro', 'm', true, true)
     ON CONFLICT (unidad) DO NOTHING;
   ELSE
@@ -88,7 +88,7 @@ BEGIN
     VALUES
       ('PIEZA', 'Pieza', 'pz', false, true),
       ('KG', 'Kilogramo', 'kg', true, true),
-      ('LITRO', 'Litro', 'L', true, true)
+      ('LITRO', 'Litro', 'L', true, true),
       ('METRO', 'METRO', 'Metro', 'm', true, true)
     ON CONFLICT (codigo) DO NOTHING;
   END IF;

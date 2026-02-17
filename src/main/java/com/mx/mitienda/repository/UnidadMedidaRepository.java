@@ -8,4 +8,6 @@ import java.util.Optional;
 
 public interface UnidadMedidaRepository extends JpaRepository<UnidadMedidaEntity, Long> {
     Optional<UnidadMedidaEntity> findByIdAndActiveTrue(Long id);
+    Optional<UnidadMedidaEntity> findByCodigoIgnoreCaseAndActiveTrue(String codigo);
+
 }

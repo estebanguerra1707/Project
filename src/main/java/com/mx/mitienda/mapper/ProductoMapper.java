@@ -68,11 +68,17 @@ public class ProductoMapper {
         producto.setUpdatedAt(LocalDateTime.now());
         producto.setBranch(sucursal);
         producto.setBusinessType(businessType);
-        UnidadMedidaEntity um = unidadMedidaRepository.findByIdAndActiveTrue(productoDTO.getUnidadMedidaId())
+        String unidadCodigo = productoDTO.getUnidadMedidaCodigo();
+        if (unidadCodigo == null || unidadCodigo.isBlank()) {
+            throw new IllegalArgumentException("La unidad de medida es obligatoria.");
+        }
+        unidadCodigo = unidadCodigo.trim();
+
+        UnidadMedidaEntity um = unidadMedidaRepository
+                .findByCodigoIgnoreCaseAndActiveTrue(unidadCodigo)
                 .orElseThrow(() -> new NotFoundException("Unidad de medida no encontrada"));
         producto.setUnidadMedida(um);
 
-// opcional: sincroniza permiteDecimales automáticamente
         producto.setPermiteDecimales(um.isPermiteDecimales());
         producto.setCodigoBarras(productoDTO.getCodigoBarras());
         return producto;
@@ -176,8 +182,11 @@ public class ProductoMapper {
                 existing.setBranch(sucursal);
             }
 
-            if (dto.getUnidadMedidaId() != null) {
-                UnidadMedidaEntity um = unidadMedidaRepository.findByIdAndActiveTrue(dto.getUnidadMedidaId())
+            if (dto.getUnidadMedidaCodigo() != null && !dto.getUnidadMedidaCodigo().isBlank()) {
+                String unidadCodigo = dto.getUnidadMedidaCodigo().trim();
+
+                UnidadMedidaEntity um = unidadMedidaRepository
+                        .findByCodigoIgnoreCaseAndActiveTrue(unidadCodigo)
                         .orElseThrow(() -> new NotFoundException("Unidad de medida no encontrada"));
 
                 existing.setUnidadMedida(um);
@@ -208,7 +217,7 @@ public class ProductoMapper {
         if (productoDTO.getCodigoBarras() == null || productoDTO.getCodigoBarras().isBlank()) {
             throw new IllegalArgumentException("El código de barras es obligatorio.");
         }
-        if (productoDTO.getUnidadMedidaId() == null) {
+        if (productoDTO.getUnidadMedidaCodigo() == null) {
             throw new IllegalArgumentException("La unidad de medida es obligatoria.");
         }
     }

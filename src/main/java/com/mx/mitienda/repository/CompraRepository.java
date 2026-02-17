@@ -29,10 +29,12 @@ WHERE (:#{#spec} IS NULL OR :#{#spec} = :#{#spec})
 """)
     List<Compra> findAllWithDetails(Specification<Compra> spec, Sort sort);    List<Compra> findByUsuario_UsernameAndActiveTrue(String username);
     Optional<Compra> findById(Long id);
+
     @Query("""
     SELECT c FROM Compra c
     LEFT JOIN FETCH c.details d
-    LEFT JOIN FETCH d.product
+    LEFT JOIN FETCH d.product p
+    LEFT JOIN FETCH p.unidadMedida um
     LEFT JOIN FETCH c.branch
     WHERE c.id = :id AND c.active = true
 """)

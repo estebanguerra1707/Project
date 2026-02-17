@@ -63,7 +63,7 @@ public class GeneratePdfServiceImpl implements IGeneratePdfService {
                 break;
 
             case COMPRA_CODE:
-                Compra compra = compraRepository.findByIdWithDetails(id)
+                Compra compra = compraRepository.findByIdFull(id)
                         .orElseThrow(() -> new NotFoundException("Compra no encontrada"));
                 CompraResponseDTO compraResponseDTO = compraMapper.toResponse(compra);
                 context.setVariable("branch", compra.getBranch());

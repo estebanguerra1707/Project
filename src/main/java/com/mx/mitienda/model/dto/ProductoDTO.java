@@ -17,6 +17,6 @@ public class ProductoDTO {
     private Long providerId;
     private LocalDateTime updatedDate;
     private String codigoBarras;
-    private Long unidadMedidaId;
+    private String unidadMedidaCodigo;
     private Long branchId;
 }

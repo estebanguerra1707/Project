@@ -158,24 +158,27 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
             throw new BadRequestException("La categoría no pertenece al tipo de negocio de la sucursal");
         }
 
-        String sku = productoDTO.getSku();
-        String barcode = productoDTO.getCodigoBarras();
+        String sku = productoDTO.getSku() != null ? productoDTO.getSku().trim() : null;
+        String barcode = productoDTO.getCodigoBarras() != null ? productoDTO.getCodigoBarras().trim() : null;
+        String name = productoDTO.getName() != null ? productoDTO.getName().trim() : null;
 
         boolean hasSku = sku != null && !sku.isBlank();
         boolean hasBarcode = barcode != null && !barcode.isBlank();
 
-        // 1) Buscar por SKU y BARCODE sin importar active (para detectar conflictos)
         Optional<Producto> bySku = Optional.empty();
         Optional<Producto> byBarcode = Optional.empty();
 
         if (hasSku) {
             bySku = productoRepository.findBySkuAndBranch_IdAndProductCategory_BusinessType_Id(
-                    sku, branchIdEfectivo, businessTypeId);        }
+                    sku, branchIdEfectivo, businessTypeId
+            );
+        }
         if (hasBarcode) {
             byBarcode = productoRepository.findByCodigoBarrasAndBranch_IdAndProductCategory_BusinessType_Id(
-                    barcode, branchIdEfectivo, businessTypeId);        }
+                    barcode, branchIdEfectivo, businessTypeId
+            );
+        }
 
-        // 2) Si ambos existen pero son productos distintos => conflicto
         if (bySku.isPresent() && byBarcode.isPresent()
                 && !bySku.get().getId().equals(byBarcode.get().getId())) {
             throw new BadRequestException(
@@ -184,44 +187,55 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
             );
         }
 
-        // 3) Si existe por BARCODE, ese manda (es el mismo producto si bySku también existe)
         if (byBarcode.isPresent()) {
             Producto p = byBarcode.get();
 
             if (Boolean.TRUE.equals(p.getActive())) {
-                throw new IllegalArgumentException("Ya existe un producto activo con este código de barras.");
+                throw new BadRequestException("Ya existe un producto activo con este código de barras.");
             }
+            productoDTO.setSku(sku);
+            productoDTO.setCodigoBarras(barcode);
+            productoDTO.setName(name);
 
-            Producto saved = reactivarProducto(p, productoDTO,sucursal);
-            asegurarInventarioInicial(saved, sucursal, ctx);
-            return productoMapper.toResponse(saved);
-        }
-        // 4) Si no existe por BARCODE pero sí por SKU
-        if (bySku.isPresent()) {
-            Producto p = bySku.get();
-            if (Boolean.TRUE.equals(p.getActive())) {
-                throw new IllegalArgumentException("Ya existe un producto activo con este SKU.");
-            }
             Producto saved = reactivarProducto(p, productoDTO, sucursal);
             asegurarInventarioInicial(saved, sucursal, ctx);
             return productoMapper.toResponse(saved);
         }
 
-        // 5) Validaciones contra activos restantes (nombre)
-        if (productoDTO.getName() != null && !productoDTO.getName().isBlank()
-                && productoRepository.existsByNameIgnoreCaseAndBranch_IdAndProductCategory_BusinessType_IdAndActiveTrue(
-                productoDTO.getName(), branchIdEfectivo, businessTypeId)) {
-            throw new IllegalArgumentException("Ya existe un producto activo con este nombre.");
+        if (bySku.isPresent()) {
+            Producto p = bySku.get();
+
+            if (Boolean.TRUE.equals(p.getActive())) {
+                throw new BadRequestException("Ya existe un producto activo con este SKU.");
+            }
+
+            productoDTO.setSku(sku);
+            productoDTO.setCodigoBarras(barcode);
+            productoDTO.setName(name);
+
+            Producto saved = reactivarProducto(p, productoDTO, sucursal);
+            asegurarInventarioInicial(saved, sucursal, ctx);
+            return productoMapper.toResponse(saved);
         }
 
-        // 6) Crear nuevo
+        if (name != null && !name.isBlank()
+                && productoRepository.existsByNameIgnoreCaseAndBranch_IdAndProductCategory_BusinessType_IdAndActiveTrue(
+                name, branchIdEfectivo, businessTypeId)) {
+            throw new BadRequestException("Ya existe un producto activo con este nombre.");
+        }
+
+        productoDTO.setSku(sku);
+        productoDTO.setCodigoBarras(barcode);
+        productoDTO.setName(name);
+
         Producto entity = productoMapper.toEntity(productoDTO);
         entity.setBranch(sucursal);
-        Producto saved = productoRepository.save(entity);
 
+        Producto saved = productoRepository.save(entity);
         asegurarInventarioInicial(saved, sucursal, ctx);
         return productoMapper.toResponse(saved);
     }
+
     private Producto reactivarProducto(Producto producto, ProductoDTO productoDTO, Sucursal sucursal) {
         productoMapper.toUpdate(productoDTO, producto);
         producto.setBranch(sucursal);
@@ -262,7 +276,6 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
 
     @Transactional
     public ProductoResponseDTO updateProduct(ProductoDTO dto, Long id) {
-
         Producto entity = productoRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Producto no encontrado"));
 
@@ -285,31 +298,40 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
             businessTypeId = entity.getProductCategory().getBusinessType().getId();
         }
 
-        if (dto.getCodigoBarras() != null && !dto.getCodigoBarras().equals(entity.getCodigoBarras())) {
+        String newBarcode = dto.getCodigoBarras() != null ? dto.getCodigoBarras().trim() : null;
+        String newSku = dto.getSku() != null ? dto.getSku().trim() : null;
+        String newName = dto.getName() != null ? dto.getName().trim() : null;
+
+        if (newBarcode != null && !newBarcode.isBlank() && !newBarcode.equals(entity.getCodigoBarras())) {
             if (productoRepository.existsByCodigoBarrasAndBranch_IdAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
-                    dto.getCodigoBarras(), branchIdEfectivo, businessTypeId, id)) {
-                throw new IllegalArgumentException("Ya existe un producto activo con este código de barras.");
+                    newBarcode, branchIdEfectivo, businessTypeId, id)) {
+                throw new BadRequestException("Ya existe un producto activo con este código de barras.");
             }
+            dto.setCodigoBarras(newBarcode);
         }
 
-        if (dto.getSku() != null && !dto.getSku().equals(entity.getSku())) {
+        if (newSku != null && !newSku.isBlank() && !newSku.equals(entity.getSku())) {
             if (productoRepository.existsBySkuAndBranch_IdAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
-                    dto.getSku(), branchIdEfectivo, businessTypeId, id)) {
-                throw new IllegalArgumentException("Ya existe un producto activo con este SKU.");
+                    newSku, branchIdEfectivo, businessTypeId, id)) {
+                throw new BadRequestException("Ya existe un producto activo con este SKU.");
             }
+            dto.setSku(newSku);
         }
 
-        if (dto.getName() != null && !dto.getName().equalsIgnoreCase(entity.getName())) {
+        if (newName != null && !newName.isBlank() && !newName.equalsIgnoreCase(entity.getName())) {
             if (productoRepository.existsByNameIgnoreCaseAndBranch_IdAndProductCategory_BusinessType_IdAndActiveTrueAndIdNot(
-                    dto.getName(), branchIdEfectivo, businessTypeId, id)) {
-                throw new IllegalArgumentException("Ya existe un producto activo con este nombre.");
+                    newName, branchIdEfectivo, businessTypeId, id)) {
+                throw new BadRequestException("Ya existe un producto activo con este nombre.");
             }
+            dto.setName(newName);
         }
+
         if (!ctx.isSuperAdmin() && dto.getBranchId() != null && !dto.getBranchId().equals(ctx.getBranchId())) {
             throw new ForbiddenException("No puedes cambiar la sucursal del producto");
         }
 
         productoMapper.toUpdate(dto, entity);
+
         Producto saved = productoRepository.save(entity);
         return productoMapper.toResponse(saved);
     }
@@ -379,13 +401,20 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
     public ProductoResponseDTO buscarPorCodigoBarras(String codigoBarras) {
         var ctx = ctx();
         Long businessType = ctx.getBusinessTypeId();
+
+
+        String cb = codigoBarras != null ? codigoBarras.trim() : null;
+        if (cb == null || cb.isBlank()) {
+            throw new BadRequestException("Código de barras inválido");
+        }
+
         Producto producto = productoRepository.findByCodigoBarrasAndBusinessTypeId(codigoBarras, businessType)
                 .orElseThrow(() -> new NotFoundException("Producto no encontrado con ese código de barras"));
         return productoMapper.toResponse(producto);
     }
 
     private boolean isSuperAdmin(Usuario u) {
-        return u != null && u.getRole() == Rol.SUPER_ADMIN; // ajusta si tu Rol es String
+        return u != null && u.getRole() == Rol.SUPER_ADMIN;
     }
 
     @Override

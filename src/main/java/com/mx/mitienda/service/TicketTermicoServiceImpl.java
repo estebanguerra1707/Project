@@ -28,7 +28,7 @@ public class TicketTermicoServiceImpl implements TicketTermicoService {
     }
 
     public String buildVentaTicket(Long id) {
-        Venta venta = ventaRepository.findByIdWithDetails(id)
+        Venta venta = ventaRepository.findByIdFull(id)
                 .orElseThrow(() -> new NotFoundException("Venta no encontrada"));
 
         StringBuilder sb = new StringBuilder();
@@ -40,18 +40,18 @@ public class TicketTermicoServiceImpl implements TicketTermicoService {
 
         venta.getDetailsList().forEach(d -> {
             sb.append(d.getProduct().getName()).append("\n");
-            sb.append(String.format(" %2d x $%.2f   %.2f\n",
-                    d.getQuantity(),
-                    d.getUnitPrice(),
-                    d.getSubTotal()));
+            sb.append(String.format(" %s x $%.2f   %.2f\n",
+                    formatQty(d.getQuantity()),
+                    d.getUnitPrice().doubleValue(),
+                    d.getSubTotal().doubleValue()));
         });
 
         sb.append(line()).append("\n");
 
-        sb.append(String.format("TOTAL:        $%.2f\n", venta.getTotalAmount()));
-        sb.append(String.format("Pago:         %s\n", venta.getPaymentMethod().getName()));
-        sb.append(String.format("Recibido:     %.2f\n", venta.getAmountPaid()));
-        sb.append(String.format("Cambio:       %.2f\n", venta.getChangeAmount()));
+        sb.append("TOTAL:        $").append(money(venta.getTotalAmount())).append("\n");
+        sb.append("Pago:         ").append(venta.getPaymentMethod().getName()).append("\n");
+        sb.append("Recibido:     $").append(money(venta.getAmountPaid())).append("\n");
+        sb.append("Cambio:       $").append(money(venta.getChangeAmount())).append("\n");
         sb.append(line()).append("\n");
 
         sb.append(venta.getBranch().getName()).append("\n");
@@ -65,7 +65,7 @@ public class TicketTermicoServiceImpl implements TicketTermicoService {
     }
 
     public String buildCompraTicket(Long id) {
-        Compra compra = compraRepository.findByIdWithDetails(id)
+        Compra compra = compraRepository.findByIdFull(id)
                 .orElseThrow(() -> new NotFoundException("Compra no encontrada"));
 
         StringBuilder sb = new StringBuilder();
@@ -77,18 +77,18 @@ public class TicketTermicoServiceImpl implements TicketTermicoService {
 
         compra.getDetails().forEach(d -> {
             sb.append(d.getProduct().getName()).append("\n");
-            sb.append(String.format(" %2d x $%.2f   %.2f\n",
-                    d.getQuantity(),
-                    d.getUnitPrice(),
-                    d.getSubTotal()));
+            sb.append(" ").append(formatQty(d.getQuantity()))
+                    .append(" x $").append(money(d.getUnitPrice()))
+                    .append("   ").append(money(d.getSubTotal()))
+                    .append("\n");
         });
 
         sb.append(line()).append("\n");
 
-        sb.append(String.format("TOTAL:        $%.2f\n", compra.getTotalAmount()));
-        sb.append(String.format("Pago:         %s\n", compra.getPaymentMethod().getName()));
-        sb.append(String.format("Recibido:     %.2f\n", compra.getAmountPaid()));
-        sb.append(String.format("Cambio:       %.2f\n", compra.getChangeAmount()));
+        sb.append("TOTAL:        $").append(money(compra.getTotalAmount())).append("\n");
+        sb.append("Pago:         ").append(compra.getPaymentMethod().getName()).append("\n");
+        sb.append("Recibido:     $").append(money(compra.getAmountPaid())).append("\n");
+        sb.append("Cambio:       $").append(money(compra.getChangeAmount())).append("\n");
         sb.append(line()).append("\n");
 
         sb.append(compra.getBranch().getName()).append("\n");
@@ -107,5 +107,15 @@ public class TicketTermicoServiceImpl implements TicketTermicoService {
             case "compra" -> buildCompraTicket(id);
             default -> throw new IllegalArgumentException("Tipo de ticket no soportado: " + type);
         };
+    }
+
+    private String formatQty(java.math.BigDecimal qty) {
+        if (qty == null) return "0";
+        return qty.stripTrailingZeros().toPlainString(); // 2, 0.5, 1.25 (bonito)
+    }
+
+    private String money(java.math.BigDecimal v) {
+        if (v == null) return "0.00";
+        return v.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
     }
 }

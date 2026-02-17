@@ -150,4 +150,22 @@ join fetch v.paymentMethod
 where v.active = true and v.branch.id = :branchId
 """)
     List<Venta> findAllActiveHeaderByBranch(@Param("branchId") Long branchId);
+
+    @Query("""
+select distinct v
+from Venta v
+join fetch v.client
+join fetch v.usuario
+join fetch v.branch
+join fetch v.paymentMethod
+left join fetch v.detailsList d
+left join fetch d.product p
+left join fetch p.unidadMedida
+left join fetch p.branch
+left join fetch p.businessType
+where v.id = :id
+  and v.branch.id = :branchId
+  and v.active = true
+""")
+    Optional<Venta> findByIdFullByBranch(@Param("id") Long id, @Param("branchId") Long branchId);
 }
