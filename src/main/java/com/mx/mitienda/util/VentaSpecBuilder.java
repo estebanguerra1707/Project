@@ -71,6 +71,10 @@ public class VentaSpecBuilder {
         builder.and(VentasSpecification.hasUserId(userId));
         return this;
     }
+    public VentaSpecBuilder consolidated(Boolean consolidated) {
+        builder.and(VentasSpecification.isConsolidated(consolidated));
+        return this;
+    }
 
     public Specification<Venta> build() {
         return builder.build();

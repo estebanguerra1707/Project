@@ -26,6 +26,7 @@ import java.time.format.DateTimeFormatter;
 
 import static com.mx.mitienda.util.Utils.COMPRA_CODE;
 import static com.mx.mitienda.util.Utils.VENTA_CODE;
+import com.mx.mitienda.model.dto.VentaConsolidadaResponseDTO;
 
 @Service
 @RequiredArgsConstructor
@@ -91,6 +92,51 @@ public class GeneratePdfServiceImpl implements IGeneratePdfService {
             return baos.toByteArray();
         } catch (Exception e) {
             throw new PdfGenerationException("Error generando PDF: " + type, e);
+        }
+    }
+
+    @Override
+    public byte[] generateVentaConsolidadaPdf(
+            VentaConsolidadaResponseDTO detalle,
+            Sucursal branch,
+            Boolean isPrinted
+    ) {
+        Context context = new Context();
+
+        DateTimeFormatter formatterDateTime =
+                DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+
+        DateTimeFormatter formatterDate =
+                DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        context.setVariable("storeName", "Mi Inventario");
+        context.setVariable("detalle", detalle);
+        context.setVariable("branch", branch);
+        context.setVariable("fechaGeneracion", detalle.getGeneratedAt().format(formatterDateTime));
+        context.setVariable("periodoInicio", detalle.getStartDate().format(formatterDate));
+        context.setVariable("periodoFin", detalle.getEndDate().format(formatterDate));
+
+        String baseUrl;
+        try {
+            baseUrl = Paths.get("src/main/resources/static/").toUri().toURL().toString();
+        } catch (MalformedURLException e) {
+            throw new PdfGenerationException("No se pudo resolver la ruta base para imágenes estáticas", e);
+        }
+
+        String template = Boolean.TRUE.equals(isPrinted)
+                ? "ticket_thermal_venta_consolidada"
+                : "ticket_venta_consolidada";
+
+        String html = templateEngine.process(template, context);
+
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            ITextRenderer renderer = new ITextRenderer();
+            renderer.setDocumentFromString(html, baseUrl);
+            renderer.layout();
+            renderer.createPDF(baos);
+            return baos.toByteArray();
+        } catch (Exception e) {
+            throw new PdfGenerationException("Error generando PDF de venta consolidada", e);
         }
     }
 }

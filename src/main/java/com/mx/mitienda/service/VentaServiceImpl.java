@@ -34,7 +34,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.mx.mitienda.util.Utils.*;
-
+import org.springframework.data.domain.PageImpl;
 
 @Slf4j
 @Service
@@ -194,19 +194,13 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
     @Transactional(readOnly = true)
     public List<VentaResponseDTO> getAll() {
         UserContext ctx = ctx();
-        if (ctx.isSuperAdmin()) {
-            return ventaRepository.findAllActiveHeader()
-                    .stream()
-                    .map(ventaMapper::toResponseHeader)
-                    .toList();
-        } else {
-            return ventaRepository.findAllActiveHeaderByBranch(ctx.getBranchId())
-                    .stream()
-                    .map(ventaMapper::toResponseHeader)
-                    .toList();
-        }
-    }
 
+        List<Venta> ventas = ctx.isSuperAdmin()
+                ? ventaRepository.findAllActiveHeader()
+                : ventaRepository.findAllActiveHeaderByBranch(ctx.getBranchId());
+
+        return construirFilasTablaVentas(ventas);
+    }
     @Override
     @Transactional(readOnly = true)
     public Page<VentaResponseDTO> findByFilter(VentaFiltroDTO filterDTO, int page, int size) {
@@ -218,29 +212,50 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
         boolean isAdmin = ctx.isAdmin();
         boolean isVendor = !isSuper && !isAdmin;
 
+        Boolean consolidatedFilter = filterDTO.getConsolidated();
+
         VentaSpecBuilder builder = new VentaSpecBuilder()
                 .client(filterDTO.getClienteId())
                 .dateBetween(filterDTO.getStartDate(), filterDTO.getEndDate())
                 .totalMajorTo(filterDTO.getMin())
                 .totalMinorTo(filterDTO.getMax())
                 .exactTotal(filterDTO.getTotalAmount())
-                .active(filterDTO.getActive())
+                .active(true)
+                .consolidated(consolidatedFilter)
                 .sellPerDayMonthYear(filterDTO.getDay(), filterDTO.getMonth(), filterDTO.getYear())
                 .sellPerMonthYear(filterDTO.getMonth(), filterDTO.getYear())
                 .byPaymentMethod(filterDTO.getPaymentMethodId())
                 .withId(filterDTO.getId());
         if (isSuper) {
             builder.username(filterDTO.getUsername());
+            builder.userId(filterDTO.getUserId());
+        } else if (isAdmin) {
+            builder.userId(filterDTO.getUserId());
         } else if (isVendor) {
             builder.username(ctx.getEmail());
         }
         Specification<Venta> spec = builder.build();
+
         if (!isSuper) {
             spec = spec.and((root, query, cb) ->
                     cb.equal(root.get("branch").get("id"), ctx.getBranchId()));
         }
-        return ventaRepository.findAll(spec, pageable)
-                .map(ventaMapper::toResponseHeader);
+
+        List<Venta> ventasFiltradas = ventaRepository.findAll(
+                spec,
+                Sort.by("id").descending()
+        );
+
+        List<VentaResponseDTO> filas = construirFilasTablaVentas(ventasFiltradas);
+
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), filas.size());
+
+        List<VentaResponseDTO> pageContent = start >= filas.size()
+                ? List.of()
+                : filas.subList(start, end);
+
+        return new PageImpl<>(pageContent, pageable, filas.size());
     }
     @Override
     @Transactional(readOnly = true)
@@ -439,7 +454,44 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
     }
 
 
+    private List<VentaResponseDTO> construirFilasTablaVentas(List<Venta> ventas) {
+        List<VentaResponseDTO> resultado = new ArrayList<>();
 
+        List<Venta> ventasNormales = ventas.stream()
+                .filter(v -> !Boolean.TRUE.equals(v.getConsolidated()))
+                .toList();
+
+        Map<Long, List<Venta>> ventasConsolidadasPorTicket = ventas.stream()
+                .filter(v -> Boolean.TRUE.equals(v.getConsolidated()))
+                .filter(v -> v.getWeeklyTicketId() != null)
+                .collect(Collectors.groupingBy(
+                        Venta::getWeeklyTicketId,
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+        ventasNormales.stream()
+                .map(ventaMapper::toResponseHeader)
+                .forEach(resultado::add);
+
+        ventasConsolidadasPorTicket.forEach((weeklyTicketId, ventasDelTicket) -> {
+            VentaResponseDTO filaConsolidada =
+                    ventaMapper.toConsolidadaVirtualHeader(weeklyTicketId, ventasDelTicket);
+
+            if (filaConsolidada != null) {
+                resultado.add(filaConsolidada);
+            }
+        });
+
+        resultado.sort(
+                Comparator.comparing(
+                        VentaResponseDTO::getSaleDate,
+                        Comparator.nullsLast(Comparator.reverseOrder())
+                )
+        );
+
+        return resultado;
+    }
     private void generateSaleOutput(Venta venta, Boolean printed, List<String> emailList) {
         byte[] pdfBytes = generatePdfService.generatePdf(VENTA_CODE, venta.getId(), printed != null && printed);
 
@@ -457,5 +509,340 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
         if (printed != null && printed) {
             log.info("Ticket térmico generado para venta {}", venta.getId());
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public VentaConsolidadaResponseDTO generarDetalleConsolidado(VentaConsolidadaRequestDTO request) {
+        List<Venta> ventas = buscarYValidarVentasParaConsolidar(request);
+        return construirDetalleConsolidado(request, ventas);
+    }
+
+    @Override
+    @Transactional
+    public VentaConsolidadaResponseDTO generarVentaConsolidada(VentaConsolidadaRequestDTO request) {
+        List<Venta> ventas = buscarYValidarVentasParaConsolidar(request);
+
+        Long weeklyTicketId = System.currentTimeMillis();
+        LocalDateTime consolidatedAt = LocalDateTime.now();
+
+        ventas.forEach(venta -> {
+            venta.setConsolidated(true);
+            venta.setWeeklyTicketId(weeklyTicketId);
+            venta.setConsolidatedAt(consolidatedAt);
+        });
+
+        ventaRepository.saveAll(ventas);
+
+        VentaConsolidadaResponseDTO detalle = construirDetalleConsolidado(request, ventas);
+
+        detalle.setWeeklyTicketId(weeklyTicketId);
+        detalle.setConsolidatedAt(consolidatedAt);
+
+        return detalle;
+    }
+
+    @Override
+    @Transactional
+    public byte[] generarTicketConsolidadoPdf(VentaConsolidadaRequestDTO request) {
+        List<Venta> ventas = buscarYValidarVentasParaConsolidar(request);
+        VentaConsolidadaResponseDTO detalle = construirDetalleConsolidado(request, ventas);
+        Sucursal branch = ventas.get(0).getBranch();
+
+        byte[] pdf = generatePdfService.generateVentaConsolidadaPdf(detalle, branch, false);
+        Long weeklyTicketId = System.currentTimeMillis();
+        LocalDateTime consolidatedAt = LocalDateTime.now();
+
+        ventas.forEach(venta -> {
+            venta.setConsolidated(true);
+            venta.setWeeklyTicketId(weeklyTicketId);
+            venta.setConsolidatedAt(consolidatedAt);
+        });
+
+        ventaRepository.saveAll(ventas);
+
+        return pdf;
+    }
+    private List<Venta> buscarYValidarVentasParaConsolidar(VentaConsolidadaRequestDTO request) {
+        if (request.getVentaIds() == null || request.getVentaIds().isEmpty()) {
+            throw new IllegalArgumentException("Debe seleccionar al menos una venta");
+        }
+
+        validarPeriodoMartesALunes(request.getStartDate(), request.getEndDate());
+
+        UserContext ctx = ctx();
+        Long branchId = ctx.isSuperAdmin() ? null : ctx.getBranchId();
+
+        List<Venta> ventas = ventaRepository.findSelectedForConsolidation(
+                request.getVentaIds(),
+                branchId
+        );
+
+        if (ventas.size() != request.getVentaIds().size()) {
+            throw new IllegalArgumentException(
+                    "Una o más ventas no existen, ya están consolidadas o no pertenecen a tu sucursal"
+            );
+        }
+        Long clienteBaseId = ventas.get(0).getClient().getId();
+
+        Long vendedorBaseId = ventas.get(0).getUsuario() != null
+                ? ventas.get(0).getUsuario().getId()
+                : null;
+
+        if (vendedorBaseId == null) {
+            throw new IllegalArgumentException("No se pudo determinar el vendedor de la venta base");
+        }
+
+        for (Venta venta : ventas) {
+            if (!Objects.equals(venta.getClient().getId(), clienteBaseId)) {
+                throw new IllegalArgumentException("Todas las ventas seleccionadas deben pertenecer al mismo cliente");
+            }
+
+            Long vendedorVentaId = venta.getUsuario() != null
+                    ? venta.getUsuario().getId()
+                    : null;
+
+            if (!Objects.equals(vendedorVentaId, vendedorBaseId)) {
+                throw new IllegalArgumentException("Todas las ventas seleccionadas deben pertenecer al mismo vendedor");
+            }
+
+            if (request.getClienteId() != null &&
+                    !Objects.equals(venta.getClient().getId(), request.getClienteId())) {
+                throw new IllegalArgumentException("Las ventas seleccionadas no pertenecen al cliente filtrado");
+            }
+
+            if (request.getUserId() != null &&
+                    !Objects.equals(vendedorVentaId, request.getUserId())) {
+                throw new IllegalArgumentException("Todas las ventas seleccionadas deben pertenecer al vendedor seleccionado");
+            }
+
+            if (venta.getSaleDate() == null ||
+                    venta.getSaleDate().isBefore(request.getStartDate()) ||
+                    venta.getSaleDate().isAfter(request.getEndDate())) {
+                throw new IllegalArgumentException("Todas las ventas seleccionadas deben estar dentro del periodo martes a lunes");
+            }
+
+            if (Boolean.TRUE.equals(venta.getConsolidated())) {
+                throw new IllegalArgumentException("Una o más ventas ya fueron consolidadas");
+            }
+        }
+
+        return ventas;
+    }
+
+    private void validarPeriodoMartesALunes(LocalDateTime startDate, LocalDateTime endDate) {
+        if (startDate == null || endDate == null) {
+            throw new IllegalArgumentException("El rango de fechas es obligatorio");
+        }
+
+        if (startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException("La fecha inicial no puede ser mayor a la fecha final");
+        }
+
+        LocalDate inicio = startDate.toLocalDate();
+        LocalDate fin = endDate.toLocalDate();
+
+        if (inicio.getDayOfWeek() != DayOfWeek.TUESDAY) {
+            throw new IllegalArgumentException("El periodo debe iniciar en martes");
+        }
+
+        if (fin.getDayOfWeek() != DayOfWeek.MONDAY) {
+            throw new IllegalArgumentException("El periodo debe terminar en lunes");
+        }
+
+        if (!fin.equals(inicio.plusDays(6))) {
+            throw new IllegalArgumentException("El periodo debe ser exactamente de martes a lunes");
+        }
+    }
+
+    private VentaConsolidadaResponseDTO construirDetalleConsolidado(
+            VentaConsolidadaRequestDTO request,
+            List<Venta> ventas
+    ) {
+        Venta primeraVenta = ventas.get(0);
+
+        Map<String, VentaConsolidadaProductoDTO> productosMap = new LinkedHashMap<>();
+
+        for (Venta venta : ventas) {
+            for (DetalleVenta detalle : venta.getDetailsList()) {
+                if (!Boolean.TRUE.equals(detalle.getActive())) {
+                    continue;
+                }
+
+                Producto producto = detalle.getProduct();
+
+                BigDecimal cantidadVendida = safe(detalle.getQuantity());
+                BigDecimal cantidadDevuelta = safe(detalle.getCantidadDevuelta());
+                BigDecimal cantidadFinal = cantidadVendida.subtract(cantidadDevuelta);
+
+                if (cantidadFinal.compareTo(BigDecimal.ZERO) <= 0) {
+                    continue;
+                }
+
+                BigDecimal precioUnitario = safe(detalle.getUnitPrice());
+                BigDecimal subtotal = precioUnitario.multiply(cantidadFinal);
+
+                Long productId = producto != null ? producto.getId() : null;
+                String productName = producto != null ? producto.getName() : "Producto sin nombre";
+                String unitAbbr = producto != null && producto.getUnidadMedida() != null
+                        ? producto.getUnidadMedida().getAbreviatura()
+                        : null;
+
+                String key = productId + "|" + precioUnitario.stripTrailingZeros().toPlainString();
+
+                VentaConsolidadaProductoDTO productoDTO = productosMap.computeIfAbsent(key, k -> {
+                    VentaConsolidadaProductoDTO nuevo = new VentaConsolidadaProductoDTO();
+                    nuevo.setProductId(productId);
+                    nuevo.setProductName(productName);
+                    nuevo.setUnitAbbr(unitAbbr);
+                    nuevo.setQuantity(BigDecimal.ZERO);
+                    nuevo.setUnitPrice(precioUnitario);
+                    nuevo.setSubTotal(BigDecimal.ZERO);
+                    return nuevo;
+                });
+
+                productoDTO.setQuantity(productoDTO.getQuantity().add(cantidadFinal));
+                productoDTO.setSubTotal(productoDTO.getSubTotal().add(subtotal));
+            }
+        }
+
+        BigDecimal total = productosMap.values()
+                .stream()
+                .map(VentaConsolidadaProductoDTO::getSubTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        Long vendedorId = primeraVenta.getUsuario() != null
+                ? primeraVenta.getUsuario().getId()
+                : null;
+
+        String vendedorNombre = primeraVenta.getUsuario() != null
+                ? primeraVenta.getUsuario().getUsername()
+                : "—";
+
+        VentaConsolidadaResponseDTO response = new VentaConsolidadaResponseDTO();
+        response.setClienteId(primeraVenta.getClient().getId());
+        response.setClientName(primeraVenta.getClient().getName());
+
+        response.setUserId(vendedorId);
+        response.setUserName(vendedorNombre);
+
+        response.setStartDate(request.getStartDate());
+        response.setEndDate(request.getEndDate());
+        response.setGeneratedAt(LocalDateTime.now());
+
+        response.setVentaIds(
+                ventas.stream()
+                        .map(Venta::getId)
+                        .sorted()
+                        .toList()
+        );
+
+        response.setTotalVentas(ventas.size());
+        response.setProductos(new ArrayList<>(productosMap.values()));
+        response.setTotalAmount(total);
+        response.setAmountInWords(NumberToWordsConverter.convert(total));
+
+        return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public VentaConsolidadaResponseDTO obtenerDetalleConsolidadoPorTicket(Long weeklyTicketId) {
+        if (weeklyTicketId == null) {
+            throw new IllegalArgumentException("El weeklyTicketId es obligatorio");
+        }
+
+        UserContext ctx = ctx();
+        Long branchId = ctx.isSuperAdmin() ? null : ctx.getBranchId();
+
+        List<Venta> ventas = ventaRepository.findByWeeklyTicketIdFull(
+                weeklyTicketId,
+                branchId
+        );
+
+        if (ventas == null || ventas.isEmpty()) {
+            throw new NotFoundException("No se encontró la venta consolidada");
+        }
+
+        ventas.sort(Comparator.comparing(Venta::getSaleDate));
+
+        Venta primeraVenta = ventas.get(0);
+
+        LocalDateTime startDate = ventas.stream()
+                .map(Venta::getSaleDate)
+                .filter(Objects::nonNull)
+                .min(LocalDateTime::compareTo)
+                .orElse(primeraVenta.getSaleDate());
+
+        LocalDateTime endDate = ventas.stream()
+                .map(Venta::getSaleDate)
+                .filter(Objects::nonNull)
+                .max(LocalDateTime::compareTo)
+                .orElse(primeraVenta.getSaleDate());
+
+        LocalDateTime consolidatedAt = ventas.stream()
+                .map(Venta::getConsolidatedAt)
+                .filter(Objects::nonNull)
+                .max(LocalDateTime::compareTo)
+                .orElse(null);
+
+        VentaConsolidadaRequestDTO request = new VentaConsolidadaRequestDTO();
+        request.setClienteId(primeraVenta.getClient().getId());
+
+        if (primeraVenta.getUsuario() != null) {
+            request.setUserId(primeraVenta.getUsuario().getId());
+        }
+
+        request.setStartDate(startDate);
+        request.setEndDate(endDate);
+
+        request.setVentaIds(
+                ventas.stream()
+                        .map(Venta::getId)
+                        .sorted()
+                        .toList()
+        );
+
+        VentaConsolidadaResponseDTO detalle = construirDetalleConsolidado(request, ventas);
+
+        detalle.setWeeklyTicketId(weeklyTicketId);
+        detalle.setConsolidatedAt(consolidatedAt);
+
+        if (consolidatedAt != null) {
+            detalle.setGeneratedAt(consolidatedAt);
+        }
+
+        return detalle;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] generarTicketConsolidadoPdfPorWeeklyTicketId(Long weeklyTicketId) {
+        if (weeklyTicketId == null) {
+            throw new IllegalArgumentException("El weeklyTicketId es obligatorio");
+        }
+
+        UserContext ctx = ctx();
+        Long branchId = ctx.isSuperAdmin() ? null : ctx.getBranchId();
+
+        List<Venta> ventas = ventaRepository.findByWeeklyTicketIdFull(
+                weeklyTicketId,
+                branchId
+        );
+
+        if (ventas == null || ventas.isEmpty()) {
+            throw new NotFoundException("No se encontró la venta consolidada");
+        }
+
+        VentaConsolidadaResponseDTO detalle =
+                obtenerDetalleConsolidadoPorTicket(weeklyTicketId);
+
+        Sucursal branch = ventas.get(0).getBranch();
+
+        return generatePdfService.generateVentaConsolidadaPdf(
+                detalle,
+                branch,
+                true
+        );
     }
 }

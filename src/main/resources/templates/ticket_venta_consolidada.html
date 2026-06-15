@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Ticket Semanal Consolidado</title>
+
+    <style>
+        body {
+          font-family: Arial, sans-serif;
+          font-size: 10px;
+          margin: 0;
+          padding: 0;
+        }
+
+        .ticket {
+          width: 220px; /* 58 mm aprox */
+          padding: 5px;
+        }
+
+        .logo {
+          width: 80px;
+          display: block;
+          margin: 0 auto 5px auto;
+        }
+
+        h1 {
+          font-size: 12px;
+          text-align: center;
+          margin: 5px 0;
+        }
+
+        h2 {
+          font-size: 10px;
+          text-align: center;
+          margin: 5px 0;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 9px;
+        }
+
+        th {
+          text-align: left;
+          border-bottom: 1px dashed #000;
+          padding-bottom: 2px;
+        }
+
+        td {
+          padding: 2px 0;
+          vertical-align: top;
+        }
+
+        .info,
+        .total,
+        .footer {
+          font-size: 9px;
+          margin-top: 5px;
+        }
+
+        .info p,
+        .total p,
+        .footer p {
+          margin: 2px 0;
+        }
+
+        .footer {
+          text-align: center;
+          margin-top: 10px;
+        }
+
+        .highlight {
+          font-weight: bold;
+        }
+
+        .line {
+          border-top: 1px dashed #000;
+          margin: 5px 0;
+        }
+
+        .right {
+          text-align: right;
+        }
+
+        .center {
+          text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+<div class="ticket">
+
+    <img class="logo" src="img/logo.png" alt="Mi Inventario Logo"/>
+
+    <h1 th:text="${storeName}">Mi Inventario</h1>
+    <h2>Ticket semanal consolidado</h2>
+
+    <div class="line"></div>
+
+    <div class="info">
+        <p>
+            <span class="highlight">Folio:</span>
+            CON-<span th:text="${detalle.weeklyTicketId}">000</span>
+        </p>
+
+        <p>
+            <span class="highlight">Cliente:</span>
+            <span th:text="${detalle.clientName}">Cliente</span>
+        </p>
+
+        <p>
+            <span class="highlight">Vendedor:</span>
+            <span th:text="${detalle.userName}">Vendedor</span>
+        </p>
+
+        <p>
+            <span class="highlight">Periodo:</span>
+            <span th:text="${#temporals.format(detalle.startDate, 'dd/MM/yyyy')}">Inicio</span>
+            -
+            <span th:text="${#temporals.format(detalle.endDate, 'dd/MM/yyyy')}">Fin</span>
+        </p>
+
+        <p>
+            <span class="highlight">Ventas:</span>
+            <span th:each="id, iter : ${detalle.ventaIds}">
+                #<span th:text="${id}">0</span><span th:if="${!iter.last}">, </span>
+            </span>
+        </p>
+
+        <p>
+            <span class="highlight">Total ventas:</span>
+            <span th:text="${detalle.totalVentas}">0</span>
+        </p>
+    </div>
+
+    <div class="line"></div>
+
+    <table>
+        <thead>
+        <tr>
+            <th>Producto</th>
+            <th>Cant</th>
+            <th>Precio</th>
+            <th>Subt.</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr th:each="producto : ${detalle.productos}">
+            <td th:text="${producto.productName}">Producto</td>
+
+            <td>
+                <span th:text="${#numbers.formatDecimal(producto.quantity, 1, 'POINT', 2, 'POINT')}">1</span>
+                <span th:text="${#strings.isEmpty(producto.unitAbbr) ? '' : producto.unitAbbr}">pz</span>
+            </td>
+
+            <td th:text="${#numbers.formatDecimal(producto.unitPrice, 1, 'POINT', 2, 'POINT')}">0.00</td>
+
+            <td th:text="${#numbers.formatDecimal(producto.subTotal, 1, 'POINT', 2, 'POINT')}">0.00</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="line"></div>
+
+    <div class="total">
+        <p>
+            <span class="highlight">TOTAL:</span>
+            <span th:text="${#numbers.formatDecimal(detalle.totalAmount, 1, 'POINT', 2, 'POINT')}">0.00</span>
+        </p>
+
+        <p th:text="${detalle.amountInWords}">CERO PESOS</p>
+    </div>
+
+    <div class="line"></div>
+
+    <div class="footer">
+        <p th:if="${branch != null}" th:text="${branch.name}">Sucursal</p>
+        <p th:if="${branch != null}" th:text="${branch.address}">Dirección</p>
+
+        <p th:if="${detalle.generatedAt != null}"
+           th:text="${#temporals.format(detalle.generatedAt, 'dd/MM/yyyy HH:mm:ss')}">
+            Fecha
+        </p>
+
+        <p>
+            Ticket consolidado:
+            CON-<span th:text="${detalle.weeklyTicketId}">000</span>
+        </p>
+
+        <p><strong>¡Gracias por su compra!</strong></p>
+    </div>
+
+</div>
+</body>
+</html>

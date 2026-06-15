@@ -2,6 +2,7 @@ package com.mx.mitienda.repository;
 
 import com.mx.mitienda.model.Venta;
 import com.mx.mitienda.model.dto.TopProductoDTO;
+import com.mx.mitienda.model.dto.UsuarioVentaResumenDTO;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -90,4 +91,58 @@ public interface DashboardRepository extends JpaRepository<Venta, Long> {
             @Param("branchId") Long branchId
     );
 
+    @Query("""
+    SELECT new com.mx.mitienda.model.dto.TopProductoDTO(
+        p.name,
+        SUM(d.quantity),
+        SUM(d.quantity * d.unitPrice),
+        MAX(v.saleDate),
+        pc.name,
+        bt.name,
+        u.id,
+        u.username,
+        s.name,
+        COUNT(DISTINCT v.id)
+    )
+    FROM Venta v
+    JOIN v.detailsList d
+    JOIN d.product p
+    JOIN p.productCategory pc
+    JOIN pc.businessType bt
+    JOIN v.usuario u
+    JOIN v.branch s
+    WHERE v.active = true
+      AND d.active = true
+      AND v.saleDate BETWEEN :inicio AND :fin
+      AND (:branchId IS NULL OR v.branch.id = :branchId)
+    GROUP BY p.name, pc.name, bt.name, u.id, u.username, s.name
+    ORDER BY SUM(d.quantity) DESC
+""")
+    List<TopProductoDTO> findTopProductosConUsuariosDetalle(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime fin,
+            @Param("branchId") Long branchId
+    );
+
+    @Query("""
+    SELECT new com.mx.mitienda.model.dto.UsuarioVentaResumenDTO(
+        u.id,
+        u.username,
+        COALESCE(SUM(v.totalAmount), 0),
+        COUNT(v.id)
+    )
+    FROM Venta v
+    JOIN v.usuario u
+    WHERE v.active = true
+      AND v.saleDate >= :inicio
+      AND v.saleDate < :fin
+      AND (:branchId IS NULL OR v.branch.id = :branchId)
+    GROUP BY u.id, u.username
+    ORDER BY COALESCE(SUM(v.totalAmount), 0) DESC
+""")
+    List<UsuarioVentaResumenDTO> findVentasResumenPorUsuario(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime fin,
+            @Param("branchId") Long branchId
+    );
 }

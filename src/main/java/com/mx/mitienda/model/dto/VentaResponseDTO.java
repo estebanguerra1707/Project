@@ -20,5 +20,16 @@ public class VentaResponseDTO {
     private String amountInWords;
     private String userName;
     private Boolean active;
+    private String rowId;
+    private String rowType;
+    private String folioDisplay;
+    private Boolean consolidated;
+    private Long weeklyTicketId;
+    private LocalDateTime consolidatedAt;
+    private LocalDateTime periodStartDate;
+    private LocalDateTime periodEndDate;
+    private String periodDisplay;
 
+    private List<Long> ventaIdsConsolidadas;
+    private Integer totalVentasConsolidadas;
 }

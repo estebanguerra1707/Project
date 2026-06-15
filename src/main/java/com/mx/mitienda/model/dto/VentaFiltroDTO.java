@@ -23,4 +23,6 @@ public class VentaFiltroDTO {
     private Integer day;
     private Long paymentMethodId;
     private String username;
+    private Long userId;
+    private Boolean consolidated;
 }

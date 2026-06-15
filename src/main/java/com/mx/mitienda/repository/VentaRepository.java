@@ -169,4 +169,42 @@ where v.id = :id
   and v.active = true
 """)
     Optional<Venta> findByIdFullByBranch(@Param("id") Long id, @Param("branchId") Long branchId);
+
+    @Query("""
+select distinct v
+from Venta v
+join fetch v.client
+join fetch v.usuario
+join fetch v.branch
+join fetch v.paymentMethod
+left join fetch v.detailsList d
+left join fetch d.product p
+left join fetch p.unidadMedida
+where v.id in :ventaIds
+  and v.active = true
+  and v.consolidated = false
+  and (:branchId is null or v.branch.id = :branchId)
+""")
+    List<Venta> findSelectedForConsolidation(
+            @Param("ventaIds") List<Long> ventaIds,
+            @Param("branchId") Long branchId
+    );
+    @Query("""
+    SELECT DISTINCT v
+    FROM Venta v
+    LEFT JOIN FETCH v.detailsList d
+    LEFT JOIN FETCH d.product p
+    LEFT JOIN FETCH p.unidadMedida
+    LEFT JOIN FETCH v.client
+    LEFT JOIN FETCH v.usuario
+    LEFT JOIN FETCH v.branch
+    WHERE v.weeklyTicketId = :weeklyTicketId
+      AND v.consolidated = true
+      AND v.active = true
+      AND (:branchId IS NULL OR v.branch.id = :branchId)
+""")
+    List<Venta> findByWeeklyTicketIdFull(
+            @Param("weeklyTicketId") Long weeklyTicketId,
+            @Param("branchId") Long branchId
+    );
 }

@@ -1,0 +1,79 @@
+[33mcommit a7391226c38c7a1786b9ef0a8cb730e8c4935b74[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: estebanguerra1707 <esguerra0717@gmail.com>
+Date:   Tue Jun 2 22:10:25 2026 -0600
+
+    solve changes
+
+ .claude/settings.local.json                        | 115 [32m+++[m
+ CLAUDE.md                                          |  22 [32m+[m
+ build_check.ps1                                    |   3 [32m+[m
+ build_output.txt                                   |   9 [32m+[m
+ docs/.obsidian/app.json                            |   1 [32m+[m
+ docs/.obsidian/appearance.json                     |   1 [32m+[m
+ docs/.obsidian/core-plugins.json                   |  33 [32m+[m
+ docs/.obsidian/workspace.json                      | 186 [32m++++[m
+ docs/00_MASTER_PLAN.md                             | 102 [32m+++[m
+ docs/01_FASES_REFACCIONARIA.md                     |   0
+ docs/02_REGLAS_BACKEND.md                          |  82 [32m++[m
+ docs/03_ESTRUCTURA_DB.md                           | 630 [32m++++++++++++++[m
+ docs/04_CARGA_DATOS.md                             |   0
+ docs/05_PENDIENTES.md                              |  29 [32m+[m
+ docs/06_FRONTEND_RULES.md                          |   0
+ docs/07_FRONTEND_FLOW.md                           | 182 [32m++++[m
+ docs/08_FRONTEND_PENDING.md                        |  93 [32m++[m
+ docs/09_REGLAS_RESTAURANTE.md                      | 933 [32m+++++++++++++++++++++[m
+ docs/99_CLAUDE_WORKING_RULES.md                    | 163 [32m++++[m
+ docs/borradores/fase10.sql                         | 186 [32m++++[m
+ flyway_repair.ps1                                  |   3 [32m+[m
+ .../com/mx/mitienda/controller/AuthController.java |   2 [32m+[m[31m-[m
+ .../controller/CatalogoVehiculoController.java     |  36 [32m+[m
+ .../mx/mitienda/controller/ProductController.java  |   8 [32m+[m[31m-[m
+ .../mx/mitienda/mapper/ProductCategoryMapper.java  |  14 [32m+[m
+ .../mx/mitienda/mapper/ProductDetailMapper.java    |  60 [32m++[m
+ .../com/mx/mitienda/mapper/ProductoMapper.java     |  12 [32m+[m[31m-[m
+ .../java/com/mx/mitienda/mapper/UserMapper.java    |   6 [32m+[m[31m-[m
+ .../mx/mitienda/model/CatalogoMarcaVehiculo.java   |  20 [32m+[m
+ .../mx/mitienda/model/CatalogoModeloVehiculo.java  |  33 [32m+[m
+ .../com/mx/mitienda/model/ProductCategory.java     |   6 [32m+[m
+ .../java/com/mx/mitienda/model/ProductDetail.java  |  20 [32m+[m
+ .../model/dto/CatalogoMarcaVehiculoDTO.java        |  13 [32m+[m
+ .../model/dto/CatalogoModeloVehiculoDTO.java       |  18 [32m+[m
+ .../mx/mitienda/model/dto/ProductCategoryDTO.java  |   2 [32m+[m[31m-[m
+ .../model/dto/ProductCategoryResponseDTO.java      |   2 [32m+[m
+ .../com/mx/mitienda/model/dto/ProductoDTO.java     |   1 [32m+[m
+ .../mx/mitienda/model/dto/ProductoDetailDTO.java   |   7 [32m+[m
+ .../model/dto/ProductoDetailResponseDTO.java       |  12 [32m+[m
+ .../mx/mitienda/model/dto/ProductoFiltroDTO.java   |   8 [32m+[m
+ .../mx/mitienda/model/dto/UsuarioResponseDTO.java  |   2 [32m+[m[31m-[m
+ .../mitienda/model/dto/VehicleApplicationDTO.java  |  18 [32m+[m
+ .../CatalogoMarcaVehiculoRepository.java           |  12 [32m+[m
+ .../CatalogoModeloVehiculoRepository.java          |  13 [32m+[m
+ .../mx/mitienda/security/JwtSecretProvider.java    |  15 [32m+[m[31m-[m
+ .../service/CatalogoVehiculoServiceImpl.java       |  47 [32m++[m
+ .../mitienda/service/ICatalogoVehiculoService.java |  11 [32m+[m
+ .../mx/mitienda/service/ProductoServiceImpl.java   |  27 [32m+[m[31m-[m
+ .../specification/ProductoSpecification.java       | 163 [32m++++[m
+ .../com/mx/mitienda/util/ProductoSpecBuilder.java  |  39 [32m+[m
+ .../com/mx/mitienda/util/enums/TipoVehiculo.java   |   7 [32m+[m
+ src/main/resources/application-local.properties    |  13 [32m+[m
+ .../migration/V16__refacciones_product_fields.sql  |  56 [32m++[m
+ .../migration/V17__seed_refacciones_categorias.sql | 165 [32m++++[m
+ .../migration/V18__seed_refacciones_productos.sql  | 197 [32m+++++[m
+ .../V19__fix_refacciones_provider_sku_category.sql | 109 [32m+++[m
+ .../V20__seed_refaccionaria_all_branches.sql       | 255 [32m++++++[m
+ ...inventario_y_compatibilidades_refaccionaria.sql |  91 [32m++[m
+ .../migration/V22__compatibilidades_y_mazda3.sql   | 279 [32m++++++[m
+ .../V23__catalogo_vehiculos_refacciones_ddl.sql    |  77 [32m++[m
+ .../V24__seed_catalogo_y_compatibilidades.sql      | 110 [32m+++[m
+ .../migration/V25__schema_refaccion_aplicacion.sql |  50 [32m++[m
+ ..._datos_bloque2_toyota_honda_kia_np300_spark.sql | 231 [32m+++++[m
+ ...os_bloque3_jetta_aveolxt_mazda_ford_hyundai.sql | 230 [32m+++++[m
+ ...s_bloque4_march_onix_jettaa6_ram700_corolla.sql | 229 [32m+++++[m
+ ...tos_bloque5_sentra_vento_aveong_tiida_yaris.sql | 224 [32m+++++[m
+ ...tos_bloque6_urvan_gol_city_attitude_tornado.sql | 229 [32m+++++[m
+ ...s_bloque7_avanza_tracker_civic_forte_fiesta.sql | 230 [32m+++++[m
+ ...loque8_kicks_saveiro_grandi10_hrv_silverado.sql | 113 [32m+++[m
+ ...tos_bloque9_xtrail_tiguan_rav4_sportage_cx5.sql | 113 [32m+++[m
+ ..._datos_bloque10_tacoma_seltos_mazda2_ranger.sql | 186 [32m++++[m
+ .../specification/ProductoSpecificationTest.java   | 113 [32m+++[m
+ 72 files changed, 6693 insertions(+), 14 deletions(-)

@@ -42,4 +42,10 @@ public interface IVentaService {
     BigDecimal obtenerVentasBrutasPorRango(GananciaPorFechaDTO gananciaPorFechaDTO);
 
     BigDecimal obtenerVentasNetasPorRango(GananciaPorFechaDTO gananciaPorFechaDTO);
+
+    VentaConsolidadaResponseDTO generarDetalleConsolidado(VentaConsolidadaRequestDTO request);
+    VentaConsolidadaResponseDTO generarVentaConsolidada(VentaConsolidadaRequestDTO request);
+    VentaConsolidadaResponseDTO obtenerDetalleConsolidadoPorTicket(Long weeklyTicketId);
+    byte[] generarTicketConsolidadoPdf(VentaConsolidadaRequestDTO request);
+    byte[] generarTicketConsolidadoPdfPorWeeklyTicketId(Long weeklyTicketId);
 }

@@ -117,4 +117,48 @@ public class VentaController {
                 .body(pdf);
     }
 
+    @PostMapping("/consolidado/detalle")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
+    public ResponseEntity<VentaConsolidadaResponseDTO> generarDetalleConsolidado(
+            @Valid @RequestBody VentaConsolidadaRequestDTO request
+    ) {
+        return ResponseEntity.ok(ventaServiceImpl.generarDetalleConsolidado(request));
+    }
+
+    @PostMapping("/consolidado/generar")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
+    public ResponseEntity<VentaConsolidadaResponseDTO> generarVentaConsolidada(
+            @Valid @RequestBody VentaConsolidadaRequestDTO request
+    ) {
+        return ResponseEntity.ok(ventaServiceImpl.generarVentaConsolidada(request));
+    }
+    @GetMapping("/consolidado/{weeklyTicketId}/detalle")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
+    public ResponseEntity<VentaConsolidadaResponseDTO> obtenerDetalleConsolidadoPorTicket(
+            @PathVariable Long weeklyTicketId
+    ) {
+        return ResponseEntity.ok(
+                ventaServiceImpl.obtenerDetalleConsolidadoPorTicket(weeklyTicketId)
+        );
+    }
+
+    @GetMapping(
+            value = "/consolidado/{weeklyTicketId}/ticket",
+            produces = MediaType.APPLICATION_PDF_VALUE
+    )
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
+    public ResponseEntity<byte[]> getTicketVentaConsolidada(
+            @PathVariable Long weeklyTicketId
+    ) {
+        byte[] pdf = ventaServiceImpl.generarTicketConsolidadoPdfPorWeeklyTicketId(weeklyTicketId);
+
+        return ResponseEntity.ok()
+                .header("Content-Type", "application/pdf")
+                .header(
+                        "Content-Disposition",
+                        "inline; filename=ticket_consolidado_" + weeklyTicketId + ".pdf"
+                )
+                .body(pdf);
+    }
+
 }

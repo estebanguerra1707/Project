@@ -125,4 +125,12 @@ public class VentasSpecification {
             return cb.equal(root.get("usuario").get("id"), userId);
         };
     }
+    public static Specification<Venta> isConsolidated(Boolean consolidated) {
+        return (root, query, cb) -> {
+            if (consolidated == null) return null;
+            return consolidated
+                    ? cb.isTrue(root.get("consolidated"))
+                    : cb.isFalse(root.get("consolidated"));
+        };
+    }
 }

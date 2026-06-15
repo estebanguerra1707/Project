@@ -26,6 +26,15 @@ public class Venta {
     private BigDecimal totalAmount;
     private Boolean active;
 
+    @Column(name = "consolidated", nullable = false)
+    private Boolean consolidated = false;
+
+    @Column(name = "weekly_ticket_id")
+    private Long weeklyTicketId;
+
+    @Column(name = "consolidated_at")
+    private LocalDateTime consolidatedAt;
+
     @Column(name = "amount_paid")
     private BigDecimal amountPaid;
 

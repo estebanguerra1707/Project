@@ -22,7 +22,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static com.mx.mitienda.util.enums.TipoPago.EFECTIVO;
-
+import java.time.LocalDateTime;
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -145,6 +145,9 @@ public class VentasMapper {
     public VentaResponseDTO toResponse(Venta venta){
         VentaResponseDTO ventaResponseDTO = new VentaResponseDTO();
         ventaResponseDTO.setId(venta.getId());
+        ventaResponseDTO.setRowId("VENTA-" + venta.getId());
+        ventaResponseDTO.setRowType("NORMAL");
+        ventaResponseDTO.setFolioDisplay(String.valueOf(venta.getId()));
         ventaResponseDTO.setClientName(venta.getClient().getName());
         ventaResponseDTO.setSaleDate(venta.getSaleDate());
         ventaResponseDTO.setTotalAmount(venta.getTotalAmount());
@@ -155,6 +158,9 @@ public class VentasMapper {
         ventaResponseDTO.setAmountPaid(venta.getAmountPaid());
         ventaResponseDTO.setUserName(venta.getUsuario().getUsername());
         ventaResponseDTO.setActive(venta.getActive());
+        ventaResponseDTO.setConsolidated(Boolean.TRUE.equals(venta.getConsolidated()));
+        ventaResponseDTO.setWeeklyTicketId(venta.getWeeklyTicketId());
+        ventaResponseDTO.setConsolidatedAt(venta.getConsolidatedAt());
 
         List<DetalleVentaResponseDTO> details = venta.getDetailsList().stream().map(detail->{
             DetalleVentaResponseDTO detalleVentaResponseDTO = new DetalleVentaResponseDTO();
@@ -198,6 +204,9 @@ public class VentasMapper {
     public VentaResponseDTO toResponseHeader(Venta venta){
         VentaResponseDTO dto = new VentaResponseDTO();
         dto.setId(venta.getId());
+        dto.setRowId("VENTA-" + venta.getId());
+        dto.setRowType("NORMAL");
+        dto.setFolioDisplay(String.valueOf(venta.getId()));
         dto.setClientName(venta.getClient().getName());
         dto.setSaleDate(venta.getSaleDate());
         dto.setTotalAmount(venta.getTotalAmount());
@@ -208,7 +217,88 @@ public class VentasMapper {
         dto.setAmountPaid(venta.getAmountPaid());
         dto.setUserName(venta.getUsuario().getUsername());
         dto.setActive(venta.getActive());
+        dto.setConsolidated(Boolean.TRUE.equals(venta.getConsolidated()));
+        dto.setWeeklyTicketId(venta.getWeeklyTicketId());
+        dto.setConsolidatedAt(venta.getConsolidatedAt());
         return dto;
     }
+    public VentaResponseDTO toConsolidadaVirtualHeader(Long weeklyTicketId, List<Venta> ventas) {
+        if (weeklyTicketId == null || ventas == null || ventas.isEmpty()) {
+            return null;
+        }
 
+        Venta primeraVenta = ventas.get(0);
+
+        BigDecimal total = ventas.stream()
+                .map(Venta::getTotalAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        LocalDateTime fechaInicio = ventas.stream()
+                .map(Venta::getSaleDate)
+                .filter(Objects::nonNull)
+                .min(LocalDateTime::compareTo)
+                .orElse(null);
+
+        LocalDateTime fechaFin = ventas.stream()
+                .map(Venta::getSaleDate)
+                .filter(Objects::nonNull)
+                .max(LocalDateTime::compareTo)
+                .orElse(null);
+
+        LocalDateTime consolidatedAt = ventas.stream()
+                .map(Venta::getConsolidatedAt)
+                .filter(Objects::nonNull)
+                .max(LocalDateTime::compareTo)
+                .orElse(null);
+
+        List<Long> ventaIds = ventas.stream()
+                .map(Venta::getId)
+                .filter(Objects::nonNull)
+                .sorted()
+                .toList();
+
+        VentaResponseDTO dto = new VentaResponseDTO();
+
+        dto.setId(null);
+        dto.setRowId("CON-" + weeklyTicketId);
+        dto.setRowType("CONSOLIDADA");
+        dto.setFolioDisplay("CON-" + weeklyTicketId);
+
+        dto.setClientName(primeraVenta.getClient().getName());
+        dto.setSaleDate(fechaFin);
+        dto.setTotalAmount(total);
+
+        dto.setPaymentMethodId(null);
+        dto.setPaymentName("CONSOLIDADO");
+        dto.setAmountPaid(total);
+        dto.setChangeAmount(BigDecimal.ZERO);
+        dto.setAmountInWords(NumberToWordsConverter.convert(total));
+
+        dto.setUserName(
+                primeraVenta.getUsuario() != null
+                        ? primeraVenta.getUsuario().getUsername()
+                        : "—"
+        );
+
+        dto.setActive(true);
+
+        dto.setConsolidated(true);
+        dto.setWeeklyTicketId(weeklyTicketId);
+        dto.setConsolidatedAt(consolidatedAt);
+
+        dto.setPeriodStartDate(fechaInicio);
+        dto.setPeriodEndDate(fechaFin);
+
+        if (fechaInicio != null && fechaFin != null) {
+            dto.setPeriodDisplay(
+                    fechaInicio.toLocalDate() + " - " + fechaFin.toLocalDate()
+            );
+        }
+
+        dto.setVentaIdsConsolidadas(ventaIds);
+        dto.setTotalVentasConsolidadas(ventas.size());
+
+        return dto;
+    }
 }

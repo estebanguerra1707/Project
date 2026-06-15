@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 
 @Data
@@ -22,10 +23,39 @@ public class TopProductoDTO {
     private LocalDateTime saleDate;
     private String username;
     private String branchName;
+
+    private Long productId;
+    private BigDecimal totalIncome;
+    private Long userId;
+    private Long salesCount;
+    private List<UsuarioVentaResumenDTO> usuarios;
     public TopProductoDTO(String productName, BigDecimal totalQuantity) {
         this.productName = productName;
         this.totalQuantity = totalQuantity;
     }
+
+    public TopProductoDTO(Long productId, String productName, BigDecimal totalQuantity) {
+        this.productId = productId;
+        this.productName = productName;
+        this.totalQuantity = totalQuantity;
+    }
+
+    public TopProductoDTO(
+            String productName,
+            BigDecimal totalQuantity,
+            BigDecimal totalIncome,
+            LocalDateTime saleDate,
+            String username,
+            String branchName
+    ) {
+        this.productName = productName;
+        this.totalQuantity = totalQuantity;
+        this.totalIncome = totalIncome;
+        this.saleDate = saleDate;
+        this.username = username;
+        this.branchName = branchName;
+    }
+
     public TopProductoDTO(
             String productName,
             BigDecimal totalQuantity,
@@ -43,5 +73,31 @@ public class TopProductoDTO {
         this.username = username;
         this.branchName = branchName;
     }
+
+    public TopProductoDTO(
+            String productName,
+            BigDecimal totalQuantity,
+            BigDecimal totalIncome,
+            LocalDateTime ultimaVenta,
+            String categoria,
+            String tipoNegocio,
+            Long userId,
+            String username,
+            String branchName,
+            Long salesCount
+    ) {
+        this.productName = productName;
+        this.totalQuantity = totalQuantity;
+        this.totalIncome = totalIncome;
+        this.ultimaVenta = ultimaVenta;
+        this.categoria = categoria;
+        this.tipoNegocio = tipoNegocio;
+        this.userId = userId;
+        this.username = username;
+        this.branchName = branchName;
+        this.salesCount = salesCount;
+    }
+
+
 
 }
