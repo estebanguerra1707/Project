@@ -32,4 +32,8 @@ public class VentaResponseDTO {
 
     private List<Long> ventaIdsConsolidadas;
     private Integer totalVentasConsolidadas;
+    private BigDecimal totalPaid;
+    private BigDecimal pendingBalance;
+    private String paymentStatus;
+
 }

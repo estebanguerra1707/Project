@@ -23,6 +23,9 @@ import java.util.stream.Collectors;
 
 import static com.mx.mitienda.util.enums.TipoPago.EFECTIVO;
 import java.time.LocalDateTime;
+
+import com.mx.mitienda.util.enums.EstadoPago;
+import com.mx.mitienda.model.dto.VentaPagoRequestDTO;
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -64,9 +67,21 @@ public class VentasMapper {
         Sucursal sucursal = sucursalRepository.findByIdAndActiveTrue(branchId)
                 .orElseThrow(() -> new NotFoundException("Sucursal no encontrada"));
 
-        MetodoPago paymentMethod = metodoPagoRepository.findById(ventasRequestDTO.getPaymentMethodId())
-                .orElseThrow(() -> new NotFoundException("Método de pago no encontrado"));
+        List<VentaPagoRequestDTO> payments = ventasRequestDTO.getPayments();
+        boolean tienePagosIniciales = payments != null && !payments.isEmpty();
 
+        Long paymentMethodId = ventasRequestDTO.getPaymentMethodId();
+
+        if (paymentMethodId == null && tienePagosIniciales) {
+            paymentMethodId = payments.get(0).getPaymentMethodId();
+        }
+
+        if (paymentMethodId == null) {
+            throw new IllegalArgumentException("Debe seleccionar un método de pago");
+        }
+
+        MetodoPago paymentMethod = metodoPagoRepository.findById(paymentMethodId)
+                .orElseThrow(() -> new NotFoundException("Método de pago no encontrado"));
 
         Venta venta = new Venta();
         venta.setSaleDate(ventasRequestDTO.getSaleDate());
@@ -76,13 +91,13 @@ public class VentasMapper {
         venta.setActive(true);
         venta.setPaymentMethod(paymentMethod);
 
-        BigDecimal amountPaid = ventasRequestDTO.getAmountPaid();
-        if (EFECTIVO.name().equalsIgnoreCase(paymentMethod.getName()) &&
-                (amountPaid == null || amountPaid.compareTo(BigDecimal.ZERO) == 0)) {
-            throw new IllegalArgumentException("La cantidad a pagar no puede estar en ceros para pagos en "+ EFECTIVO.name());
-        }else{
-            venta.setAmountPaid(amountPaid);
+        BigDecimal amountPaid = calcularMontoPagadoInicial(ventasRequestDTO);
+
+        if (amountPaid.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("La cantidad pagada no puede ser negativa");
         }
+
+        venta.setAmountPaid(amountPaid);
 
         List<DetalleVenta> details = ventasRequestDTO.getDetails().stream().map(detalleVentaRequestDTO -> {
             Producto producto = productoRepository.findById(detalleVentaRequestDTO.getProductId())
@@ -130,13 +145,34 @@ public class VentasMapper {
 
         venta.setTotalAmount(total);
 
-        if (EFECTIVO.name().equalsIgnoreCase(paymentMethod.getName())) {
-            if (amountPaid.compareTo(total) < 0) {
-                throw new IllegalArgumentException("El monto pagado no puede ser menor al total.");
-            }
+        BigDecimal totalPaid;
+        BigDecimal pendingBalance;
+
+        boolean esEfectivo = EFECTIVO.name().equalsIgnoreCase(paymentMethod.getName());
+
+        if (!tienePagosIniciales && esEfectivo && amountPaid.compareTo(total) > 0) {
+            totalPaid = total;
+            pendingBalance = BigDecimal.ZERO;
             venta.setChangeAmount(amountPaid.subtract(total));
         } else {
+            if (amountPaid.compareTo(total) > 0) {
+                throw new IllegalArgumentException("El monto pagado no puede ser mayor al total");
+            }
+
+            totalPaid = amountPaid;
+            pendingBalance = total.subtract(totalPaid);
             venta.setChangeAmount(BigDecimal.ZERO);
+        }
+
+        venta.setTotalPaid(totalPaid);
+        venta.setPendingBalance(pendingBalance);
+
+        if (totalPaid.compareTo(BigDecimal.ZERO) == 0) {
+            venta.setPaymentStatus(EstadoPago.PENDIENTE);
+        } else if (pendingBalance.compareTo(BigDecimal.ZERO) > 0) {
+            venta.setPaymentStatus(EstadoPago.PARCIAL);
+        } else {
+            venta.setPaymentStatus(EstadoPago.PAGADA);
         }
 
         return venta;
@@ -151,6 +187,11 @@ public class VentasMapper {
         ventaResponseDTO.setClientName(venta.getClient().getName());
         ventaResponseDTO.setSaleDate(venta.getSaleDate());
         ventaResponseDTO.setTotalAmount(venta.getTotalAmount());
+        ventaResponseDTO.setTotalPaid(venta.getTotalPaid());
+        ventaResponseDTO.setPendingBalance(venta.getPendingBalance());
+        ventaResponseDTO.setPaymentStatus(
+                venta.getPaymentStatus() != null ? venta.getPaymentStatus().name() : null
+        );
         ventaResponseDTO.setPaymentMethodId(venta.getPaymentMethod().getId());
         ventaResponseDTO.setPaymentName(venta.getPaymentMethod().getName());
         ventaResponseDTO.setAmountInWords(NumberToWordsConverter.convert(venta.getTotalAmount()));
@@ -210,6 +251,11 @@ public class VentasMapper {
         dto.setClientName(venta.getClient().getName());
         dto.setSaleDate(venta.getSaleDate());
         dto.setTotalAmount(venta.getTotalAmount());
+        dto.setTotalPaid(venta.getTotalPaid());
+        dto.setPendingBalance(venta.getPendingBalance());
+        dto.setPaymentStatus(
+                venta.getPaymentStatus() != null ? venta.getPaymentStatus().name() : null
+        );
         dto.setPaymentMethodId(venta.getPaymentMethod().getId());
         dto.setPaymentName(venta.getPaymentMethod().getName());
         dto.setAmountInWords(NumberToWordsConverter.convert(venta.getTotalAmount()));
@@ -268,10 +314,29 @@ public class VentasMapper {
         dto.setClientName(primeraVenta.getClient().getName());
         dto.setSaleDate(fechaFin);
         dto.setTotalAmount(total);
+        BigDecimal totalPaid = ventas.stream()
+                .map(Venta::getTotalPaid)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        BigDecimal pendingBalance = ventas.stream()
+                .map(Venta::getPendingBalance)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        dto.setTotalPaid(totalPaid);
+        dto.setPendingBalance(pendingBalance);
+
+        if (pendingBalance.compareTo(BigDecimal.ZERO) <= 0) {
+            dto.setPaymentStatus(EstadoPago.PAGADA.name());
+        } else if (totalPaid.compareTo(BigDecimal.ZERO) > 0) {
+            dto.setPaymentStatus(EstadoPago.PARCIAL.name());
+        } else {
+            dto.setPaymentStatus(EstadoPago.PENDIENTE.name());
+        }
         dto.setPaymentMethodId(null);
         dto.setPaymentName("CONSOLIDADO");
-        dto.setAmountPaid(total);
+        dto.setAmountPaid(totalPaid);
         dto.setChangeAmount(BigDecimal.ZERO);
         dto.setAmountInWords(NumberToWordsConverter.convert(total));
 
@@ -300,5 +365,19 @@ public class VentasMapper {
         dto.setTotalVentasConsolidadas(ventas.size());
 
         return dto;
+    }
+
+    private BigDecimal calcularMontoPagadoInicial(VentaRequestDTO request) {
+        List<VentaPagoRequestDTO> payments = request.getPayments();
+
+        if (payments != null && !payments.isEmpty()) {
+            return payments.stream()
+                    .map(pago -> pago.getAmount() != null ? pago.getAmount() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+
+        return request.getAmountPaid() != null
+                ? request.getAmountPaid()
+                : BigDecimal.ZERO;
     }
 }

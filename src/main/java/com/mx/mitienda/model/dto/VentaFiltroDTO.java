@@ -5,6 +5,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import com.mx.mitienda.util.enums.EstadoPago;
 
 @Data
 public class VentaFiltroDTO {
@@ -25,4 +26,5 @@ public class VentaFiltroDTO {
     private String username;
     private Long userId;
     private Boolean consolidated;
+    private EstadoPago paymentStatus;
 }

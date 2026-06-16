@@ -27,7 +27,10 @@ import java.time.format.DateTimeFormatter;
 import static com.mx.mitienda.util.Utils.COMPRA_CODE;
 import static com.mx.mitienda.util.Utils.VENTA_CODE;
 import com.mx.mitienda.model.dto.VentaConsolidadaResponseDTO;
+import com.mx.mitienda.model.VentaPago;
+import com.mx.mitienda.repository.VentaPagoRepository;
 
+import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class GeneratePdfServiceImpl implements IGeneratePdfService {
@@ -36,6 +39,7 @@ public class GeneratePdfServiceImpl implements IGeneratePdfService {
     private final TemplateEngine templateEngine;
     private final VentasMapper ventasMapper;
     private final CompraMapper compraMapper;
+    private final VentaPagoRepository ventaPagoRepository;
 
     @Override
     public byte[] generatePdf(String type, Long id, Boolean isPrinted) {
@@ -58,8 +62,13 @@ public class GeneratePdfServiceImpl implements IGeneratePdfService {
                 Venta venta = ventaRepository.findByIdFull(id)
                         .orElseThrow(() -> new NotFoundException("Venta no encontrada"));
                 VentaResponseDTO ventaResponseDTO = ventasMapper.toResponse(venta);
+
+                List<VentaPago> pagosVenta =
+                        ventaPagoRepository.findByVenta_IdAndActiveTrueOrderByPaymentDateAsc(venta.getId());
+
                 context.setVariable("branch", venta.getBranch());
                 context.setVariable("venta", ventaResponseDTO);
+                context.setVariable("pagosVenta", pagosVenta);
                 context.setVariable("fechaFormateada", venta.getSaleDate().format(formatter));
                 break;
 

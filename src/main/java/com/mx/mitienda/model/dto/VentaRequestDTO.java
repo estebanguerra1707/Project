@@ -17,4 +17,5 @@ public class VentaRequestDTO {
     private Long paymentMethodId;
     private BigDecimal amountPaid;
     private BigDecimal changeAmount;
+    private List<VentaPagoRequestDTO> payments;
 }

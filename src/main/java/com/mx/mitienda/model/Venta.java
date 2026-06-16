@@ -7,6 +7,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import com.mx.mitienda.util.enums.EstadoPago;
 
 @Getter
 @Setter
@@ -62,5 +63,15 @@ public class Venta {
     @ManyToOne
     @JoinColumn(name = "branch_id", foreignKey = @ForeignKey(name = "fk_venta_sucursal"))
     private Sucursal branch;
+
+    @Column(name = "total_paid", precision = 19, scale = 2, nullable = false)
+    private BigDecimal totalPaid = BigDecimal.ZERO;
+
+    @Column(name = "pending_balance", precision = 19, scale = 2, nullable = false)
+    private BigDecimal pendingBalance = BigDecimal.ZERO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", length = 20, nullable = false)
+    private EstadoPago paymentStatus = EstadoPago.PAGADA;
 
 }

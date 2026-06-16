@@ -161,4 +161,22 @@ public class VentaController {
                 .body(pdf);
     }
 
+    @PostMapping("/{ventaId}/pagos")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
+    public ResponseEntity<VentaPagoResponseDTO> registrarAbono(
+            @PathVariable Long ventaId,
+            @Valid @RequestBody VentaPagoRequestDTO request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ventaServiceImpl.registrarAbono(ventaId, request));
+    }
+
+    @GetMapping("/{ventaId}/pagos")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
+    public ResponseEntity<List<VentaPagoResponseDTO>> obtenerPagosVenta(
+            @PathVariable Long ventaId
+    ) {
+        return ResponseEntity.ok(ventaServiceImpl.obtenerPagosVenta(ventaId));
+    }
+
 }

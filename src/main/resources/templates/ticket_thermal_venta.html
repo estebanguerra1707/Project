@@ -115,8 +115,23 @@
 
     <div class="payment-details">
         <p>
+            <span class="highlight">Estado:</span>
+            <span th:text="${venta.paymentStatus}"></span>
+        </p>
+
+        <p>
             <span class="highlight">Pago:</span>
             <span th:text="${venta.paymentName}"></span>
+        </p>
+
+        <p>
+            <span class="highlight">Pagado:</span>
+            <span th:text="${#numbers.formatDecimal(venta.totalPaid, 1, 'POINT', 2, 'POINT')}"></span>
+        </p>
+
+        <p>
+            <span class="highlight">Pendiente:</span>
+            <span th:text="${#numbers.formatDecimal(venta.pendingBalance, 1, 'POINT', 2, 'POINT')}"></span>
         </p>
 
         <p th:if="${venta.amountPaid != null and venta.amountPaid > 0}">
@@ -124,10 +139,33 @@
             <span th:text="${#numbers.formatDecimal(venta.amountPaid, 1, 'POINT', 2, 'POINT')}"></span>
         </p>
 
-        <p>
+        <p th:if="${venta.changeAmount != null and venta.changeAmount > 0}">
             <span class="highlight">Cambio:</span>
             <span th:text="${#numbers.formatDecimal(venta.changeAmount, 1, 'POINT', 2, 'POINT')}"></span>
         </p>
+    </div>
+
+    <div th:if="${pagosVenta != null and !pagosVenta.isEmpty()}">
+        <div class="line"></div>
+
+        <p class="highlight">PAGOS:</p>
+
+        <table>
+            <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Metodo</th>
+                <th>Monto</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="pago : ${pagosVenta}">
+                <td th:text="${#temporals.format(pago.paymentDate, 'dd/MM HH:mm')}"></td>
+                <td th:text="${pago.paymentMethod.name}"></td>
+                <td th:text="${#numbers.formatDecimal(pago.amount, 1, 'POINT', 2, 'POINT')}"></td>
+            </tr>
+            </tbody>
+        </table>
     </div>
 
     <div class="line"></div>

@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 
 import static com.mx.mitienda.util.Utils.*;
 import org.springframework.data.domain.PageImpl;
-
+import com.mx.mitienda.util.enums.EstadoPago;
 @Slf4j
 @Service
 public class VentaServiceImpl extends BaseService implements IVentaService {
@@ -52,6 +52,9 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
     private final MailService mailService;
     private final DevolucionVentasRepository devolucionVentasRepository;
     private final DetalleDevolucionVentasRepository detalleDevolucionVentasRepository;
+    private final VentaPagoRepository ventaPagoRepository;
+    private final MetodoPagoRepository metodoPagoRepository;
+    private final UsuarioService usuarioService;
 
     public VentaServiceImpl(
             IAuthenticatedUserService authenticatedUserService,
@@ -66,7 +69,10 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
             IGeneratePdfService generatePdfService,
             MailService mailService,
             DevolucionVentasRepository devolucionVentasRepository,
-            DetalleDevolucionVentasRepository detalleDevolucionVentasRepository
+            DetalleDevolucionVentasRepository detalleDevolucionVentasRepository,
+            VentaPagoRepository ventaPagoRepository,
+            MetodoPagoRepository metodoPagoRepository,
+            UsuarioService usuarioService
     ) {
         super(authenticatedUserService);
         this.ventaRepository = ventaRepository;
@@ -81,9 +87,73 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
         this.mailService = mailService;
         this.devolucionVentasRepository = devolucionVentasRepository;
         this.detalleDevolucionVentasRepository = detalleDevolucionVentasRepository;
+        this.ventaPagoRepository = ventaPagoRepository;
+        this.metodoPagoRepository = metodoPagoRepository;
+        this.usuarioService = usuarioService;
     }
     private BigDecimal safe(BigDecimal venta) {
         return venta != null ? venta : BigDecimal.ZERO;
+    }
+
+    private void registrarPagosInicialesSiAplican(Venta venta, VentaRequestDTO request) {
+        List<VentaPagoRequestDTO> payments = request.getPayments();
+
+        if (payments != null && !payments.isEmpty()) {
+            for (VentaPagoRequestDTO payment : payments) {
+                if (payment.getAmount() == null) {
+                    throw new IllegalArgumentException("El monto del pago inicial no debe estar vacío");
+                }
+
+                if (payment.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new IllegalArgumentException("El monto del pago inicial debe ser mayor a cero");
+                }
+
+                if (payment.getPaymentMethodId() == null) {
+                    throw new IllegalArgumentException("Debe seleccionar método de pago para cada pago inicial");
+                }
+
+                MetodoPago metodoPago = metodoPagoRepository.findById(payment.getPaymentMethodId())
+                        .orElseThrow(() -> new NotFoundException("Método de pago no encontrado"));
+
+                VentaPago pagoInicial = new VentaPago();
+                pagoInicial.setVenta(venta);
+                pagoInicial.setAmount(payment.getAmount());
+                pagoInicial.setPaymentMethod(metodoPago);
+                pagoInicial.setUsuario(venta.getUsuario());
+                pagoInicial.setPaymentDate(
+                        venta.getSaleDate() != null ? venta.getSaleDate() : LocalDateTime.now()
+                );
+                pagoInicial.setNote(
+                        payment.getNote() != null && !payment.getNote().isBlank()
+                                ? payment.getNote()
+                                : "Pago inicial al registrar venta"
+                );
+                pagoInicial.setActive(true);
+
+                ventaPagoRepository.save(pagoInicial);
+            }
+
+            return;
+        }
+
+        BigDecimal totalPaid = safe(venta.getTotalPaid());
+
+        if (totalPaid.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+
+        VentaPago pagoInicial = new VentaPago();
+        pagoInicial.setVenta(venta);
+        pagoInicial.setAmount(totalPaid);
+        pagoInicial.setPaymentMethod(venta.getPaymentMethod());
+        pagoInicial.setUsuario(venta.getUsuario());
+        pagoInicial.setPaymentDate(
+                venta.getSaleDate() != null ? venta.getSaleDate() : LocalDateTime.now()
+        );
+        pagoInicial.setNote("Pago inicial al registrar venta");
+        pagoInicial.setActive(true);
+
+        ventaPagoRepository.save(pagoInicial);
     }
     private record Totales(BigDecimal brutas, BigDecimal netas, BigDecimal gananciaNeta) {}
 
@@ -93,6 +163,7 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
         Venta venta = ventaMapper.toEntity(request, ctx().getEmail());
 
         Venta ventaGuardada = ventaRepository.save(venta);
+        registrarPagosInicialesSiAplican(ventaGuardada, request);
 
         for (DetalleVenta detalle : ventaGuardada.getDetailsList()) {
 
@@ -225,6 +296,7 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
                 .sellPerDayMonthYear(filterDTO.getDay(), filterDTO.getMonth(), filterDTO.getYear())
                 .sellPerMonthYear(filterDTO.getMonth(), filterDTO.getYear())
                 .byPaymentMethod(filterDTO.getPaymentMethodId())
+                .paymentStatus(filterDTO.getPaymentStatus())
                 .withId(filterDTO.getId());
         if (isSuper) {
             builder.username(filterDTO.getUsername());
@@ -275,7 +347,9 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
     public VentaResponseDTO getById(Long id) {
         Venta venta = ventaRepository.findByIdFull(id)
                 .orElseThrow(() -> new NotFoundException("Venta no encontrada"));
-        return ventaMapper.toResponse(venta);
+        VentaResponseDTO dto = ventaMapper.toResponse(venta);
+        ajustarNombreMetodoPago(dto);
+        return dto;
     }
     @Override
     @Transactional
@@ -472,6 +546,7 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
 
         ventasNormales.stream()
                 .map(ventaMapper::toResponseHeader)
+                .peek(this::ajustarNombreMetodoPago)
                 .forEach(resultado::add);
 
         ventasConsolidadasPorTicket.forEach((weeklyTicketId, ventasDelTicket) -> {
@@ -844,5 +919,150 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
                 branch,
                 true
         );
+    }
+
+    @Override
+    @Transactional
+    public VentaPagoResponseDTO registrarAbono(Long ventaId, VentaPagoRequestDTO request) {
+        if (ventaId == null) {
+            throw new IllegalArgumentException("El id de la venta es obligatorio");
+        }
+
+        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("El monto del abono debe ser mayor a cero");
+        }
+
+        if (request.getPaymentMethodId() == null) {
+            throw new IllegalArgumentException("Debe seleccionar un método de pago");
+        }
+
+        UserContext ctx = ctx();
+
+        Venta venta = ctx.isSuperAdmin()
+                ? ventaRepository.findByIdFull(ventaId)
+                .orElseThrow(() -> new NotFoundException("Venta no encontrada"))
+                : ventaRepository.findByIdFullByBranch(ventaId, ctx.getBranchId())
+                .orElseThrow(() -> new NotFoundException("Venta no encontrada o no corresponde a tu sucursal"));
+
+        if (!Boolean.TRUE.equals(venta.getActive())) {
+            throw new IllegalArgumentException("No puedes registrar abonos a una venta inactiva");
+        }
+
+        BigDecimal totalAmount = safe(venta.getTotalAmount());
+        BigDecimal totalPaid = safe(venta.getTotalPaid());
+        BigDecimal pendingBalance = safe(venta.getPendingBalance());
+        BigDecimal amount = request.getAmount();
+
+        if (pendingBalance.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("La venta ya está pagada");
+        }
+
+        if (amount.compareTo(pendingBalance) > 0) {
+            throw new IllegalArgumentException("El abono no puede ser mayor al saldo pendiente");
+        }
+
+        MetodoPago paymentMethod = metodoPagoRepository.findById(request.getPaymentMethodId())
+                .orElseThrow(() -> new NotFoundException("Método de pago no encontrado"));
+
+        Usuario usuario = usuarioService.getByUsername(ctx.getEmail())
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
+
+        VentaPago pago = new VentaPago();
+        pago.setVenta(venta);
+        pago.setAmount(amount);
+        pago.setPaymentMethod(paymentMethod);
+        pago.setUsuario(usuario);
+        pago.setPaymentDate(LocalDateTime.now());
+        pago.setNote(request.getNote());
+        pago.setActive(true);
+
+        VentaPago pagoGuardado = ventaPagoRepository.save(pago);
+
+        BigDecimal nuevoTotalPagado = totalPaid.add(amount);
+        BigDecimal nuevoSaldoPendiente = totalAmount.subtract(nuevoTotalPagado);
+
+        if (nuevoSaldoPendiente.compareTo(BigDecimal.ZERO) < 0) {
+            nuevoSaldoPendiente = BigDecimal.ZERO;
+        }
+
+        venta.setTotalPaid(nuevoTotalPagado);
+        venta.setPendingBalance(nuevoSaldoPendiente);
+
+        if (nuevoSaldoPendiente.compareTo(BigDecimal.ZERO) == 0) {
+            venta.setPaymentStatus(EstadoPago.PAGADA);
+        } else if (nuevoTotalPagado.compareTo(BigDecimal.ZERO) > 0) {
+            venta.setPaymentStatus(EstadoPago.PARCIAL);
+        } else {
+            venta.setPaymentStatus(EstadoPago.PENDIENTE);
+        }
+
+        ventaRepository.save(venta);
+
+        return toVentaPagoResponse(pagoGuardado);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<VentaPagoResponseDTO> obtenerPagosVenta(Long ventaId) {
+        if (ventaId == null) {
+            throw new IllegalArgumentException("El id de la venta es obligatorio");
+        }
+
+        UserContext ctx = ctx();
+
+        Venta venta = ctx.isSuperAdmin()
+                ? ventaRepository.findByIdFull(ventaId)
+                .orElseThrow(() -> new NotFoundException("Venta no encontrada"))
+                : ventaRepository.findByIdFullByBranch(ventaId, ctx.getBranchId())
+                .orElseThrow(() -> new NotFoundException("Venta no encontrada o no corresponde a tu sucursal"));
+
+        return ventaPagoRepository.findByVenta_IdAndActiveTrueOrderByPaymentDateAsc(venta.getId())
+                .stream()
+                .map(this::toVentaPagoResponse)
+                .toList();
+    }
+
+    private VentaPagoResponseDTO toVentaPagoResponse(VentaPago pago) {
+        VentaPagoResponseDTO dto = new VentaPagoResponseDTO();
+
+        dto.setId(pago.getId());
+        dto.setVentaId(pago.getVenta() != null ? pago.getVenta().getId() : null);
+        dto.setAmount(pago.getAmount());
+
+        if (pago.getPaymentMethod() != null) {
+            dto.setPaymentMethodId(pago.getPaymentMethod().getId());
+            dto.setPaymentName(pago.getPaymentMethod().getName());
+        }
+
+        if (pago.getUsuario() != null) {
+            dto.setUserName(pago.getUsuario().getUsername());
+        }
+
+        dto.setPaymentDate(pago.getPaymentDate());
+        dto.setNote(pago.getNote());
+        dto.setActive(pago.getActive());
+
+        return dto;
+    }
+
+    private void ajustarNombreMetodoPago(VentaResponseDTO dto) {
+        if (dto == null || dto.getId() == null) {
+            return;
+        }
+
+        List<String> metodosPago = ventaPagoRepository
+                .findDistinctPaymentMethodNamesByVentaId(dto.getId());
+
+        if (metodosPago == null || metodosPago.isEmpty()) {
+            return;
+        }
+
+        if (metodosPago.size() > 1) {
+            dto.setPaymentName("MIXTO");
+            dto.setPaymentMethodId(null);
+            return;
+        }
+
+        dto.setPaymentName(metodosPago.get(0));
     }
 }

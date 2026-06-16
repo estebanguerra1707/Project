@@ -48,4 +48,8 @@ public interface IVentaService {
     VentaConsolidadaResponseDTO obtenerDetalleConsolidadoPorTicket(Long weeklyTicketId);
     byte[] generarTicketConsolidadoPdf(VentaConsolidadaRequestDTO request);
     byte[] generarTicketConsolidadoPdfPorWeeklyTicketId(Long weeklyTicketId);
+
+    VentaPagoResponseDTO registrarAbono(Long ventaId, VentaPagoRequestDTO request);
+
+    List<VentaPagoResponseDTO> obtenerPagosVenta(Long ventaId);
 }

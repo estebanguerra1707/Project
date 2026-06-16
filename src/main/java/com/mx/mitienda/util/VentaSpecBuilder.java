@@ -6,6 +6,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import com.mx.mitienda.util.enums.EstadoPago;
 
 public class VentaSpecBuilder {
     private final SpecificationBuilder<Venta> builder =  new SpecificationBuilder<>();
@@ -73,6 +74,14 @@ public class VentaSpecBuilder {
     }
     public VentaSpecBuilder consolidated(Boolean consolidated) {
         builder.and(VentasSpecification.isConsolidated(consolidated));
+        return this;
+    }
+    public VentaSpecBuilder paymentStatus(EstadoPago paymentStatus) {
+        if (paymentStatus != null) {
+            builder.and((root, query, cb) ->
+                    cb.equal(root.get("paymentStatus"), paymentStatus)
+            );
+        }
         return this;
     }
 

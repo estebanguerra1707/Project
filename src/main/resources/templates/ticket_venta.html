@@ -150,25 +150,65 @@
         </table>
 
         <div class="payment-details">
-            <p class="formato"><strong>TOTAL</strong></p>
-            <p th:text="${#numbers.formatDecimal(venta.totalAmount, 1, 'POINT', 2, 'POINT')}"></p>
+            <p class="formato"><strong>TOTAL DE LA VENTA</strong></p>
+            <p>
+                <strong>Total:</strong>
+                <span th:text="${#numbers.formatDecimal(venta.totalAmount, 1, 'POINT', 2, 'POINT')}"></span>
+            </p>
             <p th:text="${venta.amountInWords}"></p>
 
-            <p class="formato"><strong>Pagado con:</strong></p>
+            <p>
+                <strong>Estado de pago:</strong>
+                <span class="highlight" th:text="${venta.paymentStatus}"></span>
+            </p>
+
+            <p>
+                <strong>Total pagado:</strong>
+                <span th:text="${#numbers.formatDecimal(venta.totalPaid, 1, 'POINT', 2, 'POINT')}"></span>
+            </p>
+
+            <p>
+                <strong>Saldo pendiente:</strong>
+                <span class="highlight" th:text="${#numbers.formatDecimal(venta.pendingBalance, 1, 'POINT', 2, 'POINT')}"></span>
+            </p>
+
             <p>
                 <strong>Método de pago:</strong>
                 <span th:text="${venta.paymentName}"></span>
             </p>
 
             <p th:if="${venta.amountPaid != null and venta.amountPaid > 0}">
-                <strong class="highlight">Recibido:</strong>
+                <strong>Recibido:</strong>
                 <span th:text="${#numbers.formatDecimal(venta.amountPaid, 1, 'POINT', 2, 'POINT')}"></span>
             </p>
 
-            <p>
+            <p th:if="${venta.changeAmount != null and venta.changeAmount > 0}">
                 <strong>Cambio:</strong>
                 <span th:text="${#numbers.formatDecimal(venta.changeAmount, 1, 'POINT', 2, 'POINT')}"></span>
             </p>
+
+            <div th:if="${pagosVenta != null and !pagosVenta.isEmpty()}">
+                <p class="formato"><strong>HISTORIAL DE PAGOS</strong></p>
+
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Método</th>
+                        <th class="money">Monto</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="pago : ${pagosVenta}">
+                        <td th:text="${#temporals.format(pago.paymentDate, 'dd/MM/yyyy HH:mm')}"></td>
+                        <td th:text="${pago.paymentMethod.name}"></td>
+                        <td class="money"
+                            th:text="${#numbers.formatDecimal(pago.amount, 1, 'POINT', 2, 'POINT')}">
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <div class="footer">
