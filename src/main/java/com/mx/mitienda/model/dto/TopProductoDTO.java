@@ -29,6 +29,7 @@ public class TopProductoDTO {
     private Long userId;
     private Long salesCount;
     private List<UsuarioVentaResumenDTO> usuarios;
+    private BigDecimal netProfit;
     public TopProductoDTO(String productName, BigDecimal totalQuantity) {
         this.productName = productName;
         this.totalQuantity = totalQuantity;
@@ -78,6 +79,7 @@ public class TopProductoDTO {
             String productName,
             BigDecimal totalQuantity,
             BigDecimal totalIncome,
+            BigDecimal netProfit,
             LocalDateTime ultimaVenta,
             String categoria,
             String tipoNegocio,
@@ -89,6 +91,7 @@ public class TopProductoDTO {
         this.productName = productName;
         this.totalQuantity = totalQuantity;
         this.totalIncome = totalIncome;
+        this.netProfit = netProfit;
         this.ultimaVenta = ultimaVenta;
         this.categoria = categoria;
         this.tipoNegocio = tipoNegocio;

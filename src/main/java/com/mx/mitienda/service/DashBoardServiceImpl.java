@@ -165,36 +165,50 @@ public class DashBoardServiceImpl extends BaseService implements IDashboardServi
                 dto.setUltimaVenta(fila.getUltimaVenta());
                 dto.setTotalQuantity(BigDecimal.ZERO);
                 dto.setTotalIncome(BigDecimal.ZERO);
+                dto.setNetProfit(BigDecimal.ZERO);
                 dto.setUsuarios(new ArrayList<>());
                 return dto;
             });
 
+            BigDecimal cantidadFila = fila.getTotalQuantity() != null
+                    ? fila.getTotalQuantity()
+                    : BigDecimal.ZERO;
+
+            BigDecimal ingresoFila = fila.getTotalIncome() != null
+                    ? fila.getTotalIncome()
+                    : BigDecimal.ZERO;
+
+            BigDecimal gananciaFila = fila.getNetProfit() != null
+                    ? fila.getNetProfit()
+                    : BigDecimal.ZERO;
+
             acumulado.setTotalQuantity(
-                    acumulado.getTotalQuantity().add(
-                            fila.getTotalQuantity() != null ? fila.getTotalQuantity() : BigDecimal.ZERO
-                    )
+                    acumulado.getTotalQuantity().add(cantidadFila)
             );
 
             acumulado.setTotalIncome(
-                    acumulado.getTotalIncome().add(
-                            fila.getTotalIncome() != null ? fila.getTotalIncome() : BigDecimal.ZERO
-                    )
+                    acumulado.getTotalIncome().add(ingresoFila)
+            );
+
+            acumulado.setNetProfit(
+                    acumulado.getNetProfit().add(gananciaFila)
             );
 
             if (fila.getUltimaVenta() != null &&
-                    (acumulado.getUltimaVenta() == null || fila.getUltimaVenta().isAfter(acumulado.getUltimaVenta()))) {
+                    (acumulado.getUltimaVenta() == null ||
+                            fila.getUltimaVenta().isAfter(acumulado.getUltimaVenta()))) {
                 acumulado.setUltimaVenta(fila.getUltimaVenta());
             }
 
-            acumulado.getUsuarios().add(
-                    new UsuarioVentaResumenDTO(
-                            fila.getUserId(),
-                            fila.getUsername(),
-                            fila.getTotalQuantity() != null ? fila.getTotalQuantity() : BigDecimal.ZERO,
-                            fila.getTotalIncome() != null ? fila.getTotalIncome() : BigDecimal.ZERO,
-                            fila.getSalesCount() != null ? fila.getSalesCount() : 0L
-                    )
-            );
+            UsuarioVentaResumenDTO usuarioResumen = new UsuarioVentaResumenDTO();
+            usuarioResumen.setUserId(fila.getUserId());
+            usuarioResumen.setUsername(fila.getUsername());
+            usuarioResumen.setTotalQuantity(cantidadFila);
+            usuarioResumen.setTotalIncome(ingresoFila);
+            usuarioResumen.setNetProfit(gananciaFila);
+            usuarioResumen.setSalesCount(fila.getSalesCount() != null ? fila.getSalesCount() : 0L);
+
+            acumulado.getUsuarios().add(usuarioResumen);
         }
 
         return map.values()
@@ -202,6 +216,7 @@ public class DashBoardServiceImpl extends BaseService implements IDashboardServi
                 .sorted((a, b) -> b.getTotalQuantity().compareTo(a.getTotalQuantity()))
                 .toList();
     }
+
     // Nuevo método exclusivo para super user
     @Override
     public List<TopProductoDTO> topVendidosPorUsuario(LocalDate inicio, LocalDate fin, Long branchId) {

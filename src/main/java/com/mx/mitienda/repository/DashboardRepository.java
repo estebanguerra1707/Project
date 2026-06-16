@@ -96,6 +96,7 @@ public interface DashboardRepository extends JpaRepository<Venta, Long> {
         p.name,
         SUM(d.quantity),
         SUM(d.quantity * d.unitPrice),
+        SUM((d.unitPrice - COALESCE(p.purchasePrice, 0)) * d.quantity),
         MAX(v.saleDate),
         pc.name,
         bt.name,
@@ -128,17 +129,21 @@ public interface DashboardRepository extends JpaRepository<Venta, Long> {
     SELECT new com.mx.mitienda.model.dto.UsuarioVentaResumenDTO(
         u.id,
         u.username,
-        COALESCE(SUM(v.totalAmount), 0),
-        COUNT(v.id)
+        COALESCE(SUM(d.subTotal), 0),
+        COALESCE(SUM((d.unitPrice - COALESCE(p.purchasePrice, 0)) * d.quantity), 0),
+        COUNT(DISTINCT v.id)
     )
     FROM Venta v
     JOIN v.usuario u
+    JOIN v.detailsList d
+    JOIN d.product p
     WHERE v.active = true
+      AND d.active = true
       AND v.saleDate >= :inicio
       AND v.saleDate < :fin
       AND (:branchId IS NULL OR v.branch.id = :branchId)
     GROUP BY u.id, u.username
-    ORDER BY COALESCE(SUM(v.totalAmount), 0) DESC
+    ORDER BY COALESCE(SUM((d.unitPrice - COALESCE(p.purchasePrice, 0)) * d.quantity), 0) DESC
 """)
     List<UsuarioVentaResumenDTO> findVentasResumenPorUsuario(
             @Param("inicio") LocalDateTime inicio,
