@@ -19,6 +19,19 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -32,6 +45,32 @@ public class ClienteServiceImpl extends BaseService implements IClienteService {
     private final ISucursalService sucursalService;
 
     private static final String CLIENTE_REL_FIELD = "clienteSucursales";
+
+    private static final Comparator<ClienteResponseDTO> CLIENTE_NAME_ASC =
+            Comparator.comparing(
+                    dto -> normalizeClienteName(dto.getName())
+            );
+
+    private static String normalizeClienteName(String name) {
+        return name == null ? "" : name.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private List<ClienteResponseDTO> sortClientesByName(List<ClienteResponseDTO> clientes) {
+        return clientes.stream()
+                .sorted(CLIENTE_NAME_ASC)
+                .toList();
+    }
+
+    private Pageable forceClienteNameSort(Pageable pageable) {
+        return PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(
+                        Sort.Order.asc("name"),
+                        Sort.Order.asc("id")
+                )
+        );
+    }
 
     public ClienteServiceImpl(
             IAuthenticatedUserService authenticatedUserService,
@@ -51,11 +90,12 @@ public class ClienteServiceImpl extends BaseService implements IClienteService {
     @Override
     public List<ClienteResponseDTO> getAll() {
         UserContext c = ctx();
+
         if (c.isSuperAdmin()) {
             List<ClienteSucursal> rels = clienteSucursalRepository.findByActiveTrue();
             if (rels.isEmpty()) return List.of();
 
-            return rels.stream()
+            List<ClienteResponseDTO> clientes = rels.stream()
                     .collect(Collectors.groupingBy(cs -> cs.getCliente().getId()))
                     .values()
                     .stream()
@@ -77,16 +117,21 @@ public class ClienteServiceImpl extends BaseService implements IClienteService {
                         return dto;
                     })
                     .toList();
+
+            return sortClientesByName(clientes);
         }
+
         Long branchId = c.getBranchId();
         if (branchId == null) throw new ForbiddenException("No se pudo determinar la sucursal del usuario.");
 
-        return clienteSucursalRepository.findBySucursalIdAndActiveTrue(branchId)
+        List<ClienteResponseDTO> clientes = clienteSucursalRepository.findBySucursalIdAndActiveTrue(branchId)
                 .stream()
                 .map(ClienteSucursal::getCliente)
                 .distinct()
                 .map(cliente -> enrich(cliente, branchId))
                 .toList();
+
+        return sortClientesByName(clientes);
     }
 
     @Override
@@ -269,21 +314,25 @@ public class ClienteServiceImpl extends BaseService implements IClienteService {
     public List<ClienteResponseDTO> advancedSearch(ClienteFiltroDTO filtro) {
 
         UserContext c = ctx();
+        ClienteFiltroDTO f = filtro != null ? filtro : new ClienteFiltroDTO();
 
-        if (c.isSuperAdmin() && (filtro == null || filtro.getBranchId() == null)) {
+        if (c.isSuperAdmin() && f.getBranchId() == null) {
 
             Specification<Cliente> spec = new ClienteSpecBuilder()
-                    .active(filtro != null ? filtro.getActive() : null)
-                    .name(filtro != null ? filtro.getName() : null)
-                    .email(filtro != null ? filtro.getEmail() : null)
-                    .phoneNumber(filtro != null ? filtro.getPhone() : null)
-                    .withId(filtro != null ? filtro.getId() : null)
+                    .active(f.getActive())
+                    .name(f.getName())
+                    .email(f.getEmail())
+                    .phoneNumber(f.getPhone())
+                    .withId(f.getId())
                     .build();
 
             Specification<Cliente> specTieneSucursalActiva =
-                    (root, query, cb) -> cb.isTrue(root.join(CLIENTE_REL_FIELD).get("active"));
+                    (root, query, cb) -> {
+                        query.distinct(true);
+                        return cb.isTrue(root.join(CLIENTE_REL_FIELD).get("active"));
+                    };
 
-            return clienteRepository.findAll(spec.and(specTieneSucursalActiva))
+            List<ClienteResponseDTO> clientes = clienteRepository.findAll(spec.and(specTieneSucursalActiva))
                     .stream()
                     .map(cli -> {
                         ClienteResponseDTO dto = clienteMapper.toResponse(cli);
@@ -297,23 +346,27 @@ public class ClienteServiceImpl extends BaseService implements IClienteService {
                         return dto;
                     })
                     .toList();
+
+            return sortClientesByName(clientes);
         }
+
         Long branchId = c.isSuperAdmin()
-                ? filtro.getBranchId()
+                ? f.getBranchId()
                 : c.getBranchId();
 
         if (branchId == null) throw new ForbiddenException("Sucursal no determinada");
         if (c.isSuperAdmin()) sucursalService.findById(branchId);
 
         Specification<Cliente> spec = new ClienteSpecBuilder()
-                .active(filtro.getActive())
-                .name(filtro.getName())
-                .email(filtro.getEmail())
-                .phoneNumber(filtro.getPhone())
-                .withId(filtro.getId())
+                .active(f.getActive())
+                .name(f.getName())
+                .email(f.getEmail())
+                .phoneNumber(f.getPhone())
+                .withId(f.getId())
                 .build();
 
         Specification<Cliente> specSucursal = (root, query, cb) -> {
+            query.distinct(true);
             var join = root.join(CLIENTE_REL_FIELD);
             return cb.and(
                     cb.equal(join.get("sucursal").get("id"), branchId),
@@ -321,48 +374,59 @@ public class ClienteServiceImpl extends BaseService implements IClienteService {
             );
         };
 
-        return clienteRepository.findAll(spec.and(specSucursal))
+        List<ClienteResponseDTO> clientes = clienteRepository.findAll(spec.and(specSucursal))
                 .stream()
                 .map(cli -> enrich(cli, branchId))
                 .toList();
+
+        return sortClientesByName(clientes);
     }
 
+
     @Transactional(readOnly = true)
+    @Override
     public Page<ClienteResponseDTO> advancedSearchPage(
             ClienteFiltroDTO filtro,
             Pageable pageable
     ) {
         UserContext c = ctx();
+        ClienteFiltroDTO f = filtro != null ? filtro : new ClienteFiltroDTO();
+
+        Pageable sortedPageable = forceClienteNameSort(pageable);
 
         Specification<Cliente> spec = new ClienteSpecBuilder()
-                .active(filtro.getActive())
-                .name(filtro.getName())
-                .email(filtro.getEmail())
-                .phoneNumber(filtro.getPhone())
-                .withId(filtro.getId())
+                .active(f.getActive())
+                .name(f.getName())
+                .email(f.getEmail())
+                .phoneNumber(f.getPhone())
+                .withId(f.getId())
                 .build();
 
-        if (c.isSuperAdmin() && filtro.getBranchId() == null) {
+        if (c.isSuperAdmin() && f.getBranchId() == null) {
 
             Specification<Cliente> hasActiveSucursal =
-                    (root, q, cb) -> cb.isTrue(root.join(CLIENTE_REL_FIELD).get("active"));
+                    (root, query, cb) -> {
+                        query.distinct(true);
+                        return cb.isTrue(root.join(CLIENTE_REL_FIELD).get("active"));
+                    };
 
             Page<Cliente> page = clienteRepository.findAll(
                     spec.and(hasActiveSucursal),
-                    pageable
+                    sortedPageable
             );
 
             return mapToPage(page, null);
         }
 
         Long branchId = c.isSuperAdmin()
-                ? filtro.getBranchId()
+                ? f.getBranchId()
                 : c.getBranchId();
 
         if (branchId == null) throw new ForbiddenException("Sucursal no determinada");
         if (c.isSuperAdmin()) sucursalService.findById(branchId);
 
-        Specification<Cliente> specSucursal = (root, q, cb) -> {
+        Specification<Cliente> specSucursal = (root, query, cb) -> {
+            query.distinct(true);
             var join = root.join(CLIENTE_REL_FIELD);
             return cb.and(
                     cb.equal(join.get("sucursal").get("id"), branchId),
@@ -372,7 +436,7 @@ public class ClienteServiceImpl extends BaseService implements IClienteService {
 
         Page<Cliente> page = clienteRepository.findAll(
                 spec.and(specSucursal),
-                pageable
+                sortedPageable
         );
 
         return mapToPage(page, branchId);

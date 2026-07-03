@@ -544,9 +544,26 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
                         Collectors.toList()
                 ));
 
+        boolean puedeVerGanancia = ctx().isSuperAdmin() || ctx().isAdmin();
+
         ventasNormales.stream()
-                .map(ventaMapper::toResponseHeader)
-                .peek(this::ajustarNombreMetodoPago)
+                .map(venta -> {
+                    VentaResponseDTO dto = ventaMapper.toResponseHeader(venta);
+                    ajustarNombreMetodoPago(dto);
+
+                    if (puedeVerGanancia) {
+                        dto.setNetProfit(
+                                obtenerGananciaPorVenta(
+                                        venta.getId(),
+                                        venta.getBranch() != null ? venta.getBranch().getId() : null
+                                )
+                        );
+                    } else {
+                        dto.setNetProfit(null);
+                    }
+
+                    return dto;
+                })
                 .forEach(resultado::add);
 
         ventasConsolidadasPorTicket.forEach((weeklyTicketId, ventasDelTicket) -> {
@@ -554,6 +571,20 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
                     ventaMapper.toConsolidadaVirtualHeader(weeklyTicketId, ventasDelTicket);
 
             if (filaConsolidada != null) {
+                if (puedeVerGanancia) {
+                    BigDecimal gananciaConsolidada = ventasDelTicket.stream()
+                            .map(venta -> obtenerGananciaPorVenta(
+                                    venta.getId(),
+                                    venta.getBranch() != null ? venta.getBranch().getId() : null
+                            ))
+                            .filter(Objects::nonNull)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    filaConsolidada.setNetProfit(gananciaConsolidada);
+                } else {
+                    filaConsolidada.setNetProfit(null);
+                }
+
                 resultado.add(filaConsolidada);
             }
         });
