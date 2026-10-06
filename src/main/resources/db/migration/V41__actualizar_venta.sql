@@ -1,0 +1,2 @@
+ALTER TABLE venta
+ADD COLUMN client_name VARCHAR(150);

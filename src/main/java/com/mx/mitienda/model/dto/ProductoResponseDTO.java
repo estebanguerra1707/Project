@@ -2,7 +2,6 @@ package com.mx.mitienda.model.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.mx.mitienda.util.enums.InventarioOwnerType;
-import com.mx.mitienda.util.enums.UnidadMedida;
 import lombok.Data;
 
 import java.math.BigDecimal;

@@ -1,15 +1,12 @@
 package com.mx.mitienda.service;
 
 import com.mx.mitienda.exception.ForbiddenException;
-import com.mx.mitienda.model.Sucursal;
-import com.mx.mitienda.model.Usuario;
 import com.mx.mitienda.model.dto.DashboardResumenDTO;
+import com.mx.mitienda.model.dto.ResumenSemanaDTO;
 import com.mx.mitienda.model.dto.TopProductoDTO;
 import com.mx.mitienda.model.dto.UsuarioVentaResumenDTO;
 import com.mx.mitienda.repository.*;
 import com.mx.mitienda.service.base.BaseService;
-import com.mx.mitienda.util.enums.Rol;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -32,12 +29,13 @@ public class DashBoardServiceImpl extends BaseService implements IDashboardServi
     private final ProductoRepository productoRepository;
     private final InventarioSucursalRepository inventarioSucursalRepository;
     private final DashboardRepository dashboardRepository;
+    private final GastoRepository gastoRepository;
 
     protected DashBoardServiceImpl(IAuthenticatedUserService authenticatedUserService, DetalleVentaRepository detalleVentaRepository,
                                    IAuthenticatedUserService authenticatedUserService1,
                                    VentaRepository ventaRepository, ProductoRepository productoRepository,
                                    InventarioSucursalRepository inventarioSucursalRepository,
-                                   DashboardRepository dashboardRepository) {
+                                   DashboardRepository dashboardRepository, GastoRepository gastoRepository) {
         super(authenticatedUserService);
         this.detalleVentaRepository = detalleVentaRepository;
         this.authenticatedUserService = authenticatedUserService1;
@@ -45,6 +43,7 @@ public class DashBoardServiceImpl extends BaseService implements IDashboardServi
         this.productoRepository = productoRepository;
         this.inventarioSucursalRepository = inventarioSucursalRepository;
         this.dashboardRepository = dashboardRepository;
+        this.gastoRepository = gastoRepository;
     }
 
     @Override
@@ -76,6 +75,65 @@ public class DashBoardServiceImpl extends BaseService implements IDashboardServi
             default -> throw new IllegalArgumentException("groupBy inválido");
         };
 
+    }
+
+    @Override
+    public ResumenSemanaDTO obtenerResumenSemana(Long branchId, int semanasAtras) {
+        UserContext ctx = ctx();
+        Long sucursalId = ctx.isSuperAdmin() ? branchId : ctx.getBranchId();
+
+        LocalDate today = LocalDate.now();
+        LocalDateTime endToday = today.plusDays(1).atStartOfDay();
+
+        LocalDate inicioSemana = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.THURSDAY))
+                .minusWeeks(semanasAtras);
+
+        LocalDateTime startSemana = inicioSemana.atStartOfDay();
+        LocalDateTime endSemana = (semanasAtras == 0) ? endToday : inicioSemana.plusDays(7).atStartOfDay();
+
+        BigDecimal vendidosSemana = ventaRepository.sumArticulosVendidos(startSemana, endSemana, sucursalId);
+        if (vendidosSemana == null) vendidosSemana = BigDecimal.ZERO;
+
+        List<com.mx.mitienda.model.dto.VentaDiariaDTO> ventasDiarias = new ArrayList<>();
+
+        for (int i = 0; i < 7; i++) {
+            LocalDate diaIteracion = inicioSemana.plusDays(i);
+            LocalDateTime startDia = diaIteracion.atStartOfDay();
+            LocalDateTime endDia = diaIteracion.plusDays(1).atStartOfDay();
+
+            // 1. Obtenemos lo que ya tenías
+            BigDecimal ingresosDia = ventaRepository.sumVentasBrutas(startDia, endDia, sucursalId);
+            BigDecimal gananciaDia = ventaRepository.sumGananciaVentas(startDia, endDia, sucursalId);
+            BigDecimal vendidosDia = ventaRepository.sumArticulosVendidos(startDia, endDia, sucursalId);
+
+            // 2. NUEVO: Obtenemos los gastos de ese día
+            BigDecimal gastosDia = gastoRepository.sumGastosPorDiaYSucursal(diaIteracion, sucursalId);
+
+            // Manejo de nulos
+            BigDecimal ingresosSeguros = ingresosDia != null ? ingresosDia : BigDecimal.ZERO;
+            BigDecimal gananciaBrutaSegura = gananciaDia != null ? gananciaDia : BigDecimal.ZERO;
+            BigDecimal vendidosSeguros = vendidosDia != null ? vendidosDia : BigDecimal.ZERO;
+
+            // 3. NUEVO: Cálculo de Ganancia Neta Real (Ganancia - Gastos)
+            // Nota contable: A los "Ingresos" (Ventas brutas) no se les suele restar el gasto directamente,
+            // el gasto se le resta a la "Ganancia" para obtener tu ganancia neta o libre.
+            BigDecimal gananciaNetaReal = gananciaBrutaSegura.subtract(gastosDia);
+
+            String nombreDia = diaIteracion.getDayOfWeek().getDisplayName(
+                    java.time.format.TextStyle.SHORT,
+                    new java.util.Locale("es", "MX")
+            );
+            nombreDia = nombreDia.substring(0, 1).toUpperCase() + nombreDia.substring(1) + " " + diaIteracion.getDayOfMonth();
+
+            ventasDiarias.add(new com.mx.mitienda.model.dto.VentaDiariaDTO(
+                    nombreDia,
+                    ingresosSeguros,
+                    gananciaNetaReal,
+                    vendidosSeguros,
+                    gastosDia
+            ));
+        }
+        return new ResumenSemanaDTO(ventasDiarias, vendidosSemana);
     }
     @Override
     public DashboardResumenDTO obtenerResumen(Long branchId) {
@@ -113,6 +171,15 @@ public class DashBoardServiceImpl extends BaseService implements IDashboardServi
 
         dto.setIngresosMes(ingresosMes);
 
+        LocalDateTime startSemana = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.THURSDAY)).atStartOfDay();
+        BigDecimal vendidosHoy = ventaRepository.sumArticulosVendidos(startToday, endToday, sucursalId);
+        BigDecimal vendidosSemana = ventaRepository.sumArticulosVendidos(startSemana, endToday, sucursalId);
+        BigDecimal vendidosMes = ventaRepository.sumArticulosVendidos(startMonth, endMonth, sucursalId);
+
+        dto.setProductosVendidosHoy(vendidosHoy);
+        dto.setProductosVendidosSemana(vendidosSemana);
+        dto.setProductosVendidosMes(vendidosMes);
+
         dto.setVentasHoyPorUsuario(
                 dashboardRepository.findVentasResumenPorUsuario(
                         startToday,
@@ -128,6 +195,57 @@ public class DashBoardServiceImpl extends BaseService implements IDashboardServi
                         sucursalId
                 )
         );
+
+        // 1. AJUSTE EN LA GANANCIA GLOBAL DE HOY
+        BigDecimal ingresosHoy = ventaRepository.sumVentasBrutas(startToday, endToday, sucursalId);
+        BigDecimal gananciaHoyBruta = ventaRepository.sumGananciaVentas(startToday, endToday, sucursalId);
+        BigDecimal gastosHoy = gastoRepository.sumGastosPorDiaYSucursal(today, sucursalId); // NUEVO
+
+        BigDecimal ingresosHoySeguros = ingresosHoy != null ? ingresosHoy : BigDecimal.ZERO;
+        BigDecimal gananciaHoySegura = gananciaHoyBruta != null ? gananciaHoyBruta : BigDecimal.ZERO;
+        BigDecimal gastosHoySeguros = gastosHoy != null ? gastosHoy : BigDecimal.ZERO;
+
+        dto.setIngresosHoy(ingresosHoySeguros);
+        // Restamos el gasto para que la tarjeta del dashboard muestre la ganancia neta
+        dto.setGananciaHoy(gananciaHoySegura.subtract(gastosHoySeguros));
+
+        // 2. AJUSTE EN EL BUCLE DE VENTAS DIARIAS
+        java.time.LocalDate inicioSemana = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.THURSDAY));
+        List<com.mx.mitienda.model.dto.VentaDiariaDTO> ventasDiarias = new ArrayList<>();
+
+        for (int i = 0; i < 7; i++) {
+            java.time.LocalDate diaIteracion = inicioSemana.plusDays(i);
+            LocalDateTime startDia = diaIteracion.atStartOfDay();
+            LocalDateTime endDia = diaIteracion.plusDays(1).atStartOfDay();
+
+            BigDecimal ingresosDia = ventaRepository.sumVentasBrutas(startDia, endDia, sucursalId);
+            BigDecimal gananciaDia = ventaRepository.sumGananciaVentas(startDia, endDia, sucursalId);
+            BigDecimal vendidosDia = ventaRepository.sumArticulosVendidos(startDia, endDia, sucursalId);
+
+            // Obtenemos los gastos de este día iterado
+            BigDecimal gastosDia = gastoRepository.sumGastosPorDiaYSucursal(diaIteracion, sucursalId);
+
+            BigDecimal ingresosSeguros = ingresosDia != null ? ingresosDia : BigDecimal.ZERO;
+            BigDecimal gananciaBrutaSegura = gananciaDia != null ? gananciaDia : BigDecimal.ZERO;
+            BigDecimal vendidosSeguros = vendidosDia != null ? vendidosDia : BigDecimal.ZERO;
+            BigDecimal gastosSeguros = gastosDia != null ? gastosDia : BigDecimal.ZERO;
+
+            String nombreDia = diaIteracion.getDayOfWeek().getDisplayName(
+                    java.time.format.TextStyle.SHORT,
+                    new java.util.Locale("es", "MX")
+            );
+            nombreDia = nombreDia.substring(0, 1).toUpperCase() + nombreDia.substring(1) + " " + diaIteracion.getDayOfMonth();
+
+            ventasDiarias.add(new com.mx.mitienda.model.dto.VentaDiariaDTO(
+                    nombreDia,
+                    ingresosSeguros,
+                    gananciaBrutaSegura.subtract(gastosSeguros),
+                    vendidosSeguros,
+                    gastosSeguros
+            ));
+        }
+
+        dto.setVentasDiariasSemana(ventasDiarias);
 
         return dto;
     }
@@ -229,4 +347,5 @@ public class DashBoardServiceImpl extends BaseService implements IDashboardServi
 
         return dashboardRepository.findTopProductosPorUsuario(start, end, sucursalId);
     }
+
 }

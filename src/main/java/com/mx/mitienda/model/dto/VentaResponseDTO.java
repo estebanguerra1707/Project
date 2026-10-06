@@ -36,5 +36,7 @@ public class VentaResponseDTO {
     private BigDecimal pendingBalance;
     private String paymentStatus;
     private BigDecimal netProfit;
+    private String estadoOrden;
+
 
 }

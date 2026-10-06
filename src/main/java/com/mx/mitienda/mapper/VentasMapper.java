@@ -2,18 +2,13 @@ package com.mx.mitienda.mapper;
 
 import com.mx.mitienda.exception.NotFoundException;
 import com.mx.mitienda.model.*;
-import com.mx.mitienda.model.dto.DetalleVentaRequestDTO;
-import com.mx.mitienda.model.dto.DetalleVentaResponseDTO;
-import com.mx.mitienda.model.dto.VentaRequestDTO;
-import com.mx.mitienda.model.dto.VentaResponseDTO;
+import com.mx.mitienda.model.dto.*;
 import com.mx.mitienda.repository.*;
 import com.mx.mitienda.service.IAuthenticatedUserService;
-import com.mx.mitienda.service.IHistorialMovimientosService;
 import com.mx.mitienda.service.UsuarioService;
 import com.mx.mitienda.util.NumberToWordsConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -25,7 +20,7 @@ import static com.mx.mitienda.util.enums.TipoPago.EFECTIVO;
 import java.time.LocalDateTime;
 
 import com.mx.mitienda.util.enums.EstadoPago;
-import com.mx.mitienda.model.dto.VentaPagoRequestDTO;
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -37,13 +32,11 @@ public class VentasMapper {
     private final MetodoPagoRepository metodoPagoRepository;
     private final IAuthenticatedUserService authenticatedUserService;
     private final BusinessTypeRepository businessTypeRepository;
-
+    private final EstadoOrdenRepository estadoOrdenRepository;
 
     public Venta toEntity(VentaRequestDTO ventasRequestDTO, String username) {
 
         boolean isSuperAdmin = authenticatedUserService.isSuperAdmin();
-        // 🔹 Si es SUPER_ADMIN → usa los valores que vienen en el request
-        // 🔹 Si no lo es → toma los del usuario autenticado
         Long branchId = isSuperAdmin
                 ? ventasRequestDTO.getBranchId()
                 : authenticatedUserService.getCurrentBranchId();
@@ -52,13 +45,11 @@ public class VentasMapper {
                 .map(s -> s.getBusinessType().getId())
                 .orElseThrow(() -> new NotFoundException("La sucursal no tiene tipo de negocio asignado"))
                 : authenticatedUserService.getCurrentBusinessTypeId();
-        Cliente cliente;
 
+        Cliente cliente = null;
         if (ventasRequestDTO.getClientId() != null && ventasRequestDTO.getClientId() > 0) {
             cliente = clienteRepository.findByIdAndActiveTrue(ventasRequestDTO.getClientId())
                     .orElseThrow(() -> new NotFoundException("Cliente no encontrado"));
-        } else {
-            throw new IllegalArgumentException("Debe seleccionar un cliente");
         }
 
         Usuario usuario = usuarioService.getByUsername(username)
@@ -86,9 +77,13 @@ public class VentasMapper {
         Venta venta = new Venta();
         venta.setSaleDate(ventasRequestDTO.getSaleDate());
         venta.setClient(cliente);
+        venta.setClientName(ventasRequestDTO.getClientName());
         venta.setUsuario(usuario);
         venta.setBranch(sucursal);
         venta.setActive(true);
+        EstadoOrden estadoInicial = estadoOrdenRepository.findByNombre("EN_PREPARACION")
+                .orElseThrow(() -> new NotFoundException("Estado de orden 'EN_PREPARACION' no existe en la base de datos"));
+        venta.setEstadoOrden(estadoInicial);
         venta.setPaymentMethod(paymentMethod);
 
         BigDecimal amountPaid = calcularMontoPagadoInicial(ventasRequestDTO);
@@ -134,6 +129,28 @@ public class VentasMapper {
             detalle.setUnitPrice(producto.getSalePrice());
             detalle.setSubTotal(producto.getSalePrice().multiply(cantidad));
             detalle.setActive(true);
+
+            BigDecimal totalExtrasPorUnidad = BigDecimal.ZERO;
+            if (detalleVentaRequestDTO.getExtras() != null) {
+                for (DetalleVentaExtraRequestDTO extraDTO : detalleVentaRequestDTO.getExtras()) {
+                    Producto prodExtra = productoRepository.findById(extraDTO.getProductId())
+                            .orElseThrow(() -> new NotFoundException("Producto extra no encontrado"));
+
+                    DetalleVentaExtra extra = new DetalleVentaExtra();
+                    extra.setDetalleVenta(detalle);
+                    extra.setProductExtra(prodExtra);
+                    extra.setExtraPrice(prodExtra.getSalePrice());
+
+                    detalle.getExtras().add(extra);
+                    totalExtrasPorUnidad = totalExtrasPorUnidad.add(prodExtra.getSalePrice());
+                }
+            }
+
+            detalle.setNotes(detalleVentaRequestDTO.getNotes());
+
+            BigDecimal precioConExtras = producto.getSalePrice().add(totalExtrasPorUnidad);
+            detalle.setSubTotal(precioConExtras.multiply(cantidad));
+
             return detalle;
         }).collect(Collectors.toList());
 
@@ -184,7 +201,15 @@ public class VentasMapper {
         ventaResponseDTO.setRowId("VENTA-" + venta.getId());
         ventaResponseDTO.setRowType("NORMAL");
         ventaResponseDTO.setFolioDisplay(String.valueOf(venta.getId()));
-        ventaResponseDTO.setClientName(venta.getClient().getName());
+
+        if (venta.getClient() != null) {
+            ventaResponseDTO.setClientName(venta.getClient().getName());
+        } else {
+            ventaResponseDTO.setClientName(venta.getClientName() != null && !venta.getClientName().isBlank()
+                    ? venta.getClientName()
+                    : "Público en general");
+        }
+
         ventaResponseDTO.setSaleDate(venta.getSaleDate());
         ventaResponseDTO.setTotalAmount(venta.getTotalAmount());
         ventaResponseDTO.setTotalPaid(venta.getTotalPaid());
@@ -202,6 +227,7 @@ public class VentasMapper {
         ventaResponseDTO.setConsolidated(Boolean.TRUE.equals(venta.getConsolidated()));
         ventaResponseDTO.setWeeklyTicketId(venta.getWeeklyTicketId());
         ventaResponseDTO.setConsolidatedAt(venta.getConsolidatedAt());
+        ventaResponseDTO.setEstadoOrden(venta.getEstadoOrden() != null ? venta.getEstadoOrden().getNombre() : null);
 
         List<DetalleVentaResponseDTO> details = venta.getDetailsList().stream().map(detail->{
             DetalleVentaResponseDTO detalleVentaResponseDTO = new DetalleVentaResponseDTO();
@@ -216,9 +242,12 @@ public class VentasMapper {
             detalleVentaResponseDTO.setQuantity(detail.getQuantity());
             detalleVentaResponseDTO.setUnitPrice(detail.getUnitPrice());
             detalleVentaResponseDTO.setSubTotal(detail.getSubTotal());
+
+            detalleVentaResponseDTO.setNotes(detail.getNotes());
+
             UnidadMedidaEntity um = null;
             if (detail.getProduct() != null) {
-                um = detail.getProduct().getUnidadMedida(); // ahora es entity
+                um = detail.getProduct().getUnidadMedida();
             }
 
             if (um != null) {
@@ -227,7 +256,6 @@ public class VentasMapper {
                 detalleVentaResponseDTO.setUnitName(um.getNombre());
                 detalleVentaResponseDTO.setPermiteDecimales(um.isPermiteDecimales());
             } else {
-                // fallback defensivo (idealmente nunca pasa si unidad_medida es NOT NULL)
                 detalleVentaResponseDTO.setUnitId(null);
                 detalleVentaResponseDTO.setUnitAbbr(null);
                 detalleVentaResponseDTO.setUnitName(null);
@@ -235,6 +263,19 @@ public class VentasMapper {
             }
             detalleVentaResponseDTO.setInventarioOwnerType(detail.getOwnerType());
             detalleVentaResponseDTO.setUsaInventarioPorDuenio(detail.getVenta().getBranch().getUsaInventarioPorDuenio());
+
+            if (detail.getExtras() != null && !detail.getExtras().isEmpty()) {
+                List<DetalleVentaExtraResponseDTO> extrasList = detail.getExtras().stream().map(ext -> {
+                    DetalleVentaExtraResponseDTO extDto = new DetalleVentaExtraResponseDTO();
+                    extDto.setId(ext.getId());
+                    extDto.setProductId(ext.getProductExtra().getId());
+                    extDto.setProductName(ext.getProductExtra().getName());
+                    extDto.setExtraPrice(ext.getExtraPrice());
+                    return extDto;
+                }).toList();
+                detalleVentaResponseDTO.setExtras(extrasList);
+            }
+
             return detalleVentaResponseDTO;
         }).toList();
 
@@ -248,7 +289,15 @@ public class VentasMapper {
         dto.setRowId("VENTA-" + venta.getId());
         dto.setRowType("NORMAL");
         dto.setFolioDisplay(String.valueOf(venta.getId()));
-        dto.setClientName(venta.getClient().getName());
+
+        if (venta.getClient() != null) {
+            dto.setClientName(venta.getClient().getName());
+        } else {
+            dto.setClientName(venta.getClientName() != null && !venta.getClientName().isBlank()
+                    ? venta.getClientName()
+                    : "Público en general");
+        }
+
         dto.setSaleDate(venta.getSaleDate());
         dto.setTotalAmount(venta.getTotalAmount());
         dto.setTotalPaid(venta.getTotalPaid());
@@ -264,10 +313,12 @@ public class VentasMapper {
         dto.setUserName(venta.getUsuario().getUsername());
         dto.setActive(venta.getActive());
         dto.setConsolidated(Boolean.TRUE.equals(venta.getConsolidated()));
+        dto.setEstadoOrden(venta.getEstadoOrden() != null ? venta.getEstadoOrden().getNombre() : null);
         dto.setWeeklyTicketId(venta.getWeeklyTicketId());
         dto.setConsolidatedAt(venta.getConsolidatedAt());
         return dto;
     }
+
     public VentaResponseDTO toConsolidadaVirtualHeader(Long weeklyTicketId, List<Venta> ventas) {
         if (weeklyTicketId == null || ventas == null || ventas.isEmpty()) {
             return null;
@@ -311,9 +362,17 @@ public class VentasMapper {
         dto.setRowType("CONSOLIDADA");
         dto.setFolioDisplay("CON-" + weeklyTicketId);
 
-        dto.setClientName(primeraVenta.getClient().getName());
+        if (primeraVenta.getClient() != null) {
+            dto.setClientName(primeraVenta.getClient().getName());
+        } else {
+            dto.setClientName(primeraVenta.getClientName() != null && !primeraVenta.getClientName().isBlank()
+                    ? primeraVenta.getClientName()
+                    : "Público en general");
+        }
+
         dto.setSaleDate(fechaFin);
         dto.setTotalAmount(total);
+
         BigDecimal totalPaid = ventas.stream()
                 .map(Venta::getTotalPaid)
                 .filter(Objects::nonNull)
@@ -334,6 +393,7 @@ public class VentasMapper {
         } else {
             dto.setPaymentStatus(EstadoPago.PENDIENTE.name());
         }
+
         dto.setPaymentMethodId(null);
         dto.setPaymentName("CONSOLIDADO");
         dto.setAmountPaid(totalPaid);
@@ -347,11 +407,9 @@ public class VentasMapper {
         );
 
         dto.setActive(true);
-
         dto.setConsolidated(true);
         dto.setWeeklyTicketId(weeklyTicketId);
         dto.setConsolidatedAt(consolidatedAt);
-
         dto.setPeriodStartDate(fechaInicio);
         dto.setPeriodEndDate(fechaFin);
 

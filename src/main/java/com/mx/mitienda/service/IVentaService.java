@@ -52,4 +52,7 @@ public interface IVentaService {
     VentaPagoResponseDTO registrarAbono(Long ventaId, VentaPagoRequestDTO request);
 
     List<VentaPagoResponseDTO> obtenerPagosVenta(Long ventaId);
+
+    List<VentaResponseDTO> getComandasEnPreparacion();
+    VentaResponseDTO actualizarEstadoOrden(Long id, String nuevoEstadoNombre);
 }

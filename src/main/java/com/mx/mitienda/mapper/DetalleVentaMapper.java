@@ -3,8 +3,10 @@ package com.mx.mitienda.mapper;
 import com.mx.mitienda.model.DetalleVenta;
 import com.mx.mitienda.model.Producto;
 import com.mx.mitienda.model.UnidadMedidaEntity;
+import com.mx.mitienda.model.dto.DetalleVentaExtraResponseDTO;
 import com.mx.mitienda.model.dto.DetalleVentaResponseDTO;
 import org.springframework.stereotype.Component;
+import java.util.stream.Collectors;
 
 @Component
 public class DetalleVentaMapper {
@@ -52,7 +54,22 @@ public class DetalleVentaMapper {
         } else {
             dto.setUsaInventarioPorDuenio(null);
         }
+        dto.setNotes(detail.getNotes());
 
+        if (detail.getExtras() != null && !detail.getExtras().isEmpty()) {
+            dto.setExtras(detail.getExtras().stream().map(extra -> {
+                DetalleVentaExtraResponseDTO extraDto = new DetalleVentaExtraResponseDTO();
+                extraDto.setId(extra.getId());
+
+                // Extraemos el nombre desde el Producto asociado al extra
+                if (extra.getProductExtra() != null) {
+                    extraDto.setProductName(extra.getProductExtra().getName());
+                }
+
+                extraDto.setExtraPrice(extra.getExtraPrice());
+                return extraDto;
+            }).collect(Collectors.toList()));
+        }
         return dto;
     }
 

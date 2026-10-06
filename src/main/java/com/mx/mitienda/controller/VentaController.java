@@ -179,4 +179,21 @@ public class VentaController {
         return ResponseEntity.ok(ventaServiceImpl.obtenerPagosVenta(ventaId));
     }
 
+    @Tag(name = "COMANDAS", description = "Operaciones para monitor de cocina")
+    @GetMapping("/comandas/en-preparacion")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
+    public ResponseEntity<List<VentaResponseDTO>> getComandasActivas() {
+        return ResponseEntity.ok(ventaServiceImpl.getComandasEnPreparacion());
+    }
+
+    @PatchMapping("/{id}/estado-orden")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
+    public ResponseEntity<VentaResponseDTO> actualizarEstadoOrden(
+            @PathVariable Long id,
+            @RequestParam String estado) {
+
+        // Le pasamos el string directo ("ENTREGADO", "CANCELADO", etc.)
+        return ResponseEntity.ok(ventaServiceImpl.actualizarEstadoOrden(id, estado.toUpperCase()));
+    }
+
 }

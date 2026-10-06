@@ -9,6 +9,7 @@ import java.util.List;
 @Data
 public class VentaRequestDTO {
     Long clientId;
+    String clientName;
     Long branchId;
     LocalDateTime saleDate;
     private List<String> emailList;

@@ -7,6 +7,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -50,4 +52,8 @@ public class DetalleVenta {
     @JoinColumn(name = "product_id", foreignKey = @ForeignKey(name ="fk_detalle_producto"))
     private Producto product;
 
+    @OneToMany(mappedBy = "detalleVenta", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DetalleVentaExtra> extras = new ArrayList<>();
+    @Column(name = "notes")
+    private String notes;
 }

@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class DetalleVentaResponseDTO {
@@ -25,4 +26,6 @@ public class DetalleVentaResponseDTO {
     private Boolean permiteDecimales;
     private InventarioOwnerType inventarioOwnerType;
     private Boolean usaInventarioPorDuenio;
+    private List<DetalleVentaExtraResponseDTO> extras;
+    private String notes;
 }

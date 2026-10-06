@@ -28,12 +28,14 @@ public interface VentaRepository extends JpaRepository<Venta, Long>, JpaSpecific
     Optional<Venta> findByIdAndActiveTrue(Long id);
     List<Venta> findByUsuario_UsernameAndActiveTrue(String username);
     List<Venta> findAll(Specification<Venta> spec, Sort sort);
+
     @Query("""
         SELECT v FROM Venta v
         JOIN v.branch b
         WHERE b.id = :branchId AND b.businessType.id = :businessTypeId
     """)
     List<Venta> findByBranchAndBusinessType(Long branchId, Long businessTypeId);
+
     // GANANCIA por ventas (sin devoluciones):
     // SUM( (precioVenta - precioCompra) * cantidad )
     @Query("""
@@ -49,7 +51,9 @@ public interface VentaRepository extends JpaRepository<Venta, Long>, JpaSpecific
     BigDecimal sumGananciaVentas(@Param("inicio") LocalDateTime inicio,
                                  @Param("fin") LocalDateTime fin,
                                  @Param("branchId") Long branchId);
+
     Optional<Venta> findByIdAndBranch_IdAndActiveTrue(Long ventaId,Long  branchId);
+
     // VENTAS BRUTAS: usa tu totalAmount
     @Query("""
         SELECT COALESCE(SUM(v.totalAmount), 0)
@@ -64,6 +68,7 @@ public interface VentaRepository extends JpaRepository<Venta, Long>, JpaSpecific
                                @Param("branchId") Long branchId);
 
     List<Venta>  findByBranch_IdAndActiveTrue(Long branchId);
+
     @Query("""
     SELECT v FROM Venta v
     LEFT JOIN FETCH v.detailsList d
@@ -117,7 +122,7 @@ public interface VentaRepository extends JpaRepository<Venta, Long>, JpaSpecific
     @Query("""
 select distinct v
 from Venta v
-join fetch v.client
+left join fetch v.client
 join fetch v.usuario
 join fetch v.branch
 join fetch v.paymentMethod
@@ -133,7 +138,7 @@ where v.id = :id and v.active = true
     @Query("""
 select v
 from Venta v
-join fetch v.client
+left join fetch v.client
 join fetch v.usuario
 join fetch v.branch
 join fetch v.paymentMethod
@@ -144,7 +149,7 @@ where v.active = true
     @Query("""
 select v
 from Venta v
-join fetch v.client
+left join fetch v.client
 join fetch v.usuario
 join fetch v.branch
 join fetch v.paymentMethod
@@ -155,7 +160,7 @@ where v.active = true and v.branch.id = :branchId
     @Query("""
 select distinct v
 from Venta v
-join fetch v.client
+left join fetch v.client
 join fetch v.usuario
 join fetch v.branch
 join fetch v.paymentMethod
@@ -173,7 +178,7 @@ where v.id = :id
     @Query("""
 select distinct v
 from Venta v
-join fetch v.client
+left join fetch v.client
 join fetch v.usuario
 join fetch v.branch
 join fetch v.paymentMethod
@@ -189,6 +194,7 @@ where v.id in :ventaIds
             @Param("ventaIds") List<Long> ventaIds,
             @Param("branchId") Long branchId
     );
+
     @Query("""
     SELECT DISTINCT v
     FROM Venta v
@@ -207,4 +213,22 @@ where v.id in :ventaIds
             @Param("weeklyTicketId") Long weeklyTicketId,
             @Param("branchId") Long branchId
     );
+
+    // TOTAL DE ARTÍCULOS VENDIDOS (Suma de las cantidades)
+    @Query("""
+        SELECT COALESCE(SUM(d.quantity), 0)
+        FROM Venta v
+        JOIN v.detailsList d
+        WHERE v.active = true
+          AND v.branch.id = :branchId
+          AND v.saleDate >= :inicio
+          AND v.saleDate < :fin
+    """)
+    BigDecimal sumArticulosVendidos(@Param("inicio") LocalDateTime inicio,
+                                    @Param("fin") LocalDateTime fin,
+                                    @Param("branchId") Long branchId);
+
+    List<Venta> findByEstadoOrden_NombreAndActiveTrue(String estadoNombre);
+
+    List<Venta> findByBranch_IdAndEstadoOrden_NombreAndActiveTrue(Long branchId, String estadoNombre);
 }

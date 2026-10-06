@@ -55,6 +55,7 @@ public class SecurityConfig {
                         // Rutas protegidas por roles
                         .requestMatchers("/compras/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
                         .requestMatchers("/ventas/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
+                        .requestMatchers("/gastos/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
                         .requestMatchers("/proveedores/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
                         .requestMatchers("/clientes/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
                         .requestMatchers("/productos/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
@@ -66,6 +67,7 @@ public class SecurityConfig {
                         .requestMatchers("/pdf/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
                         .requestMatchers("/pdf-sender/**").permitAll()
                         .requestMatchers("/ticket-raw/**").permitAll()
+                        .requestMatchers("/bot/webhook/**").permitAll()
                         .requestMatchers("/qz/**").permitAll()
                         .requestMatchers("/reportes/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
                         .requestMatchers("/historial/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())

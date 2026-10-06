@@ -50,6 +50,9 @@ public class Venta {
     @JoinColumn(name = "cliente_id", foreignKey = @ForeignKey(name ="fk_venta_cliente"))
     private Cliente client;
 
+    @Column(name = "client_name")
+    private String clientName;
+
     @ManyToOne
     @JoinColumn(name = "usuario_id", foreignKey = @ForeignKey(name = "fk_venta_usuario"))
     private Usuario usuario;
@@ -73,5 +76,9 @@ public class Venta {
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", length = 20, nullable = false)
     private EstadoPago paymentStatus = EstadoPago.PAGADA;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "estado_orden_id")
+    private EstadoOrden estadoOrden;
 
 }

@@ -37,14 +37,6 @@ public class DashbaordController {
     }
 
 
-    @GetMapping("/resumen")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
-    public ResponseEntity<DashboardResumenDTO> getResumen(
-            @RequestParam(required = false) Long branchId
-    ) {
-        DashboardResumenDTO dto = dashboardService.obtenerResumen(branchId);
-        return ResponseEntity.ok(dto);
-    }
 
     @GetMapping("/dashboard/top/semana")
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
@@ -153,5 +145,23 @@ public class DashbaordController {
 
         BigDecimal total = ventaServiceImpl.obtenerVentasNetasPorRango(gananciaPorFechaDTO);
         return ResponseEntity.ok(total);
+    }
+
+    @GetMapping("/resumen")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
+    public ResponseEntity<DashboardResumenDTO> getResumen(@RequestParam(required = false) Long branchId) {
+        DashboardResumenDTO dto = dashboardService.obtenerResumen(branchId);
+        return ResponseEntity.ok(dto);
+    }
+
+    // 2. NUEVO: Endpoint para la gráfica de la semana
+    @GetMapping("/resumen/grafica-semana")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR', 'SUPER_ADMIN')")
+    public ResponseEntity<ResumenSemanaDTO> getResumenGraficaSemana(
+            @RequestParam(required = false) Long branchId,
+            @RequestParam(required = false, defaultValue = "0") int semanasAtras
+    ) {
+        ResumenSemanaDTO dto = dashboardService.obtenerResumenSemana(branchId, semanasAtras);
+        return ResponseEntity.ok(dto);
     }
 }

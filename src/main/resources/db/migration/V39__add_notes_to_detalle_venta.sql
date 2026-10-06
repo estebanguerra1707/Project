@@ -1,0 +1,1 @@
+ALTER TABLE detalle_venta ADD COLUMN notes VARCHAR(255);

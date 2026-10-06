@@ -1,6 +1,7 @@
 package com.mx.mitienda.service;
 
 import com.mx.mitienda.model.dto.DashboardResumenDTO;
+import com.mx.mitienda.model.dto.ResumenSemanaDTO;
 import com.mx.mitienda.model.dto.TopProductoDTO;
 
 import java.time.LocalDate;
@@ -12,4 +13,5 @@ public interface IDashboardService {
     DashboardResumenDTO obtenerResumen(Long branchId);
     List<TopProductoDTO> topVendidos(LocalDate inicio, LocalDate fin, Long branchId);
     List<TopProductoDTO> topVendidosPorUsuario(LocalDate inicio, LocalDate fin, Long branchId);
+    ResumenSemanaDTO obtenerResumenSemana(Long branchId, int semanasAtras);
 }

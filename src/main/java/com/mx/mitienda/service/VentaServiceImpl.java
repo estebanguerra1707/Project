@@ -55,6 +55,7 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
     private final VentaPagoRepository ventaPagoRepository;
     private final MetodoPagoRepository metodoPagoRepository;
     private final UsuarioService usuarioService;
+    private final EstadoOrdenRepository estadoOrdenRepository;
 
     public VentaServiceImpl(
             IAuthenticatedUserService authenticatedUserService,
@@ -72,7 +73,8 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
             DetalleDevolucionVentasRepository detalleDevolucionVentasRepository,
             VentaPagoRepository ventaPagoRepository,
             MetodoPagoRepository metodoPagoRepository,
-            UsuarioService usuarioService
+            UsuarioService usuarioService,
+            EstadoOrdenRepository estadoOrdenRepository
     ) {
         super(authenticatedUserService);
         this.ventaRepository = ventaRepository;
@@ -90,6 +92,7 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
         this.ventaPagoRepository = ventaPagoRepository;
         this.metodoPagoRepository = metodoPagoRepository;
         this.usuarioService = usuarioService;
+        this.estadoOrdenRepository = estadoOrdenRepository;
     }
     private BigDecimal safe(BigDecimal venta) {
         return venta != null ? venta : BigDecimal.ZERO;
@@ -1095,5 +1098,39 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
         }
 
         dto.setPaymentName(metodosPago.get(0));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<VentaResponseDTO> getComandasEnPreparacion() {
+        UserContext ctx = ctx();
+
+        List<Venta> comandas = ctx.isSuperAdmin()
+                ? ventaRepository.findByEstadoOrden_NombreAndActiveTrue("EN_PREPARACION")
+                : ventaRepository.findByBranch_IdAndEstadoOrden_NombreAndActiveTrue(ctx.getBranchId(), "EN_PREPARACION");
+
+        return comandas.stream()
+                .map(ventaMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public VentaResponseDTO actualizarEstadoOrden(Long id, String nuevoEstadoNombre) {
+        UserContext ctx = ctx();
+
+        Venta venta = ctx.isSuperAdmin()
+                ? ventaRepository.findByIdFull(id)
+                .orElseThrow(() -> new NotFoundException("Venta no encontrada"))
+                : ventaRepository.findByIdFullByBranch(id, ctx.getBranchId())
+                .orElseThrow(() -> new NotFoundException("Venta no encontrada o no pertenece a tu sucursal"));
+
+        EstadoOrden nuevoEstado = estadoOrdenRepository.findByNombre(nuevoEstadoNombre)
+                .orElseThrow(() -> new NotFoundException("Estado de orden '" + nuevoEstadoNombre + "' no configurado en BD"));
+
+        venta.setEstadoOrden(nuevoEstado);
+        ventaRepository.save(venta);
+
+        return ventaMapper.toResponse(venta);
     }
 }

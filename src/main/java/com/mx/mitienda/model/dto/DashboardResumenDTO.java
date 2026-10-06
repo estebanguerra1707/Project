@@ -12,6 +12,13 @@ public class DashboardResumenDTO {
     private long ventasHoy;
     private BigDecimal ingresosMes;
 
+    private BigDecimal productosVendidosHoy;
+    private BigDecimal productosVendidosSemana;
+    private BigDecimal productosVendidosMes;
+
     private List<UsuarioVentaResumenDTO> ventasHoyPorUsuario;
     private List<UsuarioVentaResumenDTO> ingresosMesPorUsuario;
+    private BigDecimal ingresosHoy;
+    private BigDecimal gananciaHoy;
+    private List<VentaDiariaDTO> ventasDiariasSemana;
 }
