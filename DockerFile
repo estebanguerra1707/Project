@@ -1,0 +1,23 @@
+# Usa una imagen de Java 17
+FROM eclipse-temurin:17-jdk-alpine
+
+# Crea un directorio en el contenedor
+WORKDIR /app
+
+# Copia el archivo pom.xml y la carpeta src de tu compu al contenedor
+COPY pom.xml .
+COPY src ./src
+COPY .mvn ./.mvn
+COPY mvnw .
+
+# Da permisos para ejecutar el wrapper de maven
+RUN chmod +x mvnw
+
+# Compila el proyecto saltando las pruebas para que sea rápido
+RUN ./mvnw clean package -DskipTests
+
+# Expone el puerto 8080 (el que Render espera)
+EXPOSE 8080
+
+# Ejecuta el archivo .jar que se acaba de crear
+CMD ["java", "-jar", "target/demo-1.1.11.jar"]
