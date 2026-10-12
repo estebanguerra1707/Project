@@ -50,8 +50,7 @@ public class SecurityConfig {
                         .requestMatchers("/usuarios/forgot-password").permitAll()
                         .requestMatchers("/usuarios/reset-password").permitAll()
                         .requestMatchers("/actuator/**").hasRole("ACTUATOR")
-                        .requestMatchers("/ping", "/ping/**").permitAll()                        .requestMatchers("/reportes/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
-
+                        .requestMatchers("/ping", "/ping/**").permitAll()
                         // Públicos según tu helper
                         .requestMatchers(request -> Utils.isPublic(request.getRequestURI())).permitAll()
                         // Rutas protegidas por roles
@@ -71,6 +70,7 @@ public class SecurityConfig {
                         .requestMatchers("/ticket-raw/**").permitAll()
                         .requestMatchers("/bot/webhook/**").permitAll()
                         .requestMatchers("/qz/**").permitAll()
+                        .requestMatchers("/reportes/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
                         .requestMatchers("/historial/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
                         .requestMatchers("/dashboard/**").hasAnyRole(Rol.ADMIN.name(), Rol.VENDOR.name(), Rol.SUPER_ADMIN.name())
                         .anyRequest().authenticated()
