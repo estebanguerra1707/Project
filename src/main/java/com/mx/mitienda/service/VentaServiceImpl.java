@@ -497,8 +497,12 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
                 .stream()
                 .map(detalleVenta -> {
 
-                    BigDecimal precioVenta = Optional.ofNullable(detalleVenta.getUnitPrice()).orElse(BigDecimal.ZERO);
-                    BigDecimal precioCompra = Optional.ofNullable(detalleVenta.getProduct().getPurchasePrice()).orElse(BigDecimal.ZERO);
+                    // 1. CÁLCULO DEL PLATILLO BASE (Chilaquiles)
+                    BigDecimal precioVentaBase = Optional.ofNullable(detalleVenta.getUnitPrice()).orElse(BigDecimal.ZERO);
+                    BigDecimal precioCompraBase = BigDecimal.ZERO;
+                    if (detalleVenta.getProduct() != null) {
+                        precioCompraBase = Optional.ofNullable(detalleVenta.getProduct().getPurchasePrice()).orElse(BigDecimal.ZERO);
+                    }
 
                     BigDecimal cantidadVendida = Optional.ofNullable(detalleVenta.getQuantity()).orElse(BigDecimal.ZERO);
 
@@ -512,11 +516,36 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
                     if (cantidadEfectiva.compareTo(BigDecimal.ZERO) < 0) {
                         cantidadEfectiva = BigDecimal.ZERO;
                     }
-                    BigDecimal margen = precioVenta.subtract(precioCompra);
-                    return margen.multiply(cantidadEfectiva);
+
+                    // Margen del platillo principal
+                    BigDecimal margenBase = precioVentaBase.subtract(precioCompraBase);
+                    BigDecimal gananciaBase = margenBase.multiply(cantidadEfectiva);
+
+                    // 2. CÁLCULO DE LOS EXTRAS (Pollo, Bistec, etc.)
+                    BigDecimal gananciaExtras = BigDecimal.ZERO;
+                    if (detalleVenta.getExtras() != null && !detalleVenta.getExtras().isEmpty()) {
+                        for (DetalleVentaExtra extra : detalleVenta.getExtras()) {
+
+                            // Usamos tus getters: getExtraPrice() y getProductExtra()
+                            BigDecimal precioVentaExtra = Optional.ofNullable(extra.getExtraPrice()).orElse(BigDecimal.ZERO);
+                            BigDecimal precioCompraExtra = BigDecimal.ZERO;
+                            if (extra.getProductExtra() != null) {
+                                precioCompraExtra = Optional.ofNullable(extra.getProductExtra().getPurchasePrice()).orElse(BigDecimal.ZERO);
+                            }
+
+                            BigDecimal margenExtra = precioVentaExtra.subtract(precioCompraExtra);
+
+                            // Multiplicamos por la cantidadEfectiva del platillo base
+                            gananciaExtras = gananciaExtras.add(margenExtra.multiply(cantidadEfectiva));
+                        }
+                    }
+
+                    // 3. RETORNAR LA SUMA (Base + Extras)
+                    return gananciaBase.add(gananciaExtras);
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
+
     @Override
     public BigDecimal obtenerVentasBrutasPorRango(GananciaPorFechaDTO gananciaPorFechaDTO) {
         LocalDateTime inicio = inicioDelDia(gananciaPorFechaDTO.getStartDate());

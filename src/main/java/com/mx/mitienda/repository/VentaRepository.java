@@ -37,12 +37,24 @@ public interface VentaRepository extends JpaRepository<Venta, Long>, JpaSpecific
     List<Venta> findByBranchAndBusinessType(Long branchId, Long businessTypeId);
 
     // GANANCIA por ventas (sin devoluciones):
-    // SUM( (precioVenta - precioCompra) * cantidad )
+    // Suma la ganancia del platillo base MÁS la ganancia de todos sus extras
     @Query("""
-        SELECT COALESCE(SUM( (dv.unitPrice - COALESCE(p.purchasePrice, 0)) * dv.quantity ), 0)
+        SELECT COALESCE(
+                 SUM(
+                   (dv.unitPrice - COALESCE(p.purchasePrice, 0)) * dv.quantity
+                 ), 0
+               )
+               +
+               COALESCE(
+                 SUM(
+                   (e.extraPrice - COALESCE(pe.purchasePrice, 0)) * dv.quantity
+                 ), 0
+               )
         FROM Venta v
         JOIN v.detailsList dv
         JOIN dv.product p
+        LEFT JOIN dv.extras e
+        LEFT JOIN e.productExtra pe
         WHERE v.active = true
           AND v.branch.id = :branchId
           AND v.saleDate >= :inicio
