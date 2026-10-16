@@ -55,6 +55,7 @@ public class DetalleVentaMapper {
             dto.setUsaInventarioPorDuenio(null);
         }
         dto.setNotes(detail.getNotes());
+        dto.setDescription(p != null ? p.getDescription() : null);
 
         if (detail.getExtras() != null && !detail.getExtras().isEmpty()) {
             dto.setExtras(detail.getExtras().stream().map(extra -> {

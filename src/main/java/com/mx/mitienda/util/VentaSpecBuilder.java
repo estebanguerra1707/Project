@@ -2,6 +2,8 @@ package com.mx.mitienda.util;
 
 import com.mx.mitienda.model.Venta;
 import com.mx.mitienda.specification.VentasSpecification;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
@@ -84,6 +86,23 @@ public class VentaSpecBuilder {
         }
         return this;
     }
+    public VentaSpecBuilder withProductName(String productName) {
+        if (productName != null && !productName.isBlank()) {
+            builder.and((root, query, cb) -> {
+                // Evita que la misma venta salga duplicada si tiene varios panes
+                query.distinct(true);
+
+                // Hace el cruce: Venta -> DetalleVenta -> Producto
+                Join<Object, Object> detailsJoin = root.join("detailsList", JoinType.INNER);
+                Join<Object, Object> productJoin = detailsJoin.join("product", JoinType.INNER);
+
+                // Busca ignorando mayúsculas y minúsculas
+                return cb.like(cb.lower(productJoin.get("name")), "%" + productName.toLowerCase() + "%");
+            });
+        }
+        return this;
+    }
+
 
     public Specification<Venta> build() {
         return builder.build();

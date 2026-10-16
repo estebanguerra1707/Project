@@ -242,6 +242,7 @@ public class VentasMapper {
             detalleVentaResponseDTO.setQuantity(detail.getQuantity());
             detalleVentaResponseDTO.setUnitPrice(detail.getUnitPrice());
             detalleVentaResponseDTO.setSubTotal(detail.getSubTotal());
+            detalleVentaResponseDTO.setDescription(detail.getProduct().getDescription());
 
             detalleVentaResponseDTO.setNotes(detail.getNotes());
 

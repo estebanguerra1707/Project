@@ -27,4 +27,5 @@ public class VentaFiltroDTO {
     private Long userId;
     private Boolean consolidated;
     private EstadoPago paymentStatus;
+    private String productName;
 }

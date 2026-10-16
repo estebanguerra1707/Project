@@ -28,4 +28,6 @@ public class DetalleVentaResponseDTO {
     private Boolean usaInventarioPorDuenio;
     private List<DetalleVentaExtraResponseDTO> extras;
     private String notes;
+    private String description;
+
 }

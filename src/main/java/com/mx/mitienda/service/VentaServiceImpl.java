@@ -300,6 +300,7 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
                 .sellPerMonthYear(filterDTO.getMonth(), filterDTO.getYear())
                 .byPaymentMethod(filterDTO.getPaymentMethodId())
                 .paymentStatus(filterDTO.getPaymentStatus())
+                .withProductName(filterDTO.getProductName())
                 .withId(filterDTO.getId());
         if (isSuper) {
             builder.username(filterDTO.getUsername());
@@ -542,6 +543,7 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
 
                     // 3. RETORNAR LA SUMA (Base + Extras)
                     return gananciaBase.add(gananciaExtras);
+
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
