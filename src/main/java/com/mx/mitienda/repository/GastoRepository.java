@@ -2,6 +2,8 @@ package com.mx.mitienda.repository;
 
 import com.mx.mitienda.model.Gasto;
 import io.micrometer.common.KeyValues;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,5 +24,6 @@ public interface GastoRepository extends JpaRepository<Gasto, Long> {
     @Query("SELECT COALESCE(SUM(g.monto), 0) FROM Gasto g WHERE g.fechaGasto = :fecha AND g.sucursal.id = :branchId")
     BigDecimal sumGastosPorDiaYSucursal(@Param("fecha") LocalDate fecha, @Param("branchId") Long branchId);
 
-    List<Gasto> findBySucursal_Id(Long sucursalId);
+    // NUEVO: Método paginado por sucursal
+    Page<Gasto> findBySucursal_Id(Long sucursalId, Pageable pageable);
 }

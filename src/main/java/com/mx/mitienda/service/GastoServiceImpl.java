@@ -7,6 +7,8 @@ import com.mx.mitienda.model.dto.GastoRequestDTO;
 import com.mx.mitienda.model.dto.GastoResponseDTO;
 import com.mx.mitienda.repository.GastoRepository;
 import com.mx.mitienda.service.base.BaseService; // IMPORTANTE
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,15 +50,12 @@ public class GastoServiceImpl extends BaseService implements IGastoService { // 
 
     @Override
     @Transactional(readOnly = true)
-    public List<GastoResponseDTO> obtenerTodosLosGastos() {
+    public Page<GastoResponseDTO> obtenerTodosLosGastos(Pageable pageable) {
         UserContext ctx = ctx();
         Long sucursalId = ctx.getBranchId();
 
-        // 4. FILTRAR POR SUCURSAL (Para que no vean gastos de otras tiendas)
-        return gastoRepository.findBySucursal_Id(sucursalId)
-                .stream()
-                .map(gastoMapper::toResponseDTO)
-                .collect(Collectors.toList());
+        return gastoRepository.findBySucursal_Id(sucursalId, pageable)
+                .map(gastoMapper::toResponseDTO);
     }
 
     @Override
