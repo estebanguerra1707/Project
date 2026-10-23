@@ -156,7 +156,8 @@ public class DashBoardServiceImpl extends BaseService implements IDashboardServi
             BigDecimal vendidosSeguros = vendidosDia != null ? vendidosDia : BigDecimal.ZERO;
             BigDecimal gastosSeguros = gastosDia != null ? gastosDia : BigDecimal.ZERO;
 
-            BigDecimal gananciaNetaReal = gananciaBrutaSegura.subtract(gastosSeguros);
+            BigDecimal costoTotalProduccionDia = cChilaquiles.add(cPanes).add(cOtros);
+            BigDecimal gananciaNetaReal = ingresosSeguros.subtract(costoTotalProduccionDia).subtract(gastosSeguros);
 
             String nombreDia = diaIteracion.getDayOfWeek().getDisplayName(
                     java.time.format.TextStyle.SHORT,
@@ -306,7 +307,8 @@ public class DashBoardServiceImpl extends BaseService implements IDashboardServi
             BigDecimal vendidosSeguros = vendidosDia != null ? vendidosDia : BigDecimal.ZERO;
             BigDecimal gastosSeguros = gastosDia != null ? gastosDia : BigDecimal.ZERO;
 
-            BigDecimal gananciaNetaReal = gananciaBrutaSegura.subtract(gastosSeguros);
+            BigDecimal costoTotalProduccionDia = cChilaquiles.add(cPanes).add(cOtros);
+            BigDecimal gananciaNetaReal = ingresosSeguros.subtract(costoTotalProduccionDia).subtract(gastosSeguros);
 
             String nombreDia = diaIteracion.getDayOfWeek().getDisplayName(
                     java.time.format.TextStyle.SHORT,
