@@ -244,16 +244,25 @@ public class DashBoardServiceImpl extends BaseService implements IDashboardServi
 
         // 1. AJUSTE EN LA GANANCIA GLOBAL DE HOY
         BigDecimal ingresosHoy = ventaRepository.sumVentasBrutas(startToday, endToday, sucursalId);
-        BigDecimal gananciaHoyBruta = ventaRepository.sumGananciaVentas(startToday, endToday, sucursalId);
-        BigDecimal gastosHoy = gastoRepository.sumGastosPorDiaYSucursal(today, sucursalId); // NUEVO
+        BigDecimal gastosHoy = gastoRepository.sumGastosPorDiaYSucursal(today, sucursalId);
 
         BigDecimal ingresosHoySeguros = ingresosHoy != null ? ingresosHoy : BigDecimal.ZERO;
-        BigDecimal gananciaHoySegura = gananciaHoyBruta != null ? gananciaHoyBruta : BigDecimal.ZERO;
         BigDecimal gastosHoySeguros = gastosHoy != null ? gastosHoy : BigDecimal.ZERO;
 
         dto.setIngresosHoy(ingresosHoySeguros);
-        // Restamos el gasto para que la tarjeta del dashboard muestre la ganancia neta
-        dto.setGananciaHoy(gananciaHoySegura.subtract(gastosHoySeguros));
+
+        // Obtenemos el desglose de costos específicos de hoy para la tarjeta superior
+        List<Object[]> filasCostosHoy = dashboardRepository.obtenerDesgloseCostosPorDia(startToday, endToday, sucursalId);
+        BigDecimal costoTotalProduccionHoy = BigDecimal.ZERO;
+
+        for (Object[] fila : filasCostosHoy) {
+            BigDecimal costo = fila[3] != null ? (BigDecimal) fila[3] : BigDecimal.ZERO;
+            costoTotalProduccionHoy = costoTotalProduccionHoy.add(costo);
+        }
+
+        // Ganancia neta de hoy exacta = Ingresos - Costos de Producción - Gastos Operativos
+        BigDecimal gananciaNetaHoyReal = ingresosHoySeguros.subtract(costoTotalProduccionHoy).subtract(gastosHoySeguros);
+        dto.setGananciaHoy(gananciaNetaHoyReal);
 
         // 2. AJUSTE EN EL BUCLE DE VENTAS DIARIAS
         java.time.LocalDate inicioSemana = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.THURSDAY));
