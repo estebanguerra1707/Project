@@ -130,7 +130,7 @@ LEFT JOIN InventarioSucursal i
  AND i.branch.id = s.id
 WHERE p.active = true
   AND bt.id = :businessTypeId
-GROUP BY p, s.usaInventarioPorDuenio
+GROUP BY p.id, p.name, p.sku, p.description, p.purchasePrice, p.salePrice, p.active, p.creationDate, p.updatedAt, p.codigoBarras, p.permiteDecimales, s.usaInventarioPorDuenio
 """)
     Page<Object[]> findProductosConStock(
             @Param("branchId") Long branchId,
