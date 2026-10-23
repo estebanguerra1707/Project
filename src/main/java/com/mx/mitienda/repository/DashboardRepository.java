@@ -150,4 +150,74 @@ public interface DashboardRepository extends JpaRepository<Venta, Long> {
             @Param("fin") LocalDateTime fin,
             @Param("branchId") Long branchId
     );
+
+    // Costo de producción y cantidad por filtro (ej. 'chilaquil' o 'pan')
+    @Query("""
+        SELECT COALESCE(SUM(COALESCE(p.purchasePrice, 0) * d.quantity), 0)
+        FROM Venta v
+        JOIN v.detailsList d
+        JOIN d.product p
+        LEFT JOIN p.productCategory pc
+        WHERE v.active = true
+          AND d.active = true
+          AND v.saleDate >= :inicio
+          AND v.saleDate < :fin
+          AND (:branchId IS NULL OR v.branch.id = :branchId)
+          AND (
+              LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+              OR LOWER(COALESCE(pc.name, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+          )
+    """)
+    java.math.BigDecimal sumCostoProduccionPorKeyword(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime fin,
+            @Param("branchId") Long branchId,
+            @Param("keyword") String keyword
+    );
+
+    @Query("""
+        SELECT COALESCE(SUM(d.quantity), 0)
+        FROM Venta v
+        JOIN v.detailsList d
+        JOIN d.product p
+        LEFT JOIN p.productCategory pc
+        WHERE v.active = true
+          AND d.active = true
+          AND v.saleDate >= :inicio
+          AND v.saleDate < :fin
+          AND (:branchId IS NULL OR v.branch.id = :branchId)
+          AND (
+              LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+              OR LOWER(COALESCE(pc.name, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+          )
+    """)
+    java.math.BigDecimal sumCantidadVendidaPorKeyword(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime fin,
+            @Param("branchId") Long branchId,
+            @Param("keyword") String keyword
+    );
+
+    @Query("""
+        SELECT 
+            COALESCE(pc.name, 'SIN_CATEGORIA'),
+            p.name,
+            COALESCE(SUM(d.quantity), 0),
+            COALESCE(SUM(COALESCE(p.purchasePrice, 0) * d.quantity), 0)
+        FROM Venta v
+        JOIN v.detailsList d
+        JOIN d.product p
+        LEFT JOIN p.productCategory pc
+        WHERE v.active = true
+          AND d.active = true
+          AND v.saleDate >= :inicio
+          AND v.saleDate < :fin
+          AND (:branchId IS NULL OR v.branch.id = :branchId)
+        GROUP BY pc.name, p.name
+    """)
+    List<Object[]> obtenerDesgloseCostosPorDia(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime fin,
+            @Param("branchId") Long branchId
+    );
 }

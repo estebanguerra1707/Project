@@ -15,4 +15,12 @@ public class VentaDiariaDTO {
     private BigDecimal ganancia;
     private BigDecimal chilaquilesVendidos;
     private BigDecimal gastos;
+
+    private BigDecimal costoChilaquiles;
+    private BigDecimal costoPanes;
+    private BigDecimal costoOtros;
+
+    private BigDecimal piezasChilaquiles;
+    private BigDecimal piezasPanes;
+    private BigDecimal piezasOtros;
 }

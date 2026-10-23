@@ -101,23 +101,62 @@ public class DashBoardServiceImpl extends BaseService implements IDashboardServi
             LocalDateTime startDia = diaIteracion.atStartOfDay();
             LocalDateTime endDia = diaIteracion.plusDays(1).atStartOfDay();
 
-            // 1. Obtenemos lo que ya tenías
             BigDecimal ingresosDia = ventaRepository.sumVentasBrutas(startDia, endDia, sucursalId);
             BigDecimal gananciaDia = ventaRepository.sumGananciaVentas(startDia, endDia, sucursalId);
             BigDecimal vendidosDia = ventaRepository.sumArticulosVendidos(startDia, endDia, sucursalId);
-
-            // 2. NUEVO: Obtenemos los gastos de ese día
             BigDecimal gastosDia = gastoRepository.sumGastosPorDiaYSucursal(diaIteracion, sucursalId);
 
-            // Manejo de nulos
+            // Clasificación dinámica por Categoría (1 sola query a BD)
+            List<Object[]> filasCostos = dashboardRepository.obtenerDesgloseCostosPorDia(startDia, endDia, sucursalId);
+
+            BigDecimal cChilaquiles = BigDecimal.ZERO;
+            BigDecimal cPanes = BigDecimal.ZERO;
+            BigDecimal cOtros = BigDecimal.ZERO;
+
+            BigDecimal pChilaquiles = BigDecimal.ZERO;
+            BigDecimal pPanes = BigDecimal.ZERO;
+            BigDecimal pOtros = BigDecimal.ZERO;
+
+            for (Object[] fila : filasCostos) {
+                String categoria = fila[0] != null ? ((String) fila[0]).toLowerCase().trim() : "";
+                String producto = fila[1] != null ? ((String) fila[1]).toLowerCase().trim() : "";
+                BigDecimal cantidad = fila[2] != null ? (BigDecimal) fila[2] : BigDecimal.ZERO;
+                BigDecimal costo = fila[3] != null ? (BigDecimal) fila[3] : BigDecimal.ZERO;
+
+                // 1. Chilaquiles (Cualquier variante de chilaquiles)
+                if (categoria.contains("chilaquil") || producto.contains("chilaquil")) {
+                    cChilaquiles = cChilaquiles.add(costo);
+                    pChilaquiles = pChilaquiles.add(cantidad);
+                }
+                // 2. Panes / Postres (Categoría POSTRES, panadería, bolillos, etc.)
+                else if (categoria.contains("postre") || categoria.contains("pan") || producto.contains("pan") || producto.contains("bolillo")) {
+                    // Excepción por si hay un extra con pan (ej. Pan extra Oreo)
+                    if (categoria.contains("extra") && !categoria.contains("postre")) {
+                        cOtros = cOtros.add(costo);
+                        pOtros = pOtros.add(cantidad);
+                    } else {
+                        cPanes = cPanes.add(costo);
+                        pPanes = pPanes.add(cantidad);
+                    }
+                }
+                // 3. Bebidas y Extras (Categoría "Bebidas", "Extras" o cualquier otra nueva)
+                else if (categoria.contains("bebida") || categoria.contains("extra") || categoria.contains("cafe") || categoria.contains("coca")) {
+                    cOtros = cOtros.add(costo);
+                    pOtros = pOtros.add(cantidad);
+                }
+                // 4. Por si llega cualquier otra cosa sin clasificar, mandarla a extras para que no se pierda el costo
+                else {
+                    cOtros = cOtros.add(costo);
+                    pOtros = pOtros.add(cantidad);
+                }
+            }
+
             BigDecimal ingresosSeguros = ingresosDia != null ? ingresosDia : BigDecimal.ZERO;
             BigDecimal gananciaBrutaSegura = gananciaDia != null ? gananciaDia : BigDecimal.ZERO;
             BigDecimal vendidosSeguros = vendidosDia != null ? vendidosDia : BigDecimal.ZERO;
+            BigDecimal gastosSeguros = gastosDia != null ? gastosDia : BigDecimal.ZERO;
 
-            // 3. NUEVO: Cálculo de Ganancia Neta Real (Ganancia - Gastos)
-            // Nota contable: A los "Ingresos" (Ventas brutas) no se les suele restar el gasto directamente,
-            // el gasto se le resta a la "Ganancia" para obtener tu ganancia neta o libre.
-            BigDecimal gananciaNetaReal = gananciaBrutaSegura.subtract(gastosDia);
+            BigDecimal gananciaNetaReal = gananciaBrutaSegura.subtract(gastosSeguros);
 
             String nombreDia = diaIteracion.getDayOfWeek().getDisplayName(
                     java.time.format.TextStyle.SHORT,
@@ -130,7 +169,13 @@ public class DashBoardServiceImpl extends BaseService implements IDashboardServi
                     ingresosSeguros,
                     gananciaNetaReal,
                     vendidosSeguros,
-                    gastosDia
+                    gastosSeguros,
+                    cChilaquiles,
+                    cPanes,
+                    cOtros,
+                    pChilaquiles,
+                    pPanes,
+                    pOtros
             ));
         }
         return new ResumenSemanaDTO(ventasDiarias, vendidosSemana);
@@ -214,21 +259,54 @@ public class DashBoardServiceImpl extends BaseService implements IDashboardServi
         List<com.mx.mitienda.model.dto.VentaDiariaDTO> ventasDiarias = new ArrayList<>();
 
         for (int i = 0; i < 7; i++) {
-            java.time.LocalDate diaIteracion = inicioSemana.plusDays(i);
+            LocalDate diaIteracion = inicioSemana.plusDays(i);
             LocalDateTime startDia = diaIteracion.atStartOfDay();
             LocalDateTime endDia = diaIteracion.plusDays(1).atStartOfDay();
 
             BigDecimal ingresosDia = ventaRepository.sumVentasBrutas(startDia, endDia, sucursalId);
             BigDecimal gananciaDia = ventaRepository.sumGananciaVentas(startDia, endDia, sucursalId);
             BigDecimal vendidosDia = ventaRepository.sumArticulosVendidos(startDia, endDia, sucursalId);
-
-            // Obtenemos los gastos de este día iterado
             BigDecimal gastosDia = gastoRepository.sumGastosPorDiaYSucursal(diaIteracion, sucursalId);
+
+            List<Object[]> filasCostos = dashboardRepository.obtenerDesgloseCostosPorDia(startDia, endDia, sucursalId);
+
+            BigDecimal cChilaquiles = BigDecimal.ZERO;
+            BigDecimal cPanes = BigDecimal.ZERO;
+            BigDecimal cOtros = BigDecimal.ZERO;
+
+            BigDecimal pChilaquiles = BigDecimal.ZERO;
+            BigDecimal pPanes = BigDecimal.ZERO;
+            BigDecimal pOtros = BigDecimal.ZERO;
+
+            for (Object[] fila : filasCostos) {
+                String categoria = ((String) fila[0]).toLowerCase();
+                String producto = ((String) fila[1]).toLowerCase();
+                BigDecimal cantidad = (BigDecimal) fila[2];
+                BigDecimal costo = (BigDecimal) fila[3];
+
+                // 1. Chilaquiles (Categorías que contengan chilaquil)
+                if (categoria.contains("chilaquil")) {
+                    cChilaquiles = cChilaquiles.add(costo);
+                    pChilaquiles = pChilaquiles.add(cantidad);
+                }
+                // 2. Panes / Postres (Categoría POSTRES o productos que empiezan/contienen pan, excepto los extras con pan)
+                else if (categoria.contains("postre") || (producto.contains("pan") && !producto.contains("extra"))) {
+                    cPanes = cPanes.add(costo);
+                    pPanes = pPanes.add(cantidad);
+                }
+                // 3. Todo lo demás: Bebidas (Coca, Café) y Extras (Queso, Bistec, Pollo, Pan extra Oreo, etc.)
+                else {
+                    cOtros = cOtros.add(costo);
+                    pOtros = pOtros.add(cantidad);
+                }
+            }
 
             BigDecimal ingresosSeguros = ingresosDia != null ? ingresosDia : BigDecimal.ZERO;
             BigDecimal gananciaBrutaSegura = gananciaDia != null ? gananciaDia : BigDecimal.ZERO;
             BigDecimal vendidosSeguros = vendidosDia != null ? vendidosDia : BigDecimal.ZERO;
             BigDecimal gastosSeguros = gastosDia != null ? gastosDia : BigDecimal.ZERO;
+
+            BigDecimal gananciaNetaReal = gananciaBrutaSegura.subtract(gastosSeguros);
 
             String nombreDia = diaIteracion.getDayOfWeek().getDisplayName(
                     java.time.format.TextStyle.SHORT,
@@ -239,9 +317,15 @@ public class DashBoardServiceImpl extends BaseService implements IDashboardServi
             ventasDiarias.add(new com.mx.mitienda.model.dto.VentaDiariaDTO(
                     nombreDia,
                     ingresosSeguros,
-                    gananciaBrutaSegura.subtract(gastosSeguros),
+                    gananciaNetaReal,
                     vendidosSeguros,
-                    gastosSeguros
+                    gastosSeguros,
+                    cChilaquiles,
+                    cPanes,
+                    cOtros,
+                    pChilaquiles,
+                    pPanes,
+                    pOtros
             ));
         }
 
