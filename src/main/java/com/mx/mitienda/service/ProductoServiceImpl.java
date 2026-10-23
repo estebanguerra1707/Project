@@ -386,11 +386,15 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
         return page.map(dto -> {
             Object[] row = stockMap.get(dto.getId());
             if (row != null) {
-                Integer stock = ((Number) row[1]).intValue();
-                Boolean usaInventarioPorDuenio = (Boolean) row[2];
+                Integer stock = row[1] != null ? ((Number) row[1]).intValue() : 0;
+                Boolean usaInventarioPorDuenio = row[2] != null ? (Boolean) row[2] : false;
 
                 dto.setStock(stock);
                 dto.setUsaInventarioPorDuenio(usaInventarioPorDuenio);
+            } else {
+                // Si por alguna razón sigue sin registro, le ponemos 0 por defecto
+                dto.setStock(0);
+                dto.setUsaInventarioPorDuenio(false);
             }
             return dto;
         });

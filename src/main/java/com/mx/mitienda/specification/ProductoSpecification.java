@@ -176,7 +176,7 @@ public class ProductoSpecification {
 
             // SOLO joinear inventario si debemos filtrar por sucursal
             if (branchId != null) {
-                var inv = root.join("inventariosSucursal", JoinType.INNER);
+                var inv = root.join("inventariosSucursal", JoinType.LEFT);
                 ps.add(cb.equal(inv.get("branch").get("id"), branchId));
             }
 
