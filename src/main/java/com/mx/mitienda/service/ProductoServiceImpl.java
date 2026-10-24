@@ -365,24 +365,30 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
             Page<ProductoResponseDTO> page,
             ProductoFiltroDTO filtro
     ) {
-        Page<Object[]> stockPage = productoRepository.findProductosConStock(
-                filtro.getBranchId(),
-                filtro.getBusinessTypeId(),
-                PageRequest.of(
-                        page.getNumber(),
-                        page.getSize()
-                )
+        if (page.isEmpty()) {
+            return page;
+        }
+
+        // 1. Obtenemos los IDs exactos de los 10 productos que salieron en la página actual
+        List<Long> productIds = page.getContent().stream()
+                .map(ProductoResponseDTO::getId)
+                .toList();
+
+        // 2. Consultamos el stock EXCLUSIVAMENTE de esos IDs en esa sucursal
+        List<Object[]> stockRows = productoRepository.findStockByProductIdsAndBranch(
+                productIds,
+                filtro.getBranchId()
         );
 
-        Map<Long, Object[]> stockMap = stockPage.getContent().stream()
-                .collect(Collectors.groupingBy(
-                        r -> ((Producto) r[0]).getId(),
-                        Collectors.collectingAndThen(
-                                Collectors.toList(),
-                                list -> list.get(0)
-                        )
+        // 3. Armamos el mapa por ID de producto
+        Map<Long, Object[]> stockMap = stockRows.stream()
+                .collect(Collectors.toMap(
+                        r -> (Long) r[0],
+                        r -> r,
+                        (existing, replacement) -> existing
                 ));
 
+        // 4. Asignamos el stock real a cada producto de la tabla
         return page.map(dto -> {
             Object[] row = stockMap.get(dto.getId());
             if (row != null) {
@@ -392,7 +398,6 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
                 dto.setStock(stock);
                 dto.setUsaInventarioPorDuenio(usaInventarioPorDuenio);
             } else {
-                // Si por alguna razón sigue sin registro, le ponemos 0 por defecto
                 dto.setStock(0);
                 dto.setUsaInventarioPorDuenio(false);
             }

@@ -118,24 +118,20 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
     @Query("""
 SELECT 
-  p as producto,
-  COALESCE(SUM(i.stock), 0) as stock,
-  s.usaInventarioPorDuenio as usaInventarioPorDuenio
+  p.id,
+  COALESCE(SUM(i.stock), 0),
+  s.usaInventarioPorDuenio
 FROM Producto p
-JOIN p.productCategory pc
-JOIN pc.businessType bt
 JOIN Sucursal s ON s.id = :branchId
 LEFT JOIN InventarioSucursal i
   ON i.product = p
  AND i.branch.id = s.id
-WHERE p.active = true
-  AND bt.id = :businessTypeId
-GROUP BY p.id, p.name, p.sku, p.description, p.purchasePrice, p.salePrice, p.active, p.creationDate, p.updatedAt, p.codigoBarras, p.permiteDecimales, s.usaInventarioPorDuenio
+WHERE p.id IN :productIds
+GROUP BY p.id, s.usaInventarioPorDuenio
 """)
-    Page<Object[]> findProductosConStock(
-            @Param("branchId") Long branchId,
-            @Param("businessTypeId") Long businessTypeId,
-            Pageable pageable
+    List<Object[]> findStockByProductIdsAndBranch(
+            @Param("productIds") Collection<Long> productIds,
+            @Param("branchId") Long branchId
     );
 
     Optional<Producto> findByCodigoBarrasAndBusinessTypeIdAndActiveTrue(String codigoBarras, Long businessTypeId);
