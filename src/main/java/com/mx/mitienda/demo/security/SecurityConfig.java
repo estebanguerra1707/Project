@@ -51,6 +51,7 @@ public class SecurityConfig {
                         .requestMatchers("/usuarios/reset-password").permitAll()
                         .requestMatchers("/actuator/**").hasRole("ACTUATOR")
                         .requestMatchers("/ping", "/ping/**").permitAll()
+                        .requestMatchers("/whatsapp", "/whatsapp/**").permitAll()
                         // Públicos según tu helper
                         .requestMatchers(request -> Utils.isPublic(request.getRequestURI())).permitAll()
                         // Rutas protegidas por roles

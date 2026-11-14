@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.mx.mitienda.util.enums.InventarioOwnerType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -53,6 +54,7 @@ public class DetalleVenta {
     private Producto product;
 
     @OneToMany(mappedBy = "detalleVenta", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private List<DetalleVentaExtra> extras = new ArrayList<>();
     @Column(name = "notes")
     private String notes;

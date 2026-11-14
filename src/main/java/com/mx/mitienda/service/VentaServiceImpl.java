@@ -53,6 +53,8 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
     private final DevolucionVentasRepository devolucionVentasRepository;
     private final DetalleDevolucionVentasRepository detalleDevolucionVentasRepository;
     private final VentaPagoRepository ventaPagoRepository;
+    private final GananciaVentaProjection gananciaVentaProjection;
+    private final MetodoPagoVentaProjection metodoPagoVentaProjection;
     private final MetodoPagoRepository metodoPagoRepository;
     private final UsuarioService usuarioService;
     private final EstadoOrdenRepository estadoOrdenRepository;
@@ -74,7 +76,9 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
             VentaPagoRepository ventaPagoRepository,
             MetodoPagoRepository metodoPagoRepository,
             UsuarioService usuarioService,
-            EstadoOrdenRepository estadoOrdenRepository
+            EstadoOrdenRepository estadoOrdenRepository,
+            GananciaVentaProjection gananciaVentaProjection,
+            MetodoPagoVentaProjection metodoPagoVentaProjection
     ) {
         super(authenticatedUserService);
         this.ventaRepository = ventaRepository;
@@ -93,6 +97,8 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
         this.metodoPagoRepository = metodoPagoRepository;
         this.usuarioService = usuarioService;
         this.estadoOrdenRepository = estadoOrdenRepository;
+        this.gananciaVentaProjection = gananciaVentaProjection;
+        this.metodoPagoVentaProjection = metodoPagoVentaProjection;
     }
     private BigDecimal safe(BigDecimal venta) {
         return venta != null ? venta : BigDecimal.ZERO;
@@ -279,14 +285,11 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
     @Transactional(readOnly = true)
     public Page<VentaResponseDTO> findByFilter(VentaFiltroDTO filterDTO, int page, int size) {
         UserContext ctx = ctx();
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("saleDate").descending().and(Sort.by("id").descending()));
 
         boolean isSuper = ctx.isSuperAdmin();
         boolean isAdmin = ctx.isAdmin();
         boolean isVendor = !isSuper && !isAdmin;
-
-        Boolean consolidatedFilter = filterDTO.getConsolidated();
 
         VentaSpecBuilder builder = new VentaSpecBuilder()
                 .client(filterDTO.getClienteId())
@@ -295,13 +298,14 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
                 .totalMinorTo(filterDTO.getMax())
                 .exactTotal(filterDTO.getTotalAmount())
                 .active(true)
-                .consolidated(consolidatedFilter)
+                .consolidated(filterDTO.getConsolidated())
                 .sellPerDayMonthYear(filterDTO.getDay(), filterDTO.getMonth(), filterDTO.getYear())
                 .sellPerMonthYear(filterDTO.getMonth(), filterDTO.getYear())
                 .byPaymentMethod(filterDTO.getPaymentMethodId())
                 .paymentStatus(filterDTO.getPaymentStatus())
                 .withProductName(filterDTO.getProductName())
                 .withId(filterDTO.getId());
+
         if (isSuper) {
             builder.username(filterDTO.getUsername());
             builder.userId(filterDTO.getUserId());
@@ -310,6 +314,7 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
         } else if (isVendor) {
             builder.username(ctx.getEmail());
         }
+
         Specification<Venta> spec = builder.build();
 
         if (!isSuper) {
@@ -317,9 +322,18 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
                     cb.equal(root.get("branch").get("id"), ctx.getBranchId()));
         }
 
+        // Si NO estamos viendo ventas consolidadas agrupadas, paginamos directo en PostgreSQL (Ultra rápido)
+        if (Boolean.FALSE.equals(filterDTO.getConsolidated())) {
+            Page<Venta> pageVentas = ventaRepository.findAll(spec, pageable);
+            List<VentaResponseDTO> filas = construirFilasTablaVentas(pageVentas.getContent());
+            return new PageImpl<>(filas, pageable, pageVentas.getTotalElements());
+        }
+
+        // Si incluye consolidadas (que agrupan varias ventas en 1 fila virtual),
+        // traemos las cabeceras en 1 sola query gracias a @EntityGraph y paginamos las filas resultantes
         List<Venta> ventasFiltradas = ventaRepository.findAll(
                 spec,
-                Sort.by("id").descending()
+                Sort.by("saleDate").descending().and(Sort.by("id").descending())
         );
 
         List<VentaResponseDTO> filas = construirFilasTablaVentas(ventasFiltradas);
@@ -563,6 +577,30 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
 
 
     private List<VentaResponseDTO> construirFilasTablaVentas(List<Venta> ventas) {
+        if (ventas.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> todosLosIds = ventas.stream().map(Venta::getId).toList();
+        boolean puedeVerGanancia = ctx().isSuperAdmin() || ctx().isAdmin();
+
+        // 1. Obtener TODAS las ganancias en 1 sola query SQL
+        Map<Long, BigDecimal> gananciasMap = puedeVerGanancia
+                ? ventaRepository.calcularGananciasPorVentaIds(todosLosIds).stream()
+                .collect(Collectors.toMap(
+                        GananciaVentaProjection::getVentaId,
+                        GananciaVentaProjection::getGanancia
+                ))
+                : Map.of();
+
+        // 2. Obtener TODOS los métodos de pago en 1 sola query SQL
+        Map<Long, List<String>> metodosPagoMap = ventaRepository
+                .findDistinctPaymentMethodNamesByVentaIds(todosLosIds).stream()
+                .collect(Collectors.groupingBy(
+                        MetodoPagoVentaProjection::getVentaId,
+                        Collectors.mapping(MetodoPagoVentaProjection::getPaymentName, Collectors.toList())
+                ));
+
         List<VentaResponseDTO> resultado = new ArrayList<>();
 
         List<Venta> ventasNormales = ventas.stream()
@@ -578,28 +616,25 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
                         Collectors.toList()
                 ));
 
-        boolean puedeVerGanancia = ctx().isSuperAdmin() || ctx().isAdmin();
+        // Construir filas normales (CERO queries adicionales aquí dentro)
+        for (Venta venta : ventasNormales) {
+            VentaResponseDTO dto = ventaMapper.toResponseHeader(venta);
 
-        ventasNormales.stream()
-                .map(venta -> {
-                    VentaResponseDTO dto = ventaMapper.toResponseHeader(venta);
-                    ajustarNombreMetodoPago(dto);
+            List<String> metodos = metodosPagoMap.get(venta.getId());
+            if (metodos != null && !metodos.isEmpty()) {
+                if (metodos.size() > 1) {
+                    dto.setPaymentName("MIXTO");
+                    dto.setPaymentMethodId(null);
+                } else {
+                    dto.setPaymentName(metodos.get(0));
+                }
+            }
 
-                    if (puedeVerGanancia) {
-                        dto.setNetProfit(
-                                obtenerGananciaPorVenta(
-                                        venta.getId(),
-                                        venta.getBranch() != null ? venta.getBranch().getId() : null
-                                )
-                        );
-                    } else {
-                        dto.setNetProfit(null);
-                    }
+            dto.setNetProfit(puedeVerGanancia ? gananciasMap.getOrDefault(venta.getId(), BigDecimal.ZERO) : null);
+            resultado.add(dto);
+        }
 
-                    return dto;
-                })
-                .forEach(resultado::add);
-
+        // Construir filas consolidadas (CERO queries adicionales aquí dentro)
         ventasConsolidadasPorTicket.forEach((weeklyTicketId, ventasDelTicket) -> {
             VentaResponseDTO filaConsolidada =
                     ventaMapper.toConsolidadaVirtualHeader(weeklyTicketId, ventasDelTicket);
@@ -607,18 +642,12 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
             if (filaConsolidada != null) {
                 if (puedeVerGanancia) {
                     BigDecimal gananciaConsolidada = ventasDelTicket.stream()
-                            .map(venta -> obtenerGananciaPorVenta(
-                                    venta.getId(),
-                                    venta.getBranch() != null ? venta.getBranch().getId() : null
-                            ))
-                            .filter(Objects::nonNull)
+                            .map(v -> gananciasMap.getOrDefault(v.getId(), BigDecimal.ZERO))
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
-
                     filaConsolidada.setNetProfit(gananciaConsolidada);
                 } else {
                     filaConsolidada.setNetProfit(null);
                 }
-
                 resultado.add(filaConsolidada);
             }
         });

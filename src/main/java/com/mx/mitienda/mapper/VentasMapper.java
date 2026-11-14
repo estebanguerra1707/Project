@@ -125,6 +125,7 @@ public class VentasMapper {
             detalle.setVenta(venta);
             detalle.setProduct(producto);
             detalle.setQuantity(cantidad);
+            detalle.setCantidadDevuelta(BigDecimal.ZERO);
             detalle.setOwnerType(detalleVentaRequestDTO.getOwnerType());
             detalle.setUnitPrice(producto.getSalePrice());
             detalle.setSubTotal(producto.getSalePrice().multiply(cantidad));

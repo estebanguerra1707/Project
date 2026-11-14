@@ -52,39 +52,35 @@ public class VentasSpecification {
 
     public static Specification<Venta> sellPerDayMonthYear(Integer day, Integer month, Integer year) {
         return (root, query, cb) -> {
+            // Si tenemos año, mes y día exactos, usamos un rango del día completo (Usa Índices en BD)
+            if (year != null && month != null && day != null) {
+                LocalDate date = LocalDate.of(year, month, day);
+                return cb.between(root.get("saleDate"), date.atStartOfDay(), date.atTime(LocalTime.MAX));
+            }
+            // Si tenemos solo año y mes, usamos rango del mes completo (Usa Índices en BD)
+            if (year != null && month != null) {
+                LocalDate start = LocalDate.of(year, month, 1);
+                LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
+                return cb.between(root.get("saleDate"), start.atStartOfDay(), end.atTime(LocalTime.MAX));
+            }
+            // Si tenemos solo el año
+            if (year != null && month == null && day == null) {
+                LocalDate start = LocalDate.of(year, 1, 1);
+                LocalDate end = LocalDate.of(year, 12, 31);
+                return cb.between(root.get("saleDate"), start.atStartOfDay(), end.atTime(LocalTime.MAX));
+            }
+
+            // Fallback solo si filtran por un día o mes suelto sin año
             Predicate predicate = cb.conjunction();
-
             if (day != null) {
-                predicate = cb.and(predicate,
-                        cb.equal(
-                                cb.function("DATE_PART", Integer.class, cb.literal("day"), root.get("saleDate")),
-                                day
-                        )
-                );
+                predicate = cb.and(predicate, cb.equal(cb.function("DATE_PART", Integer.class, cb.literal("day"), root.get("saleDate")), day));
             }
-
             if (month != null) {
-                predicate = cb.and(predicate,
-                        cb.equal(
-                                cb.function("DATE_PART", Integer.class, cb.literal("month"), root.get("saleDate")),
-                                month
-                        )
-                );
+                predicate = cb.and(predicate, cb.equal(cb.function("DATE_PART", Integer.class, cb.literal("month"), root.get("saleDate")), month));
             }
-
-            if (year != null) {
-                predicate = cb.and(predicate,
-                        cb.equal(
-                                cb.function("DATE_PART", Integer.class, cb.literal("year"), root.get("saleDate")),
-                                year
-                        )
-                );
-            }
-
             return predicate;
         };
     }
-
     public static Specification<Venta> sellBetweenMonthAndYear(Integer month, Integer year) {
         return (root, query, cb) -> {
             if (year == null || month == null) return null;

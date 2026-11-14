@@ -4,6 +4,7 @@ import com.mx.mitienda.model.Venta;
 import com.mx.mitienda.model.dto.DevolucionVentasRequestDTO;
 import com.mx.mitienda.model.dto.VentaFiltroDTO;
 import io.micrometer.common.KeyValues;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Range;
 import org.springframework.data.domain.Sort;
@@ -21,13 +22,14 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
+import com.mx.mitienda.repository.MetodoPagoVentaProjection;
 
 @Repository
 public interface VentaRepository extends JpaRepository<Venta, Long>, JpaSpecificationExecutor<Venta> {
     List<Venta> findByActiveTrue();
     Optional<Venta> findByIdAndActiveTrue(Long id);
     List<Venta> findByUsuario_UsernameAndActiveTrue(String username);
-    List<Venta> findAll(Specification<Venta> spec, Sort sort);
+//    List<Venta> findAll(Specification<Venta> spec, Sort sort);
 
     @Query("""
         SELECT v FROM Venta v
@@ -239,8 +241,59 @@ where v.id in :ventaIds
     BigDecimal sumArticulosVendidos(@Param("inicio") LocalDateTime inicio,
                                     @Param("fin") LocalDateTime fin,
                                     @Param("branchId") Long branchId);
-
+    @EntityGraph(attributePaths = {
+            "client", "usuario", "branch", "paymentMethod", "estadoOrden",
+            "detailsList", "detailsList.product", "detailsList.product.branch",
+            "detailsList.product.businessType", "detailsList.product.unidadMedida"
+    })
     List<Venta> findByEstadoOrden_NombreAndActiveTrue(String estadoNombre);
 
+    @EntityGraph(attributePaths = {
+            "client", "usuario", "branch", "paymentMethod", "estadoOrden",
+            "detailsList", "detailsList.product", "detailsList.product.branch",
+            "detailsList.product.businessType", "detailsList.product.unidadMedida"
+    })
     List<Venta> findByBranch_IdAndEstadoOrden_NombreAndActiveTrue(Long branchId, String estadoNombre);
+
+    // 1. Trae las ventas con sus relaciones de cabecera en 1 sola query (Evita N+1 de EAGER)
+    @Override
+    @EntityGraph(attributePaths = {"client", "usuario", "branch", "paymentMethod", "estadoOrden"})
+    List<Venta> findAll(Specification<Venta> spec, Sort sort);
+
+    @Override
+    @EntityGraph(attributePaths = {"client", "usuario", "branch", "paymentMethod", "estadoOrden"})
+    Page<Venta> findAll(Specification<Venta> spec, Pageable pageable);
+
+    // 2. Calcula la ganancia de múltiples ventas en 1 SOLA CONSULTA SQL
+    @Query("""
+        SELECT v.id AS ventaId,
+               COALESCE(SUM(
+                   (COALESCE(dv.unitPrice, 0) - COALESCE(p.purchasePrice, 0)) * 
+                   CASE WHEN (dv.quantity - COALESCE(dv.cantidadDevuelta, 0)) > 0 
+                        THEN (dv.quantity - COALESCE(dv.cantidadDevuelta, 0)) 
+                        ELSE 0 END
+               ), 0)
+               +
+               COALESCE(SUM(
+                   (COALESCE(e.extraPrice, 0) - COALESCE(pe.purchasePrice, 0)) * 
+                   CASE WHEN (dv.quantity - COALESCE(dv.cantidadDevuelta, 0)) > 0 
+                        THEN (dv.quantity - COALESCE(dv.cantidadDevuelta, 0)) 
+                        ELSE 0 END
+               ), 0) AS ganancia
+        FROM Venta v
+        LEFT JOIN v.detailsList dv
+        LEFT JOIN dv.product p
+        LEFT JOIN dv.extras e
+        LEFT JOIN e.productExtra pe
+        WHERE v.id IN :ventaIds
+        GROUP BY v.id
+    """)
+    List<GananciaVentaProjection> calcularGananciasPorVentaIds(@Param("ventaIds") List<Long> ventaIds);
+
+    @Query("""
+    SELECT DISTINCT vp.venta.id AS ventaId, vp.paymentMethod.name AS paymentName
+    FROM VentaPago vp
+    WHERE vp.venta.id IN :ventaIds AND vp.active = true
+""")
+    List<MetodoPagoVentaProjection> findDistinctPaymentMethodNamesByVentaIds(@Param("ventaIds") List<Long> ventaIds);
 }
