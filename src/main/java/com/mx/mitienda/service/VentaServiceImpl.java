@@ -53,8 +53,6 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
     private final DevolucionVentasRepository devolucionVentasRepository;
     private final DetalleDevolucionVentasRepository detalleDevolucionVentasRepository;
     private final VentaPagoRepository ventaPagoRepository;
-    private final GananciaVentaProjection gananciaVentaProjection;
-    private final MetodoPagoVentaProjection metodoPagoVentaProjection;
     private final MetodoPagoRepository metodoPagoRepository;
     private final UsuarioService usuarioService;
     private final EstadoOrdenRepository estadoOrdenRepository;
@@ -97,8 +95,6 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
         this.metodoPagoRepository = metodoPagoRepository;
         this.usuarioService = usuarioService;
         this.estadoOrdenRepository = estadoOrdenRepository;
-        this.gananciaVentaProjection = gananciaVentaProjection;
-        this.metodoPagoVentaProjection = metodoPagoVentaProjection;
     }
     private BigDecimal safe(BigDecimal venta) {
         return venta != null ? venta : BigDecimal.ZERO;
