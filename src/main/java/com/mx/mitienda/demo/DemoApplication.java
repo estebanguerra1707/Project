@@ -18,7 +18,7 @@ import org.springframework.web.client.RestTemplate;
 @EntityScan(basePackages = "com.mx.mitienda.model")
 @ComponentScan(basePackages = "com.mx.mitienda")
 @EnableJpaAuditing(auditorAwareRef = "auditorAware")
-@ConfigurationPropertiesScan
+@ConfigurationPropertiesScan(basePackages = "com.mx.mitienda")
 @EnableAsync
 public class DemoApplication {
 
