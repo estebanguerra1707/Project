@@ -74,9 +74,7 @@ public class VentaServiceImpl extends BaseService implements IVentaService {
             VentaPagoRepository ventaPagoRepository,
             MetodoPagoRepository metodoPagoRepository,
             UsuarioService usuarioService,
-            EstadoOrdenRepository estadoOrdenRepository,
-            GananciaVentaProjection gananciaVentaProjection,
-            MetodoPagoVentaProjection metodoPagoVentaProjection
+            EstadoOrdenRepository estadoOrdenRepository
     ) {
         super(authenticatedUserService);
         this.ventaRepository = ventaRepository;
