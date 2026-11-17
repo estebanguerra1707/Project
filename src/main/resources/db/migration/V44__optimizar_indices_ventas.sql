@@ -4,5 +4,5 @@ ON venta (branch_id, active, sale_date DESC);
 
 -- Índices para llaves foráneas en los JOINs de ganancia y pagos
 CREATE INDEX IF NOT EXISTS idx_detalle_venta_sale_id ON detalle_venta (sale_id);
-CREATE INDEX IF NOT EXISTS idx_detalle_venta_extra_detalle_id ON detalle_venta_extra (detalle_venta_id);
 CREATE INDEX IF NOT EXISTS idx_venta_pago_venta_id_active ON venta_pago (venta_id, active);
+CREATE INDEX IF NOT EXISTS idx_detalle_venta_extras_detalle_id ON detalle_venta_extras (detalle_venta_id);
