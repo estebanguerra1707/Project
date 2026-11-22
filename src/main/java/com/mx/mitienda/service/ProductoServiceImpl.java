@@ -44,17 +44,19 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
     private final InventarioSucursalRepository inventarioSucursalRepository;
     private static final BigDecimal ZERO = BigDecimal.ZERO;
     private static final BigDecimal ONE  = BigDecimal.ONE;
-
-
     private static final Map<String, String> SORT_ALIAS = Map.of(
-            "product", "name",               // Si el front manda 'product', usa 'name'
-            "category", "productCategory.name" // Ejemplo extra opcional
+            "product", "name",
+            "category", "productCategory.name",
+            "categoryName", "productCategory.name",
+            "businessTypeName", "businessType.name"
     );
 
     private static final Set<String> ALLOWED_SORTS = Set.of(
             "id", "name", "sku", "purchasePrice", "salePrice",
-            "active", "creationDate", "updatedAt", "codigoBarras", "productCategory.name"
+            "active", "creationDate", "updatedAt", "codigoBarras",
+            "productCategory.name", "businessType.name"
     );
+
 
     public ProductoServiceImpl(
             IAuthenticatedUserService authenticatedUserService,
@@ -83,15 +85,17 @@ public class ProductoServiceImpl extends BaseService implements IProductoService
             if (ALLOWED_SORTS.contains(mapped)) {
                 sanitized = sanitized.and(Sort.by(new Sort.Order(o.getDirection(), mapped)));
             }
-
         }
+
         if (sanitized.isUnsorted()) {
-            sanitized = Sort.by(Sort.Order.asc("name"));
+            sanitized = Sort.by(
+                    Sort.Order.desc("creationDate"),
+                    Sort.Order.desc("id")
+            );
         }
 
         return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sanitized);
     }
-
     @Transactional(readOnly = true)
     public Page<ProductoResponseDTO> getAll(ProductoFiltroDTO filtro, Pageable pageable) {
         UserContext ctx = ctx();
